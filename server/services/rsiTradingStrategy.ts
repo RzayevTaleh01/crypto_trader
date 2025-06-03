@@ -176,22 +176,13 @@ export class RSITradingStrategy {
       return;
     }
 
-    // Extract base assets from available pairs (remove USDT suffix)
-    const availableSymbols = availablePairs
-      .filter(pair => pair.endsWith('USDT'))
-      .map(pair => pair.replace('USDT', ''));
-    
-    console.log(`📋 Available testnet symbols: ${availableSymbols.slice(0, 10).join(', ')}...`);
-    
-    // Find highest gaining coins from available pairs
+    // Use only BTC and ETH for reliable trading on testnet
     const highGainCryptos = cryptos
       .filter(crypto => {
-        const price = parseFloat(crypto.currentPrice);
         const change24h = parseFloat(crypto.priceChange24h);
-        return availableSymbols.includes(crypto.symbol) && price > 0.01 && change24h > 1;
+        return ['BTC', 'ETH'].includes(crypto.symbol) && change24h > -5; // Accept any reasonable price movement
       })
-      .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h))
-      .slice(0, 6); // Top 6 highest gainers from available pairs
+      .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h));
 
     if (highGainCryptos.length === 0) {
       console.log(`⚠️ No high-momentum coins found`);

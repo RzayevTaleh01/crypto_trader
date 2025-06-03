@@ -115,25 +115,22 @@ class BinanceService {
         throw new Error(`Symbol info not found for ${binanceSymbol}`);
       }
 
-      // Get LOT_SIZE filter
-      const lotSizeFilter = symbolInfo.filters.find((f: any) => f.filterType === 'LOT_SIZE');
-      if (!lotSizeFilter) {
-        throw new Error(`LOT_SIZE filter not found for ${binanceSymbol}`);
+      // Simplified approach - use predefined safe quantities for major coins
+      let properQuantity;
+      
+      if (symbol === 'BTC') {
+        properQuantity = Math.max(0.001, quantity / currentPrice); // Minimum 0.001 BTC
+        properQuantity = Math.floor(properQuantity * 100000) / 100000; // 5 decimal places
+      } else if (symbol === 'ETH') {
+        properQuantity = Math.max(0.01, quantity / currentPrice); // Minimum 0.01 ETH
+        properQuantity = Math.floor(properQuantity * 1000) / 1000; // 3 decimal places
+      } else {
+        // For other coins, use conservative approach
+        properQuantity = Math.max(1, quantity / currentPrice);
+        properQuantity = Math.floor(properQuantity);
       }
 
-      const minQty = parseFloat(lotSizeFilter.minQty);
-      const stepSize = parseFloat(lotSizeFilter.stepSize);
-      
-      // Calculate proper quantity respecting LOT_SIZE constraints
-      let properQuantity = Math.max(quantity, minQty);
-      properQuantity = Math.floor(properQuantity / stepSize) * stepSize;
-      
-      // Ensure we meet minimum requirements
-      if (properQuantity < minQty) {
-        properQuantity = minQty;
-      }
-
-      console.log(`📊 ${binanceSymbol} - Min: ${minQty}, Step: ${stepSize}, Calculated: ${properQuantity}`);
+      console.log(`📊 ${binanceSymbol} - Price: $${currentPrice}, Investment: $${quantity}, Quantity: ${properQuantity}`);
       
       // Execute market order
       const order = await this.client.order({

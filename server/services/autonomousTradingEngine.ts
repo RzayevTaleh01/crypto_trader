@@ -55,7 +55,7 @@ export class AutonomousTradingEngine {
     await this.sellProfitablePositions(userId, portfolio);
 
     // Step 2: Execute buy strategy if balance allows
-    if (balance > 50) {
+    if (balance > 5) {
       await this.executeBuyStrategy(userId, botSettings, cryptos, balance);
     }
   }
@@ -194,9 +194,9 @@ export class AutonomousTradingEngine {
     if (!user) return;
 
     const balance = parseFloat(user.balance);
-    if (balance < 50) return;
+    if (balance < 2) return;
 
-    const investAmount = Math.min(maxAmount, balance * 0.1);
+    const investAmount = Math.min(maxAmount, Math.max(1, balance * 0.2));
     const currentPrice = parseFloat(crypto.currentPrice);
     const quantity = investAmount / currentPrice;
 

@@ -139,9 +139,11 @@ export class RSITradingStrategy {
             });
           }
 
-          // Send Telegram notification
+          // Send Telegram notification with profit information
           try {
             const { telegramService } = await import('./telegramService');
+            const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
+            
             await telegramService.sendTradeNotification({
               type: 'sell',
               amount: sellAmount.toString(),
@@ -149,8 +151,11 @@ export class RSITradingStrategy {
               total: totalValue.toString(),
               symbol: crypto.symbol,
               profit: profit.toFixed(2),
-              strategy: `RSI Overbought: ${rsi.toFixed(1)}`
+              strategy: `RSI ${rsi?.toFixed(1)} - Kar: ${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`,
+              isBot: true
             }, crypto);
+            
+            console.log(`📱 Telegram notification sent: ${crypto.symbol} SELL with $${profit.toFixed(2)} profit`);
           } catch (error) {
             console.log('Telegram notification failed:', error);
           }

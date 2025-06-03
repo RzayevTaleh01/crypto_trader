@@ -125,7 +125,7 @@ export class AutonomousTradingEngine {
           });
         }
 
-        // Send Telegram notification
+        // Send Telegram notification with detailed profit info
         try {
           const { telegramService } = await import('./telegramService');
           await telegramService.sendTradeNotification({
@@ -135,8 +135,11 @@ export class AutonomousTradingEngine {
             total: totalValue.toString(),
             symbol: crypto.symbol,
             profit: profit.toFixed(2),
-            strategy: `Profit: +${profitPercentage.toFixed(2)}%`
+            strategy: `Avtomatik Kar Götürme: +${profitPercentage.toFixed(2)}%`,
+            isBot: true
           }, crypto);
+          
+          console.log(`📱 Telegram: ${crypto.symbol} satış bildirişi göndərildi - $${profit.toFixed(2)} kar`);
         } catch (error) {
           console.log('Telegram notification failed:', error);
         }

@@ -174,17 +174,29 @@ Salam! Mən sizin avtomatik kripto trading köməkçinizəm.
     if (!this.bot || !this.chatId) return;
 
     const emoji = trade.type === 'buy' ? '🟢 ALIŞ' : '🔴 SATIŞ';
-    const pnl = parseFloat(trade.pnl || '0');
-    const pnlEmoji = pnl >= 0 ? '📈' : '📉';
+    const profit = parseFloat(trade.profit || '0');
+    const profitEmoji = profit >= 0 ? '💰' : '📉';
     
-    const message = `
+    let message = `
 ${emoji} *Yeni Treyd!*
 
 💎 *${crypto.symbol}* - ${trade.type.toUpperCase()}
 💰 Məbləğ: ${parseFloat(trade.amount).toFixed(6)}
 💵 Qiymət: $${parseFloat(trade.price).toFixed(2)}
-💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}
-${pnlEmoji} P&L: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}
+💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+
+    // Show profit information for sell orders
+    if (trade.type === 'sell' && trade.profit) {
+      message += `
+${profitEmoji} *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
+      
+      if (trade.strategy) {
+        message += `
+📊 Strategiya: ${trade.strategy}`;
+      }
+    }
+
+    message += `
 🤖 Bot Treydi: ${trade.isBot ? 'Bəli' : 'Xeyr'}
 
 📅 ${new Date().toLocaleString('az-AZ')}

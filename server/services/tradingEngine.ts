@@ -133,9 +133,9 @@ class TradingEngine {
       try {
         await this.executeBotTrade(userId, botSettings);
       } catch (error) {
-        console.error(`Bot trade error for user ${userId}:`, error.message);
+        console.error(`Bot trade error for user ${userId}:`, error);
       }
-    }, 60000); // Execute trades every minute
+    }, 15000); // Execute trades every 15 seconds
 
     this.activeBots.set(userId, botInterval);
     console.log(`Trading bot started for user ${userId}`);
@@ -167,9 +167,14 @@ class TradingEngine {
       
       // Risk-adjusted trading based on bot settings
       const riskMultiplier = parseInt(botSettings.riskLevel) / 10;
-      const shouldTrade = Math.random() < (0.1 * riskMultiplier); // 10% base chance * risk level
+      const shouldTrade = Math.random() < (0.5 * riskMultiplier); // 50% base chance * risk level
       
-      if (!shouldTrade) return;
+      console.log(`Bot trading check for ${randomCrypto.symbol}: shouldTrade=${shouldTrade}, riskLevel=${botSettings.riskLevel}, priceChange=${priceChange}%, balance=$${balance}`);
+      
+      if (!shouldTrade) {
+        console.log(`No trade this time for ${randomCrypto.symbol}`);
+        return;
+      }
 
       const user = await storage.getUser(userId);
       if (!user) return;
@@ -183,9 +188,11 @@ class TradingEngine {
         const portfolioItem = await storage.getPortfolioItem(userId, randomCrypto.id);
         const currentPrice = parseFloat(randomCrypto.currentPrice);
         
-        if (priceChange < -2 && balance > maxTradeAmount) {
+        if (priceChange < -0.5 && balance > maxTradeAmount) {
           // Price dropped, consider buying
           const amount = maxTradeAmount / currentPrice;
+          
+          console.log(`Executing BUY trade: ${randomCrypto.symbol} at $${currentPrice}, amount: ${amount}`);
           
           const result = await this.executeTrade({
             userId,
@@ -200,7 +207,7 @@ class TradingEngine {
           // Send Telegram notification
           await telegramService.sendTradeNotification(result.trade, randomCrypto);
           
-        } else if (priceChange > 2 && portfolioItem) {
+        } else if (priceChange > 0.5 && portfolioItem) {
           // Price increased, consider selling
           const amount = Math.min(
             parseFloat(portfolioItem.amount) * 0.3, // Sell max 30% of position

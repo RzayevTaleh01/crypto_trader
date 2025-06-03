@@ -185,20 +185,30 @@ ${emoji} *Yeni Treyd!*
 
     // Show detailed price information
     if (trade.type === 'buy') {
+      const quantity = parseFloat(trade.quantity);
+      const price = parseFloat(trade.price);
+      const totalValue = parseFloat(trade.total);
+      
       message += `
-🛒 Alış Qiyməti: $${parseFloat(trade.price).toFixed(6)}
-📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}
-💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+🔢 Miqdari: ${quantity.toFixed(8)} ${crypto.symbol}
+🛒 Alış Qiyməti: $${price.toFixed(6)}
+💼 Ümumi Alış Dəyəri: $${totalValue.toFixed(2)}
+📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}`;
     } else if (trade.type === 'sell') {
+      const quantity = parseFloat(trade.quantity);
       const sellPrice = parseFloat(trade.price);
       const buyPrice = portfolioItem ? parseFloat(portfolioItem.averagePrice) : sellPrice;
       const currentPrice = parseFloat(crypto.currentPrice);
+      const totalSellValue = parseFloat(trade.total);
+      const totalBuyValue = quantity * buyPrice;
       
       message += `
+🔢 Miqdari: ${quantity.toFixed(8)} ${crypto.symbol}
 🛒 Alış Qiyməti: $${buyPrice.toFixed(6)}
 🔥 Satış Qiyməti: $${sellPrice.toFixed(6)}
-📊 Hazırki Qiymət: $${currentPrice.toFixed(6)}
-💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+💼 Ümumi Alış Dəyəri: $${totalBuyValue.toFixed(2)}
+💰 Ümumi Satış Dəyəri: $${totalSellValue.toFixed(2)}
+📊 Hazırki Qiymət: $${currentPrice.toFixed(6)}`;
       
       if (trade.profit) {
         message += `

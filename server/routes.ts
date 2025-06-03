@@ -179,6 +179,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/portfolio/user/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const portfolio = await portfolioService.getUserPortfolioWithDetails(userId);
+      res.json(portfolio);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch portfolio", error: error.message });
+    }
+  });
+
   // Bot settings routes
   app.get("/api/bot-settings", async (req, res) => {
     try {

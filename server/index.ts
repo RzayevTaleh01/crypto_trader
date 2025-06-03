@@ -48,22 +48,20 @@ app.use((req, res, next) => {
 
   // Bot will only start when manually activated through the dashboard
 
-  // Start advanced profit optimization system 
+  // Start immediate profit-taking system
   setTimeout(async () => {
-    const { advancedTradingEngine } = await import('./services/advancedTradingEngine');
+    const { profitTakingEngine } = await import('./services/profitTakingEngine');
     
-    // Execute multiple advanced strategies every 10 seconds for faster profit capture
+    // Execute immediate profit taking every 8 seconds
     setInterval(async () => {
       try {
-        await advancedTradingEngine.executeRSIMomentumStrategy(1);
-        await advancedTradingEngine.executeMACDCrossoverStrategy(1);
-        await advancedTradingEngine.executeBollingerBandsStrategy(1);
+        await profitTakingEngine.executeImmediateProfitTaking(1);
       } catch (error) {
-        console.log('Advanced trading error:', error);
+        console.log('Profit taking error:', error);
       }
-    }, 10000);
+    }, 8000);
     
-    console.log('💰 Advanced profit optimization system started');
+    console.log('💰 Immediate profit-taking system started');
   }, 3000);
 
   // Set up daily report scheduler (24 hours)

@@ -58,8 +58,8 @@ export class ProfitTakingEngine {
 
     console.log(`📊 ${crypto.symbol}: Price: $${currentPrice}, Avg: $${avgPrice}, P&L: ${profitPercentage.toFixed(2)}%`);
 
-    // Immediate profit taking on ANY positive movement
-    if (profitPercentage > 0.1) { // Even 0.1% profit
+    // Only sell if there's ACTUAL profit (price higher than average)
+    if (profitPercentage > 0.5) { // Minimum 0.5% profit required
       const sellRatio = this.calculateSellRatio(profitPercentage, priceChange24h);
       const sellAmount = amount * sellRatio;
       const expectedProfit = (currentPrice - avgPrice) * sellAmount;
@@ -67,20 +67,20 @@ export class ProfitTakingEngine {
       return {
         action: 'sell',
         amount: sellAmount,
-        reason: `Immediate profit: ${profitPercentage.toFixed(2)}% gain captured`,
+        reason: `Real profit: ${profitPercentage.toFixed(2)}% gain (${expectedProfit.toFixed(2)}$)`,
         expectedProfit
       };
     }
 
-    // Aggressive profit taking on strong performers
-    if (priceChange24h > 2 && profitPercentage > -1) {
-      const sellAmount = amount * 0.3; // Sell 30% on strong momentum
-      const expectedProfit = Math.max(0, (currentPrice - avgPrice) * sellAmount);
+    // Take profits on high momentum ONLY if profitable
+    if (priceChange24h > 5 && profitPercentage > 1) {
+      const sellAmount = amount * 0.4; // Sell 40% on very strong momentum
+      const expectedProfit = (currentPrice - avgPrice) * sellAmount;
       
       return {
         action: 'sell',
         amount: sellAmount,
-        reason: `Momentum profit: ${priceChange24h.toFixed(2)}% daily gain`,
+        reason: `High momentum profit: ${priceChange24h.toFixed(2)}% surge (+${expectedProfit.toFixed(2)}$)`,
         expectedProfit
       };
     }

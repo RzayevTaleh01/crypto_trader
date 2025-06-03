@@ -48,20 +48,20 @@ app.use((req, res, next) => {
 
   // Bot will only start when manually activated through the dashboard
 
-  // Start immediate profit-taking system
+  // Start smart trading system
   setTimeout(async () => {
-    const { profitTakingEngine } = await import('./services/profitTakingEngine');
+    const { smartTradingEngine } = await import('./services/smartTradingEngine');
     
-    // Execute immediate profit taking every 8 seconds
+    // Execute smart trading every 15 seconds
     setInterval(async () => {
       try {
-        await profitTakingEngine.executeImmediateProfitTaking(1);
+        await smartTradingEngine.executeSmartTrading(1);
       } catch (error) {
-        console.log('Profit taking error:', error);
+        console.log('Smart trading error:', error);
       }
-    }, 8000);
+    }, 15000);
     
-    console.log('💰 Immediate profit-taking system started');
+    console.log('💰 Smart trading system started');
   }, 3000);
 
   // Set up daily report scheduler (24 hours)

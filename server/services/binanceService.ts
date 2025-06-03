@@ -1,4 +1,4 @@
-import Binance from 'binance-api-node';
+import * as BinanceAPI from 'binance-api-node';
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
 
@@ -16,10 +16,9 @@ class BinanceService {
     }
 
     try {
-      this.client = Binance({
+      this.client = BinanceAPI.default({
         apiKey,
-        apiSecret,
-        test: this.isTestnet
+        apiSecret
       });
 
       console.log(`Binance API initialized (${this.isTestnet ? 'Testnet' : 'Mainnet'})`);

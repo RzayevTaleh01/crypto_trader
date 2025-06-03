@@ -6,6 +6,7 @@ import TopCoins from "@/components/TopCoins";
 import RecentTrades from "@/components/RecentTrades";
 import BotSettings from "@/components/BotSettings";
 import TelegramCommands from "@/components/TelegramCommands";
+import TradingPanel from "@/components/TradingPanel";
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -137,10 +138,20 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent trades and bot settings */}
+          {/* Manual Trading Panel */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-1">
+              <TradingPanel userId={userId} />
+            </div>
+            <div className="xl:col-span-2">
+              <RecentTrades userId={userId} />
+            </div>
+          </div>
+
+          {/* Bot settings */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <RecentTrades userId={userId} />
             <BotSettings userId={userId} />
+            <div></div>
           </div>
 
           {/* Telegram commands */}

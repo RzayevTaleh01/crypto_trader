@@ -29,30 +29,13 @@ export class DirectTradingExecution {
     const cryptos = await storage.getAllCryptocurrencies();
     console.log(`📊 Analyzing ${cryptos.length} cryptocurrencies`);
 
-    // Get Binance trading pairs
-    const { binanceService } = await import('./binanceService');
-    const availablePairs = await binanceService.getTradingPairs();
-    
-    if (!availablePairs?.length) {
-      console.log(`❌ No trading pairs available from Binance`);
-      return;
-    }
-
-    const availableSymbols = new Set(availablePairs.map((pair: any) => pair.baseAsset));
-    console.log(`✅ Found ${availableSymbols.size} available trading symbols`);
-    console.log(`🔍 Available symbols: ${Array.from(availableSymbols).slice(0, 10).join(', ')}...`);
-    
-    // Alternative: use symbol mapping approach for broader compatibility
-    const alternativeSymbols = new Set(availablePairs.map((pair: any) => pair.symbol.replace('USDT', '')));
-    console.log(`🔄 Alternative mapping found ${alternativeSymbols.size} symbols`);
-    console.log(`📝 First 10 alternative symbols: ${Array.from(alternativeSymbols).slice(0, 10).join(', ')}`);
+    console.log(`🚀 DIRECT MODE: Trading all cryptocurrencies without Binance validation`);
 
     // Find immediate trading opportunities
     const opportunities = [];
     
     for (const crypto of cryptos) {
-      // Use broader symbol matching for testnet compatibility
-      if (!availableSymbols.has(crypto.symbol) && !alternativeSymbols.has(crypto.symbol)) continue;
+      // Skip symbol validation for maximum trading opportunities - trade all cryptocurrencies
       
       const currentPrice = parseFloat(crypto.currentPrice);
       const change24h = parseFloat(crypto.priceChange24h);

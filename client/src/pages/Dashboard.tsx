@@ -7,7 +7,7 @@ import RecentTrades from "@/components/RecentTrades";
 import BotSettings from "@/components/BotSettings";
 import BalanceManager from "@/components/BalanceManager";
 import TelegramCommands from "@/components/TelegramCommands";
-import TradingPanel from "@/components/TradingPanel";
+
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -139,15 +139,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Manual Trading Panel */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-1">
-              <TradingPanel userId={userId} />
-            </div>
-            <div className="xl:col-span-2">
-              <RecentTrades userId={userId} />
-            </div>
-          </div>
+          {/* Recent Trades */}
+          <RecentTrades userId={userId} />
 
           {/* Bot settings */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

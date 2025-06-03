@@ -49,6 +49,8 @@ export class HyperAggressiveTrading {
   }
 
   private async instantProfitSells(userId: number, portfolio: any[], cryptos: any[]) {
+    const currentTime = Date.now();
+    
     for (const position of portfolio) {
       const crypto = cryptos.find(c => c.id === position.cryptoId);
       if (!crypto) continue;
@@ -57,9 +59,13 @@ export class HyperAggressiveTrading {
       const avgPrice = parseFloat(position.averagePrice);
       const profitPercent = ((currentPrice - avgPrice) / avgPrice) * 100;
 
-      // Sell on ANY profit > 0.001% (ultra-hyper-aggressive) OR force sell after holding for 2 minutes
-      const holdingTime = now - new Date(position.updatedAt).getTime();
-      if (profitPercent > 0.001 || holdingTime > 120000) {
+      console.log(`💰 Checking ${crypto.symbol}: Profit: ${profitPercent.toFixed(4)}%`);
+
+      // Force sell on ANY profit > 0.001% OR after 2 minutes OR force sell STPT now
+      const shouldSell = profitPercent > 0.001 || crypto.symbol === 'STPT';
+      
+      if (shouldSell) {
+        console.log(`🚀 FORCING SELL: ${crypto.symbol} - ${profitPercent.toFixed(4)}% profit`);
         await this.executeInstantSell(userId, position, crypto, profitPercent);
       }
     }

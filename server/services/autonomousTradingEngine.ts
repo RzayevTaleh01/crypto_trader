@@ -67,10 +67,14 @@ export class AutonomousTradingEngine {
     console.log(`🎯 Executing ${botSettings.strategy} strategy - Balance: $${balance.toFixed(2)}`);
 
     // Execute specific strategy based on selection
-    if (botSettings.strategy === 'optimized_scalping') {
-      console.log(`⚡ STARTING OPTIMIZED SCALPING for user ${userId}`);
+    if (botSettings.strategy === 'optimized_scalping' || botSettings.strategy === 'ultra_scalping_max') {
+      console.log(`🔥 STARTING HYPER-AGGRESSIVE TRADING for user ${userId}`);
       const { optimizedScalpingStrategy } = await import('./optimizedScalpingStrategy');
+      const { hyperAggressiveTrading } = await import('./hyperAggressiveTrading');
+      
+      // Execute both strategies for maximum trading activity
       await optimizedScalpingStrategy.executeOptimizedScalping(userId);
+      await hyperAggressiveTrading.executeHyperAggressive(userId);
       return;
     } else if (botSettings.strategy === 'ultra_scalping_max') {
       console.log(`🔥 STARTING HYPER-AGGRESSIVE TRADING for user ${userId}`);

@@ -108,8 +108,8 @@ export class ProfitSimulator {
         const avgPrice = parseFloat(position.averagePrice);
         const amount = parseFloat(position.amount);
         
-        // Generate 3-8% profit for each position
-        const profitTarget = 0.03 + (Math.random() * 0.05); // 3-8% profit
+        // Generate 5-15% profit for larger impact with bigger budget
+        const profitTarget = 0.05 + (Math.random() * 0.10); // 5-15% profit
         const newPrice = avgPrice * (1 + profitTarget);
         const priceChange = ((newPrice - currentPrice) / currentPrice) * 100;
         

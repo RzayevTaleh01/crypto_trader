@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { InsertTrade } from '@shared/schema';
 import { binanceService } from './binanceService';
+import { telegramService } from './telegramService';
 
 export interface ArbitrageOpportunity {
   symbol: string;
@@ -325,6 +326,13 @@ export class ArbitrageTradingStrategy {
           });
         }
 
+        // Send Telegram notification for sell trade
+        try {
+          await telegramService.sendTradeNotification(tradeData, crypto, position);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
+        }
+
       } else {
         console.log(`❌ Binance arbitrage sell failed: ${result.message}`);
       }
@@ -376,6 +384,13 @@ export class ArbitrageTradingStrategy {
               profit: '0.00'
             }
           });
+        }
+
+        // Send Telegram notification for buy trade
+        try {
+          await telegramService.sendTradeNotification(tradeData, crypto);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
         }
 
       } else {

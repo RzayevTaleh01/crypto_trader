@@ -24,14 +24,14 @@ export default function LiveTradingActivity() {
   });
 
   const { data: recentTrades } = useQuery({
-    queryKey: ['/api/trades/user', 1],
+    queryKey: ['/api/trades/user'],
     refetchInterval: 3000,
   });
 
   // Update activities from real trading data
   useEffect(() => {
     const safeBotSettings = botSettings || {};
-    const trades = Array.isArray(recentTrades) ? recentTrades : (recentTrades?.trades || []);
+    const trades = Array.isArray(recentTrades) ? recentTrades : [];
     
     if (trades && trades.length > 0) {
       const latestTrades = trades

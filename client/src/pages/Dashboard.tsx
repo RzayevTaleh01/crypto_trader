@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import StatsGrid from "@/components/StatsGrid";
 import PortfolioChart from "@/components/PortfolioChart";
-import TopCoins from "@/components/TopCoins";
+
 
 import BotSettings from "@/components/BotSettings";
 import BalanceManager from "@/components/BalanceManager";
@@ -130,15 +130,8 @@ export default function Dashboard() {
           {/* Stats grid */}
           <StatsGrid userId={userId} />
 
-          {/* Charts and trading section */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <PortfolioChart userId={userId} />
-            </div>
-            <div>
-              <TopCoins />
-            </div>
-          </div>
+          {/* Portfolio Chart */}
+          <PortfolioChart userId={userId} />
 
           {/* Bot settings and Live Trading Activity */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

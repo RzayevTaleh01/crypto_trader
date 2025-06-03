@@ -92,8 +92,8 @@ class CryptoService {
       try {
         let crypto = await storage.getCryptocurrencyBySymbol(mockCoin.symbol);
         
-        // Generate realistic price fluctuation
-        const priceChange = (Math.random() - 0.5) * 0.1; // ±5% change
+        // Generate significant price fluctuation for real profit opportunities
+        const priceChange = (Math.random() - 0.5) * 0.16; // ±8% change for meaningful movements
         const newPrice = mockCoin.basePrice * (1 + priceChange);
         const change24h = priceChange * 100;
         

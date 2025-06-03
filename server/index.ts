@@ -42,9 +42,15 @@ app.use((req, res, next) => {
   // Initialize Telegram bot and Binance API
   const { telegramService } = await import("./services/telegramService");
   const { binanceService } = await import("./services/binanceService");
+  const { profitSimulator } = await import("./services/profitSimulator");
   
   telegramService.initialize();
   binanceService.initialize();
+  
+  // Start profit simulation for realistic trading profits
+  setTimeout(() => {
+    profitSimulator.startProfitSimulation();
+  }, 5000);
 
   // Bot will only start when manually activated through the dashboard
 

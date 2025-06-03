@@ -89,19 +89,21 @@ export class RSITradingStrategy {
 
       console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
 
-      // Only sell if there's real profit (minimum $0.05 or 0.5%)
-      const minProfitDollar = 0.05;
-      const minProfitPercent = 0.5;
+      // Enhanced profit requirements with market movement validation
+      const minProfitDollar = 0.10; // Increased minimum profit to $0.10
+      const minProfitPercent = 1.0;  // Increased minimum percentage to 1%
       const amount = parseFloat(position.amount);
       const currentValue = amount * currentPrice;
       const investedValue = amount * avgPrice;
       const absoluteProfit = currentValue - investedValue;
+      const priceMovement = Math.abs(currentPrice - avgPrice);
       
-      if ((absoluteProfit > minProfitDollar && profitPercentage > minProfitPercent) || (rsi && rsi > 75)) {
-        // Execute sell order only for meaningful profits
-        console.log(`💎 REAL PROFIT: ${crypto.symbol} - $${absoluteProfit.toFixed(2)} (${profitPercentage.toFixed(2)}%), RSI: ${rsi?.toFixed(1) || 'N/A'}`);
+      // Only sell if there's significant profit AND actual price movement
+      if ((absoluteProfit > minProfitDollar && profitPercentage > minProfitPercent && priceMovement > avgPrice * 0.005) || (rsi && rsi > 80)) {
+        // Execute sell order only for meaningful profits with real market movement
+        console.log(`💎 SIGNIFICANT PROFIT: ${crypto.symbol} - $${absoluteProfit.toFixed(2)} (${profitPercentage.toFixed(2)}%), Price Movement: $${priceMovement.toFixed(4)}, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
         
-        if (absoluteProfit > 0.02) { // Only sell if profit is at least 2 cents
+        if (absoluteProfit > 0.08) { // Only sell if profit is at least 8 cents
           const sellAmount = amount * 0.7; // Sell 70% of overbought position
           const totalValue = sellAmount * currentPrice;
           const profit = (currentPrice - avgPrice) * sellAmount;

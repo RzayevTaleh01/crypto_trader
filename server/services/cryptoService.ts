@@ -10,67 +10,60 @@ class CryptoService {
   }
 
   private async fetchCryptoPrices() {
-    // Use Binance API for all cryptocurrency data
+    // Only use Binance testnet API - no fallback to mock data
     const { binanceService } = await import('./binanceService');
     
-    try {
-      const marketData = await binanceService.getRealMarketData();
-      
-      if (!marketData || marketData.length === 0) {
-        console.log('No Binance market data available - please provide API credentials');
-        return;
-      }
-      
-      for (const ticker of marketData) {
-        try {
-          const symbol = ticker.symbol.replace('USDT', '');
-          let crypto = await storage.getCryptocurrencyBySymbol(symbol);
+    const marketData = await binanceService.getRealMarketData();
+    
+    if (!marketData || marketData.length === 0) {
+      console.log('Binance testnet API required - provide BINANCE_API_KEY and BINANCE_API_SECRET');
+      return;
+    }
+    
+    console.log(`Processing ${marketData.length} real market tickers from Binance testnet`);
+    
+    for (const ticker of marketData) {
+      try {
+        const symbol = ticker.symbol.replace('USDT', '');
+        let crypto = await storage.getCryptocurrencyBySymbol(symbol);
+        
+        if (!crypto) {
+          const newCrypto: InsertCryptocurrency = {
+            symbol: symbol,
+            name: symbol,
+            currentPrice: ticker.price,
+            priceChange24h: ticker.priceChangePercent || "0",
+            marketCap: ticker.quoteVolume || "0",
+            volume24h: ticker.volume || "0"
+          };
           
-          if (!crypto) {
-            // Create new cryptocurrency entry from Binance data
-            const newCrypto: InsertCryptocurrency = {
-              symbol: symbol,
-              name: symbol,
-              currentPrice: ticker.price,
-              priceChange24h: ticker.priceChangePercent || "0",
-              marketCap: "0",
-              volume24h: ticker.volume || "0"
-            };
-            
-            crypto = await storage.createCryptocurrency(newCrypto);
-          } else {
-            // Update existing cryptocurrency with Binance data
-            await storage.updateCryptocurrencyPrice(
-              crypto.id,
-              ticker.price,
-              ticker.priceChangePercent || "0"
-            );
-            
-            // Store price history
-            await storage.createPriceHistory({
-              cryptoId: crypto.id,
-              price: ticker.price
-            });
-          }
+          crypto = await storage.createCryptocurrency(newCrypto);
+        } else {
+          await storage.updateCryptocurrencyPrice(
+            crypto.id,
+            ticker.price,
+            ticker.priceChangePercent || "0"
+          );
           
-          // Broadcast real-time price update from Binance
-          if (this.broadcastFunction) {
-            this.broadcastFunction({
-              type: 'priceUpdate',
-              data: {
-                symbol: symbol,
-                price: parseFloat(ticker.price),
-                change24h: parseFloat(ticker.priceChangePercent || "0")
-              }
-            });
-          }
-        } catch (error) {
-          console.error(`Error processing Binance ticker ${ticker.symbol}:`, error);
+          await storage.createPriceHistory({
+            cryptoId: crypto.id,
+            price: ticker.price
+          });
         }
+        
+        if (this.broadcastFunction) {
+          this.broadcastFunction({
+            type: 'priceUpdate',
+            data: {
+              symbol: symbol,
+              price: parseFloat(ticker.price),
+              change24h: parseFloat(ticker.priceChangePercent || "0")
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing Binance ticker ${ticker.symbol}:`, error);
       }
-    } catch (error) {
-      console.error('Error fetching Binance market data:', error);
-      console.log('Please provide valid Binance API credentials for real trading data');
     }
   }
 

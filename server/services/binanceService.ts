@@ -16,7 +16,9 @@ class BinanceService {
     }
 
     try {
-      this.client = (Binance as any).default({
+      // Use proper import syntax for binance-api-node
+      const BinanceAPI = require('binance-api-node').default || require('binance-api-node');
+      this.client = BinanceAPI({
         apiKey,
         apiSecret
       });

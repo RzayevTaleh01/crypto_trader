@@ -17,7 +17,7 @@ export class ProfitableStrategies {
     
     // Scalping works best with high volatility
     if (volatility > 2) {
-      const maxTradeAmount = balance * 0.1 * (riskLevel / 10);
+      const maxTradeAmount = balance * 0.2 * (riskLevel / 10);
       
       if (priceChange < -1.5 && balance > maxTradeAmount) {
         // Quick buy on dips
@@ -56,7 +56,7 @@ export class ProfitableStrategies {
     
     // Strong breakout signals
     if (priceChange > 5) {
-      const maxTradeAmount = balance * 0.08 * (riskLevel / 10);
+      const maxTradeAmount = balance * 0.25 * (riskLevel / 10);
       
       if (balance > maxTradeAmount) {
         return {
@@ -96,7 +96,7 @@ export class ProfitableStrategies {
     
     // DCA on any dip
     if (priceChange < -1) {
-      const dcaAmount = balance * 0.05; // Small consistent buys
+      const dcaAmount = balance * 0.25; // Larger consistent buys
       
       if (balance > dcaAmount) {
         return {

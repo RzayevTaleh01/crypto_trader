@@ -169,7 +169,7 @@ class BinanceService {
       }
 
       const availableBalance = parseFloat(usdtBalance.free);
-      const maxTradeAmount = (availableBalance * (riskLevel / 10) * 0.1); // Max 10% per trade
+      const maxTradeAmount = (availableBalance * (riskLevel / 10) * 0.3); // Max 30% per trade
 
       // Strategy implementation
       switch (strategy) {
@@ -277,7 +277,7 @@ class BinanceService {
     const selectedCrypto = cryptos[Math.floor(Math.random() * cryptos.length)];
     const priceChange = parseFloat(selectedCrypto.priceChange24h);
     const currentPrice = parseFloat(selectedCrypto.currentPrice);
-    const maxTradeAmount = balance * 0.03 * (riskLevel / 10); // 3% of balance per trade
+    const maxTradeAmount = balance * 0.20 * (riskLevel / 10); // 20% of balance per trade
 
     console.log(`🚀 FORCED TRADING: ${selectedCrypto.symbol} - Price: $${currentPrice}, Change: ${priceChange}%`);
 

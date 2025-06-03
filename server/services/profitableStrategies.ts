@@ -9,41 +9,51 @@ interface TradingSignal {
 
 export class ProfitableStrategies {
   
-  // Scalping Strategy - High frequency, small profits
+  // Advanced Scalping Strategy - High frequency, small profits with smart exits
   static async executeScalpingStrategy(userId: number, crypto: any, balance: number, riskLevel: number): Promise<TradingSignal> {
     const currentPrice = parseFloat(crypto.currentPrice);
     const priceChange = parseFloat(crypto.priceChange24h);
     const volatility = Math.abs(priceChange);
     
-    // Scalping works best with high volatility
-    if (volatility > 2) {
-      const maxTradeAmount = balance * 0.2 * (riskLevel / 10);
+    // Always check for sell opportunities first (profit-taking priority)
+    const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
+    if (portfolioItem) {
+      const avgPrice = parseFloat(portfolioItem.averagePrice);
+      const profitPercent = ((currentPrice - avgPrice) / avgPrice) * 100;
+      const holdingAmount = parseFloat(portfolioItem.amount);
       
-      if (priceChange < -1.5 && balance > maxTradeAmount) {
-        // Quick buy on dips
+      // Take profits on any positive movement (scalping focuses on quick gains)
+      if (profitPercent > 0.3) {
         return {
-          action: 'buy',
-          confidence: 0.85,
-          amount: maxTradeAmount / currentPrice,
-          reason: `Scalping: ${volatility.toFixed(2)}% volatility detected`
+          action: 'sell',
+          confidence: 0.95,
+          amount: holdingAmount * 0.8, // Sell 80% for quick profit
+          reason: `Scalping exit: ${profitPercent.toFixed(2)}% profit secured`
         };
       }
       
-      // Check for quick profit opportunities
-      const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
-      if (portfolioItem) {
-        const avgPrice = parseFloat(portfolioItem.averagePrice);
-        const profitPercent = ((currentPrice - avgPrice) / avgPrice) * 100;
-        
-        if (profitPercent > 0.5) { // 0.5% profit target for scalping
-          return {
-            action: 'sell',
-            confidence: 0.9,
-            amount: parseFloat(portfolioItem.amount) * 0.6, // Sell 60%
-            reason: `Scalping profit: ${profitPercent.toFixed(2)}% gain`
-          };
-        }
+      // Stop loss at -2% to prevent large losses
+      if (profitPercent < -2) {
+        return {
+          action: 'sell',
+          confidence: 0.9,
+          amount: holdingAmount * 0.5, // Sell half to limit losses
+          reason: `Scalping stop-loss: ${profitPercent.toFixed(2)}% loss cut`
+        };
       }
+    }
+    
+    // Only buy if no current position or position is small
+    const currentHolding = portfolioItem ? parseFloat(portfolioItem.totalInvested) : 0;
+    const maxPosition = balance * 0.15 * (riskLevel / 10);
+    
+    if (currentHolding < maxPosition && volatility > 1.5 && priceChange < -1) {
+      return {
+        action: 'buy',
+        confidence: 0.8,
+        amount: (maxPosition - currentHolding) / currentPrice,
+        reason: `Scalping entry: ${volatility.toFixed(2)}% volatility, ${priceChange.toFixed(2)}% dip`
+      };
     }
     
     return { action: 'hold', confidence: 0, amount: 0, reason: 'No scalping opportunity' };

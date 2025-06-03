@@ -102,8 +102,9 @@ export class DirectTradingExecution {
   private async executeImmediateBuy(userId: number, crypto: any, investment: number) {
     try {
       const quantity = investment / crypto.currentPrice;
+      const actualInvestment = quantity * crypto.currentPrice; // Recalculate for precision
 
-      console.log(`⚡ EXECUTING BUY: ${crypto.symbol} - $${investment.toFixed(2)} (${quantity.toFixed(6)} coins)`);
+      console.log(`⚡ EXECUTING BUY: ${crypto.symbol} - $${actualInvestment.toFixed(2)} (${quantity.toFixed(6)} coins)`);
 
       const { binanceService } = await import('./binanceService');
       const result = await binanceService.executeRealTrade(crypto.symbol, 'BUY', quantity, userId);

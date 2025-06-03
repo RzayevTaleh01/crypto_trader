@@ -199,7 +199,7 @@ ${emoji} *Yeni Treyd!*
       
       if (trade.profit) {
         message += `
-${profitEmoji} *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
+💰 *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
       }
       
       if (trade.strategy) {

@@ -518,6 +518,28 @@ class BinanceService {
     return names[symbol] || symbol;
   }
 
+  // Get real kline data for RSI calculation
+  async getKlineData(symbol: string, interval: string = '1h', limit: number = 20): Promise<number[]> {
+    if (!this.client) {
+      console.log('Binance client not initialized for kline data');
+      return [];
+    }
+
+    try {
+      const klines = await this.client.candles({
+        symbol: symbol + 'USDT',
+        interval,
+        limit
+      });
+
+      // Extract closing prices
+      return klines.map((kline: any) => parseFloat(kline.close));
+    } catch (error) {
+      console.error(`Failed to fetch kline data for ${symbol}:`, error);
+      return [];
+    }
+  }
+
   // Price monitoring with alerts
   async monitorPrices() {
     if (!this.client) return;

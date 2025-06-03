@@ -33,19 +33,10 @@ export class RSITradingStrategy {
     return 100 - (100 / (1 + rs));
   }
 
-  // Generate mock price history for RSI calculation
-  private generatePriceHistory(currentPrice: number, volatility: number): number[] {
-    const prices = [];
-    let price = currentPrice * 0.95; // Start 5% lower
-    
-    for (let i = 0; i < 20; i++) {
-      const change = (Math.random() - 0.5) * volatility * price * 0.02;
-      price += change;
-      prices.push(price);
-    }
-    
-    prices.push(currentPrice); // End with current price
-    return prices;
+  // Get real price history from Binance testnet
+  private async getRealPriceHistory(symbol: string): Promise<number[]> {
+    const { binanceService } = await import('./binanceService');
+    return await binanceService.getKlineData(symbol);
   }
 
   async executeRSIStrategy(userId: number): Promise<void> {
@@ -83,8 +74,10 @@ export class RSITradingStrategy {
       const avgPrice = parseFloat(position.averagePrice);
       const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
       
-      // Generate price history for RSI calculation
-      const priceHistory = this.generatePriceHistory(currentPrice, volatility);
+      // Get real price history from Binance for RSI calculation
+      const priceHistory = await this.getRealPriceHistory(crypto.symbol);
+      if (priceHistory.length === 0) continue;
+      
       const rsi = this.calculateRSI(priceHistory);
 
       console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);

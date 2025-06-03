@@ -87,7 +87,7 @@ export class DirectTradingExecution {
 
     console.log(`🎯 Executing immediate trades on top opportunities:`);
     
-    const investmentPerTrade = Math.min(2, balance / topOps.length);
+    const investmentPerTrade = Math.min(1.5, balance / topOps.length); // Smaller trades for more frequency
     
     for (let i = 0; i < topOps.length; i++) {
       const opportunity = topOps[i];

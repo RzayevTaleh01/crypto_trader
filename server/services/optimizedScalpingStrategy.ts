@@ -48,6 +48,11 @@ export class OptimizedScalpingStrategy {
       if (lastPrice && currentPrice > 0) {
         const change = ((currentPrice - lastPrice) / lastPrice) * 100;
         const changes = this.priceChanges.get(crypto.symbol) || [];
+        
+        // Immediate micro-trading on ANY price movement
+        if (Math.abs(change) > 0.01) { // Even 0.01% movement triggers action
+          this.triggerMicroTrade(crypto, change);
+        }
         changes.push(change);
         
         // Keep only last 10 price movements
@@ -56,6 +61,21 @@ export class OptimizedScalpingStrategy {
       }
       
       this.lastPrices.set(crypto.symbol, currentPrice);
+    }
+  }
+
+  private async triggerMicroTrade(crypto: any, change: number) {
+    console.log(`🔥 MICRO TRADE TRIGGER: ${crypto.symbol} - ${change > 0 ? '+' : ''}${change.toFixed(3)}%`);
+    
+    // Broadcast immediate trading opportunity
+    if (this.broadcastFn) {
+      this.broadcastFn({
+        type: 'micro_trade_signal',
+        symbol: crypto.symbol,
+        change: change,
+        price: crypto.currentPrice,
+        action: change > 0 ? 'SELL_SIGNAL' : 'BUY_SIGNAL'
+      });
     }
   }
 
@@ -71,8 +91,8 @@ export class OptimizedScalpingStrategy {
         const avgPrice = parseFloat(position.averagePrice);
         const profitPercent = ((currentPrice - avgPrice) / avgPrice) * 100;
 
-        // Sell on ANY profit > 0.1% (ultra-aggressive)
-        if (profitPercent > 0.1) {
+        // Sell on ANY profit > 0.05% (hyper-aggressive for frequent trading)
+        if (profitPercent > 0.05) {
           await this.executeFastSell(userId, position, crypto, currentPrice, profitPercent);
         }
       } catch (error) {

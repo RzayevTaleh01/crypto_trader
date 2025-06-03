@@ -40,15 +40,16 @@ export default function BotSettings({ userId }: BotSettingsProps) {
     refetchInterval: 3000,
   });
 
-  // Load server settings only once
+  // Load server settings only once with type safety
   useEffect(() => {
     if (serverSettings && !hasLoaded) {
+      const safeSettings = serverSettings || {};
       setConfig({
-        strategy: serverSettings.strategy || 'scalping',
-        riskLevel: serverSettings.riskLevel || 5,
-        maxDailyLoss: serverSettings.maxDailyLoss || '50',
-        targetProfit: serverSettings.targetProfit || '100',
-        isActive: Boolean(serverSettings.isActive)
+        strategy: safeSettings.strategy || 'scalping',
+        riskLevel: safeSettings.riskLevel || 5,
+        maxDailyLoss: safeSettings.maxDailyLoss || '50',
+        targetProfit: safeSettings.targetProfit || '100',
+        isActive: Boolean(safeSettings.isActive)
       });
       setHasLoaded(true);
     }
@@ -57,9 +58,10 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   // Update only bot status from server
   useEffect(() => {
     if (serverSettings && hasLoaded) {
+      const safeSettings = serverSettings || {};
       setConfig(prev => ({
         ...prev,
-        isActive: Boolean(serverSettings.isActive)
+        isActive: Boolean(safeSettings.isActive)
       }));
     }
   }, [serverSettings?.isActive, hasLoaded]);

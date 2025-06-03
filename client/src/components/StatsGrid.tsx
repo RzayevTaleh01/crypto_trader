@@ -13,8 +13,13 @@ export default function StatsGrid({ userId }: StatsGridProps) {
     refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
-  // Handle the response properly
-  const stats = statsResponse || {};
+  // Handle the response properly with type safety
+  const stats = statsResponse || {
+    totalProfit: '0.00',
+    activeTrades: 0,
+    winRate: '0',
+    uptime: '99.7'
+  };
 
   const statsCards = [
     {

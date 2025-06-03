@@ -14,7 +14,7 @@ export default function RecentTrades({ userId }: RecentTradesProps) {
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
-  const trades = tradesResponse?.trades || [];
+  const trades = Array.isArray(tradesResponse) ? tradesResponse : (tradesResponse?.trades || []);
 
   const getColorClasses = (symbol: string) => {
     const colors = {

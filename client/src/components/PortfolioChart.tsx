@@ -32,15 +32,17 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     const ctx = chartRef.current.getContext('2d');
     if (!ctx) return;
 
-    // Prepare data
-    const labels = performanceData.map((point: any) => {
+    // Prepare data with type safety
+    const safePerformanceData = Array.isArray(performanceData) ? performanceData : [];
+    
+    const labels = safePerformanceData.map((point: any) => {
       const date = new Date(point.timestamp);
       return timeframe === '1D' 
         ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
         : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
-    const values = performanceData.map((point: any) => parseFloat(point.value));
+    const values = safePerformanceData.map((point: any) => parseFloat(point.value));
 
     chartInstance.current = new Chart(ctx, {
       type: 'line',

@@ -4,6 +4,7 @@ import { telegramService } from './telegramService';
 
 export class RSITradingStrategy {
   private broadcastFn: ((data: any) => void) | null = null;
+  private lastPurchaseTime: Map<number, number> = new Map(); // Track last purchase time per user
 
   setBroadcastFunction(fn: (data: any) => void) {
     this.broadcastFn = fn;
@@ -167,6 +168,16 @@ export class RSITradingStrategy {
 
     console.log(`🎯 ULTRA-CONSERVATIVE STRATEGY: Finding THE BEST single opportunity from $${balance.toFixed(2)}...`);
 
+    // Check purchase cooldown - only allow 1 purchase per 5 minutes
+    const now = Date.now();
+    const lastPurchase = this.lastPurchaseTime.get(userId) || 0;
+    const cooldownPeriod = 5 * 60 * 1000; // 5 minutes in milliseconds
+    
+    if (now - lastPurchase < cooldownPeriod) {
+      console.log(`⏰ Purchase cooldown active. Wait ${Math.ceil((cooldownPeriod - (now - lastPurchase)) / 60000)} more minutes.`);
+      return;
+    }
+
     // Check current portfolio to avoid over-diversification
     const currentPortfolio = await storage.getUserPortfolio(userId);
     if (currentPortfolio.length >= 1) {
@@ -232,6 +243,9 @@ export class RSITradingStrategy {
         };
         await storage.createTrade(tradeData);
         
+        // Update purchase time to prevent rapid repeated purchases
+        this.lastPurchaseTime.set(userId, now);
+        
         if (this.broadcastFn) {
           this.broadcastFn({
             type: 'trade',
@@ -253,7 +267,7 @@ export class RSITradingStrategy {
           console.log('Telegram notification error:', error);
         }
 
-        console.log(`✅ Conservative strategy executed - single strategic investment`);
+        console.log(`✅ Conservative strategy executed - single strategic investment with 5-minute cooldown`);
       }
     } catch (error) {
       console.log(`❌ Failed to buy ${bestOpportunity.symbol}:`, error);

@@ -153,7 +153,7 @@ class BinanceService {
   async executeAdvancedStrategy(userId: number, strategy: string, riskLevel: number) {
     if (!this.client) {
       console.log(`🤖 Bot executing ${strategy} strategy for user ${userId} (risk level: ${riskLevel})`);
-      return this.executeMockStrategy(userId, strategy, riskLevel);
+      return this.executeActiveStrategy(userId, strategy, riskLevel);
     }
 
     try {
@@ -259,6 +259,137 @@ class BinanceService {
     }
   }
 
+  private async executeActiveStrategy(userId: number, strategy: string, riskLevel: number) {
+    // Force active trading - execute trades every cycle
+    const cryptos = await storage.getAllCryptocurrencies();
+    if (!cryptos || cryptos.length === 0) return;
+
+    const user = await storage.getUser(userId);
+    if (!user) return;
+
+    const balance = parseFloat(user.balance);
+    if (balance < 10) {
+      console.log('Insufficient balance for trading');
+      return;
+    }
+
+    // Select a random crypto for trading
+    const selectedCrypto = cryptos[Math.floor(Math.random() * cryptos.length)];
+    const priceChange = parseFloat(selectedCrypto.priceChange24h);
+    const currentPrice = parseFloat(selectedCrypto.currentPrice);
+    const maxTradeAmount = balance * 0.03 * (riskLevel / 10); // 3% of balance per trade
+
+    console.log(`🚀 FORCED TRADING: ${selectedCrypto.symbol} - Price: $${currentPrice}, Change: ${priceChange}%`);
+
+    // Force a trade based on strategy
+    const shouldBuy = strategy === 'momentum' ? priceChange > 1 : 
+                     strategy === 'scalping' ? Math.abs(priceChange) > 0.5 :
+                     strategy === 'grid' ? true : // Grid always trades
+                     priceChange < -1; // Mean reversion buys dips
+
+    if (shouldBuy && balance > maxTradeAmount) {
+      // Execute BUY trade
+      const amount = maxTradeAmount / currentPrice;
+      
+      console.log(`💰 EXECUTING BUY: ${amount.toFixed(6)} ${selectedCrypto.symbol} for $${maxTradeAmount.toFixed(2)}`);
+      
+      const trade = await storage.createTrade({
+        userId,
+        cryptoId: selectedCrypto.id,
+        type: 'buy',
+        amount: amount.toString(),
+        price: currentPrice.toString(),
+        total: maxTradeAmount.toString(),
+        isBot: true
+      });
+
+      // Update balance
+      await storage.updateUserBalance(userId, (balance - maxTradeAmount).toString());
+      
+      // Update portfolio
+      const portfolioItem = await storage.getPortfolioItem(userId, selectedCrypto.id);
+      if (portfolioItem) {
+        const existingAmount = parseFloat(portfolioItem.amount);
+        const existingTotal = parseFloat(portfolioItem.totalInvested);
+        const newAmount = existingAmount + amount;
+        const newTotal = existingTotal + maxTradeAmount;
+        const newAvgPrice = newTotal / newAmount;
+        
+        await storage.updatePortfolioItem(
+          userId,
+          selectedCrypto.id,
+          newAmount.toString(),
+          newAvgPrice.toString(),
+          newTotal.toString()
+        );
+      } else {
+        await storage.createPortfolioItem({
+          userId,
+          cryptoId: selectedCrypto.id,
+          amount: amount.toString(),
+          averagePrice: currentPrice.toString(),
+          totalInvested: maxTradeAmount.toString()
+        });
+      }
+
+      console.log(`✅ BUY TRADE COMPLETED: ${selectedCrypto.symbol}`);
+      await telegramService.sendTradeNotification(trade, selectedCrypto);
+      
+    } else {
+      // Try to execute a SELL trade if we have holdings
+      const portfolioItem = await storage.getPortfolioItem(userId, selectedCrypto.id);
+      
+      if (portfolioItem && parseFloat(portfolioItem.amount) > 0) {
+        const sellAmount = parseFloat(portfolioItem.amount) * 0.2; // Sell 20% of holdings
+        const sellValue = sellAmount * currentPrice;
+        
+        if (sellAmount > 0) {
+          console.log(`💰 EXECUTING SELL: ${sellAmount.toFixed(6)} ${selectedCrypto.symbol} for $${sellValue.toFixed(2)}`);
+          
+          const avgPrice = parseFloat(portfolioItem.averagePrice);
+          const profit = (currentPrice - avgPrice) * sellAmount;
+          
+          const trade = await storage.createTrade({
+            userId,
+            cryptoId: selectedCrypto.id,
+            type: 'sell',
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: sellValue.toString(),
+            pnl: profit.toString(),
+            isBot: true
+          });
+
+          // Update balance
+          await storage.updateUserBalance(userId, (balance + sellValue).toString());
+          
+          // Update portfolio
+          const remainingAmount = parseFloat(portfolioItem.amount) - sellAmount;
+          if (remainingAmount <= 0) {
+            await storage.deletePortfolioItem(userId, selectedCrypto.id);
+          } else {
+            const currentTotal = parseFloat(portfolioItem.totalInvested);
+            const reduction = (sellAmount / parseFloat(portfolioItem.amount)) * currentTotal;
+            const newTotal = currentTotal - reduction;
+            
+            await storage.updatePortfolioItem(
+              userId,
+              selectedCrypto.id,
+              remainingAmount.toString(),
+              portfolioItem.averagePrice,
+              newTotal.toString()
+            );
+          }
+
+          console.log(`✅ SELL TRADE COMPLETED: ${selectedCrypto.symbol} - Profit: $${profit.toFixed(2)}`);
+          await telegramService.sendTradeNotification(trade, selectedCrypto);
+        }
+      } else {
+        console.log(`No holdings to sell for ${selectedCrypto.symbol}`);
+      }
+    }
+  }
+
   private async executeMockStrategy(userId: number, strategy: string, riskLevel: number) {
     console.log(`Executing ${strategy} strategy for user ${userId} with risk level ${riskLevel}`);
     
@@ -281,7 +412,7 @@ class BinanceService {
 
     const selectedCrypto = profitableCryptos[Math.floor(Math.random() * profitableCryptos.length)];
     const priceChange = parseFloat(selectedCrypto.priceChange24h);
-    const tradingProbability = 0.4 * (riskLevel / 10); // 40% base chance for higher activity
+    const tradingProbability = 0.6 + (riskLevel / 20); // 60% base chance + risk bonus
     const shouldTrade = Math.random() < tradingProbability;
     
     console.log(`Bot analyzing ${selectedCrypto.symbol}: priceChange=${priceChange}%, shouldTrade=${shouldTrade}, probability=${tradingProbability}`);

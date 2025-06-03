@@ -15,9 +15,35 @@ class TelegramService {
       return;
     }
 
-    this.bot = new TelegramBot(token, { polling: true });
-    this.setupCommands();
-    console.log('Telegram bot initialized successfully');
+    if (!this.chatId) {
+      console.log('TELEGRAM_CHAT_ID not provided, Telegram notifications disabled');
+      return;
+    }
+
+    try {
+      this.bot = new TelegramBot(token, { polling: true });
+      this.setupCommands();
+      console.log('✅ Telegram bot initialized successfully');
+      
+      // Test connection
+      this.bot.getMe().then(() => {
+        console.log('✅ Telegram bot connection verified');
+        this.sendTestMessage();
+      }).catch((error) => {
+        console.log('❌ Telegram bot connection failed:', error.message);
+      });
+    } catch (error) {
+      console.log('❌ Telegram bot initialization failed:', error);
+    }
+  }
+
+  private async sendTestMessage() {
+    try {
+      await this.bot?.sendMessage(this.chatId, '🚀 Trading bot bağlandı! Mənfəət bildirişləri aktiv.', { parse_mode: 'Markdown' });
+      console.log('✅ Test message sent successfully');
+    } catch (error) {
+      console.log('❌ Test message failed:', error);
+    }
   }
 
   private setupCommands() {
@@ -174,8 +200,15 @@ Salam! Mən sizin avtomatik kripto trading köməkçinizəm.
     if (!this.bot || !this.chatId) return;
 
     const emoji = trade.type === 'buy' ? '🟢 ALIŞ' : '🔴 SATIŞ';
-    const profit = parseFloat(trade.profit || '0');
-    const profitEmoji = profit >= 0 ? '💰' : '📉';
+    const pnl = parseFloat(trade.pnl || '0');
+    const profitEmoji = pnl >= 0 ? '💰' : '📉';
+    
+    console.log(`📱 Sending Telegram notification: ${trade.type.toUpperCase()} ${crypto.symbol}`);
+
+    // Send immediate profit notification for sells
+    if (trade.type === 'sell' && pnl !== 0) {
+      this.sendProfitAlert(pnl, crypto.symbol);
+    }
     
     let message = `
 ${emoji} *Yeni Treyd!*
@@ -233,7 +266,24 @@ ${emoji} *Yeni Treyd!*
     this.bot.sendMessage(this.chatId, message, { parse_mode: 'Markdown' });
   }
 
-  // Price alerts disabled per user request
+  async sendProfitAlert(profit: number, symbol: string) {
+    if (!this.bot || !this.chatId) return;
+    
+    const profitEmoji = profit >= 0 ? '💰' : '📉';
+    const message = `
+${profitEmoji} *Mənfəət Bildirişi!*
+
+🎯 ${symbol}: $${profit >= 0 ? '+' : ''}${profit.toFixed(4)}
+📅 ${new Date().toLocaleString('az-AZ')}
+    `;
+    
+    try {
+      await this.bot.sendMessage(this.chatId, message, { parse_mode: 'Markdown' });
+      console.log(`📱 Profit alert sent: ${symbol} ${profit >= 0 ? '+' : ''}${profit.toFixed(4)}`);
+    } catch (error) {
+      console.log('Telegram profit alert error:', error);
+    }
+  }
 
   // Send daily report
   async sendDailyReport() {

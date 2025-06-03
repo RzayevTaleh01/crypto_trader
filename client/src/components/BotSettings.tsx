@@ -154,6 +154,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
                 <SelectItem value="momentum">Momentum - Trend izləmə</SelectItem>
                 <SelectItem value="mean-reversion">Mean Reversion - Orta dəyər qaytarma</SelectItem>
                 <SelectItem value="grid">Grid - Şəbəkə ticarəti</SelectItem>
+                <SelectItem value="rsi">RSI - Aşırı alış/satış göstəricisi</SelectItem>
               </SelectContent>
             </Select>
           </div>

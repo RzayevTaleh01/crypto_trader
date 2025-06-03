@@ -151,6 +151,10 @@ export class AutonomousTradingEngine {
       await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
       await this.executeMomentumStrategy(userId, cryptos, balance, riskLevel);
       await this.executeMeanReversionStrategy(userId, cryptos, balance, riskLevel);
+    } else if (strategy === 'rsi') {
+      // Execute RSI-based strategy
+      const { rsiTradingStrategy } = await import('./rsiTradingStrategy');
+      await rsiTradingStrategy.executeRSIStrategy(userId);
     } else {
       // Normal volatility: execute selected strategy
       switch (strategy) {

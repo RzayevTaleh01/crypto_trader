@@ -402,8 +402,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Connect autonomous trading engine to WebSocket and start for active bots
   setTimeout(async () => {
     const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
+    const { rsiTradingStrategy } = await import('./services/rsiTradingStrategy');
     autonomousTradingEngine.setBroadcastFunction(broadcast);
+    rsiTradingStrategy.setBroadcastFunction(broadcast);
     console.log('🤖 Autonomous trading engine connected to WebSocket');
+    console.log('📊 RSI trading strategy connected to WebSocket');
     
     // Check for active bots and start them
     try {

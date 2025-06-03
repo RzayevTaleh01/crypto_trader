@@ -246,9 +246,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (settingsData.isActive !== undefined) {
         if (settingsData.isActive) {
           const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
+          console.log('🤖 Starting autonomous trading bot for user:', userId);
           autonomousTradingEngine.startBot(userId);
         } else {
           const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
+          console.log('🛑 Stopping autonomous trading bot for user:', userId);
           autonomousTradingEngine.stopBot(userId);
         }
       }
@@ -397,11 +399,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Connect autonomous trading engine to WebSocket
+  // Connect autonomous trading engine to WebSocket and start for active bots
   setTimeout(async () => {
     const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
     autonomousTradingEngine.setBroadcastFunction(broadcast);
     console.log('🤖 Autonomous trading engine connected to WebSocket');
+    
+    // Check for active bots and start them
+    try {
+      const activeBotSettings = await storage.getBotSettings(1); // Assuming user ID 1
+      if (activeBotSettings && activeBotSettings.isActive) {
+        console.log('🚀 Starting autonomous trading bot for active user:', 1);
+        autonomousTradingEngine.startBot(1);
+      }
+    } catch (error) {
+      console.log('No active bot found on startup');
+    }
   }, 1000);
 
   // Start crypto price updates

@@ -163,121 +163,100 @@ export class RSITradingStrategy {
   }
 
   private async buyHighMomentumCoins(userId: number, cryptos: any[], balance: number) {
-    if (balance < 1) return;
+    if (balance < 3) return; // Need at least $3 to make a meaningful trade
 
-    console.log(`🎯 OPTIMIZED STRATEGY: Selecting best 1-2 opportunities from $${balance.toFixed(2)}...`);
+    console.log(`🎯 ULTRA-CONSERVATIVE STRATEGY: Finding THE BEST single opportunity from $${balance.toFixed(2)}...`);
 
-    // Focus only on major reliable cryptocurrencies for Binance testnet
-    const majorCoins = ['BTC', 'ETH', 'BNB', 'ADA', 'SOL', 'DOT', 'LINK', 'UNI'];
+    // Check current portfolio to avoid over-diversification
+    const currentPortfolio = await storage.getUserPortfolio(userId);
+    if (currentPortfolio.length >= 1) {
+      console.log(`⚠️ Already holding ${currentPortfolio.length} position(s). No new purchases to maintain focus.`);
+      return;
+    }
+
+    // Focus only on the most reliable major cryptocurrencies
+    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL'];
     
-    // Filter and analyze only major coins
-    const profitableCoins = cryptos
+    // Find the absolute best opportunity
+    const bestOpportunity = cryptos
       .filter(crypto => {
         const price = parseFloat(crypto.currentPrice);
         const change24h = parseFloat(crypto.priceChange24h);
-        return majorCoins.includes(crypto.symbol) && price > 0 && change24h > -10;
+        return majorCoins.includes(crypto.symbol) && price > 0 && change24h > 1;
       })
       .map(crypto => ({
         ...crypto,
         price: parseFloat(crypto.currentPrice),
         change24h: parseFloat(crypto.priceChange24h),
-        profitScore: this.calculateSimpleScore(crypto)
+        profitScore: this.calculateProfitabilityScore(crypto, parseFloat(crypto.currentPrice), parseFloat(crypto.priceChange24h), parseFloat(crypto.volume24h) || 0)
       }))
-      .sort((a, b) => b.profitScore - a.profitScore)
-      .slice(0, 2); // Only top 2 best opportunities
+      .sort((a, b) => b.profitScore - a.profitScore)[0]; // Only THE BEST one
 
-    const highGainCryptos = profitableCoins;
-
-    if (highGainCryptos.length === 0) {
-      console.log(`⚠️ No high-momentum coins found`);
+    if (!bestOpportunity) {
+      console.log(`⚠️ No profitable opportunities found in major coins`);
       return;
     }
 
-    const maxPositions = 4; // Maximum 4 positions at once
-    const investPerCoin = Math.min(balance / maxPositions, balance * 0.25); // Max 25% per coin
+    console.log(`💎 BEST OPPORTUNITY: ${bestOpportunity.symbol} - Gain: ${bestOpportunity.change24h.toFixed(2)}%, Score: ${bestOpportunity.profitScore.toFixed(2)}`);
 
-    if (investPerCoin < 1) return;
+    // Only invest maximum $5 to keep $5 in reserve
+    const maxInvestment = Math.min(5, balance * 0.5);
+    const currentPrice = bestOpportunity.price;
+    const quantity = maxInvestment / currentPrice;
 
-    let tradesExecuted = 0;
+    try {
+      console.log(`🟢 STRATEGIC BUY: ${bestOpportunity.symbol} - Gain: ${bestOpportunity.change24h.toFixed(2)}%, Invest: $${maxInvestment.toFixed(2)}`);
+      
+      const { binanceService } = await import('./binanceService');
+      const result = await binanceService.executeRealTrade(bestOpportunity.symbol, 'BUY', quantity, userId);
+      
+      if (result.success) {
+        console.log(`🎯 BINANCE STRATEGIC BUY: ${quantity.toFixed(6)} ${bestOpportunity.symbol}`);
 
-    for (const crypto of highGainCryptos) {
-      if (tradesExecuted >= maxPositions) break;
-
-      try {
-        // Check if we already have this position
-        const existingPosition = await storage.getPortfolioItem(userId, crypto.id);
-        if (existingPosition) continue; // Skip if already holding
-
-        const currentPrice = parseFloat(crypto.currentPrice);
-        const priceChange24h = parseFloat(crypto.priceChange24h);
-        const quantity = investPerCoin / currentPrice;
-
-        // Only buy strong momentum coins
-        if (priceChange24h > 3) {
-          console.log(`🟢 HIGH-MOMENTUM BUY: ${crypto.symbol} - Gain: ${priceChange24h.toFixed(2)}%, Price: $${currentPrice.toFixed(6)}, Invest: $${investPerCoin.toFixed(2)}`);
-
-          try {
-            const { binanceService } = await import('./binanceService');
-            const result = await binanceService.executeRealTrade(crypto.symbol, 'BUY', quantity, userId);
-            
-            if (result.success) {
-              console.log(`🎯 BINANCE HIGH-MOMENTUM BUY: ${quantity.toFixed(6)} ${crypto.symbol}`);
-
-              await this.updatePortfolioAfterBuy(userId, crypto.id, quantity, currentPrice);
-              
-              const user = await storage.getUser(userId);
-              if (user) {
-                const newBalance = parseFloat(user.balance) - investPerCoin;
-                await storage.updateUserBalance(userId, newBalance.toString());
-              }
-
-              const tradeData: InsertTrade = {
-                userId,
-                cryptoId: crypto.id,
-                type: 'buy',
-                amount: quantity.toString(),
-                price: currentPrice.toString(),
-                total: investPerCoin.toString(),
-                isBot: true
-              };
-              await storage.createTrade(tradeData);
-              
-              if (this.broadcastFn) {
-                this.broadcastFn({
-                  type: 'trade',
-                  data: {
-                    action: 'buy',
-                    symbol: crypto.symbol,
-                    amount: quantity.toFixed(6),
-                    price: currentPrice.toFixed(6),
-                    total: investPerCoin.toFixed(2),
-                    strategy: `High-Momentum: +${priceChange24h.toFixed(1)}%`,
-                    profit: '0.00'
-                  }
-                });
-              }
-
-              try {
-                await telegramService.sendTradeNotification(tradeData, crypto);
-              } catch (error) {
-                console.log('Telegram notification error:', error);
-              }
-
-              tradesExecuted++;
-            }
-          } catch (error) {
-            console.log(`❌ High-momentum trade failed for ${crypto.symbol}:`, error);
-          }
+        await this.updatePortfolioAfterBuy(userId, bestOpportunity.id, quantity, currentPrice);
+        
+        const user = await storage.getUser(userId);
+        if (user) {
+          const newBalance = parseFloat(user.balance) - maxInvestment;
+          await storage.updateUserBalance(userId, newBalance.toString());
         }
-      } catch (error) {
-        console.log(`❌ Analysis failed for ${crypto.symbol}:`, error);
-      }
-    }
 
-    if (tradesExecuted === 0) {
-      console.log(`⚠️ No suitable high-momentum opportunities found`);
-    } else {
-      console.log(`✅ Executed ${tradesExecuted} high-momentum trades`);
+        const tradeData: InsertTrade = {
+          userId,
+          cryptoId: bestOpportunity.id,
+          type: 'buy',
+          amount: quantity.toString(),
+          price: currentPrice.toString(),
+          total: maxInvestment.toString(),
+          isBot: true
+        };
+        await storage.createTrade(tradeData);
+        
+        if (this.broadcastFn) {
+          this.broadcastFn({
+            type: 'trade',
+            data: {
+              action: 'buy',
+              symbol: bestOpportunity.symbol,
+              amount: quantity.toFixed(6),
+              price: currentPrice.toFixed(6),
+              total: maxInvestment.toFixed(2),
+              strategy: `Conservative Best Pick: +${bestOpportunity.change24h.toFixed(1)}%`,
+              profit: '0.00'
+            }
+          });
+        }
+
+        try {
+          await telegramService.sendTradeNotification(tradeData, bestOpportunity);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
+        }
+
+        console.log(`✅ Conservative strategy executed - single strategic investment`);
+      }
+    } catch (error) {
+      console.log(`❌ Failed to buy ${bestOpportunity.symbol}:`, error);
     }
   }
 

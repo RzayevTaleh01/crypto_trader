@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,23 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   const settings = settingsResponse || {};
 
   const [localSettings, setLocalSettings] = useState({
-    strategy: settings.strategy || 'scalping',
-    riskLevel: settings.riskLevel || 5,
-    maxDailyLoss: settings.maxDailyLoss || '50',
-    targetProfit: settings.targetProfit || '100'
+    strategy: 'scalping',
+    riskLevel: 5,
+    maxDailyLoss: '50',
+    targetProfit: '100'
   });
+
+  // Update local settings when server data changes
+  useEffect(() => {
+    if (settings.strategy) {
+      setLocalSettings({
+        strategy: settings.strategy,
+        riskLevel: settings.riskLevel || 5,
+        maxDailyLoss: settings.maxDailyLoss || '50',
+        targetProfit: settings.targetProfit || '100'
+      });
+    }
+  }, [settings]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (newSettings: any) => {
@@ -97,7 +109,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
     const newSettings = { ...localSettings, [key]: value };
     setLocalSettings(newSettings);
     
-    // Auto-save settings immediately
+    // Save settings without changing bot status
     updateSettingsMutation.mutate(newSettings);
   };
 

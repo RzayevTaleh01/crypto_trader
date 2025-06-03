@@ -1,4 +1,5 @@
-import * as Binance from 'binance-api-node';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
 
@@ -16,9 +17,8 @@ class BinanceService {
     }
 
     try {
-      // Use proper import syntax for binance-api-node
-      const BinanceAPI = require('binance-api-node').default || require('binance-api-node');
-      this.client = BinanceAPI({
+      const Binance = require('binance-api-node');
+      this.client = Binance({
         apiKey,
         apiSecret
       });

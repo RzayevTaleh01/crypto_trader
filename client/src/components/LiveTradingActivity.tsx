@@ -24,7 +24,7 @@ export default function LiveTradingActivity() {
   });
 
   const { data: recentTrades } = useQuery({
-    queryKey: ['/api/trades/user'],
+    queryKey: ['/api/trades/user/1'],
     refetchInterval: 3000,
   });
 

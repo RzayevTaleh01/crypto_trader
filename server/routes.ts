@@ -36,6 +36,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Initialize trading engine with broadcast function
   tradingEngine.setBroadcastFunction(broadcast);
+  
+  // Initialize advanced trading engine with broadcast function
+  setTimeout(async () => {
+    const { advancedTradingEngine } = await import('./services/advancedTradingEngine');
+    advancedTradingEngine.setBroadcastFunction(broadcast);
+  }, 1000);
 
   // User routes
   app.post("/api/auth/register", async (req, res) => {

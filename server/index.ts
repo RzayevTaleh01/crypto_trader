@@ -48,14 +48,44 @@ app.use((req, res, next) => {
 
   // Bot will only start when manually activated through the dashboard
 
-  // Start profit optimization system
+  // Start advanced profit optimization system with WebSocket integration
   setTimeout(async () => {
-    const { ProfitOptimizer } = await import('./services/profitOptimizer');
+    const { advancedTradingEngine } = await import('./services/advancedTradingEngine');
+    
+    // Get the broadcast function from routes setup
+    let broadcastFunction: ((data: any) => void) | null = null;
+    
+    // Wait for server setup to complete
+    setTimeout(() => {
+      const { WebSocket } = require('ws');
+      
+      // Access the global WebSocket server if available
+      if (global.wss) {
+        broadcastFunction = (data: any) => {
+          global.wss.clients.forEach((client: any) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data));
+            }
+          });
+        };
+      }
+      
+      advancedTradingEngine.setBroadcastFunction(broadcastFunction);
+    }, 2000);
+    
+    // Execute multiple advanced strategies every 12 seconds for faster profit capture
     setInterval(async () => {
-      await ProfitOptimizer.executeAllStrategies(1);
-    }, 20000); // Execute profit strategies every 20 seconds
-    console.log('💰 Profit optimization system started');
-  }, 5000);
+      try {
+        await advancedTradingEngine.executeRSIMomentumStrategy(1);
+        await advancedTradingEngine.executeMACDCrossoverStrategy(1);
+        await advancedTradingEngine.executeBollingerBandsStrategy(1);
+      } catch (error) {
+        console.log('Advanced trading error:', error);
+      }
+    }, 12000);
+    
+    console.log('💰 Advanced profit optimization system started');
+  }, 3000);
 
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {

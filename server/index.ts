@@ -39,6 +39,23 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Initialize Telegram bot and Binance API
+  const { telegramService } = await import("./services/telegramService");
+  const { binanceService } = await import("./services/binanceService");
+  
+  telegramService.initialize();
+  binanceService.initialize();
+
+  // Set up daily report scheduler (24 hours)
+  setInterval(async () => {
+    await telegramService.sendDailyReport();
+  }, 24 * 60 * 60 * 1000);
+
+  // Set up price monitoring (every 5 minutes)
+  setInterval(async () => {
+    await binanceService.monitorPrices();
+  }, 5 * 60 * 1000);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

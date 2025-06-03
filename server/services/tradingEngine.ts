@@ -1,5 +1,7 @@
 import { storage } from "../storage";
 import type { InsertTrade } from "@shared/schema";
+import { binanceService } from "./binanceService";
+import { telegramService } from "./telegramService";
 
 class TradingEngine {
   private activeBots = new Map<number, NodeJS.Timeout>();
@@ -149,65 +151,80 @@ class TradingEngine {
   }
 
   private async executeBotTrade(userId: number, botSettings: any) {
-    const cryptos = await storage.getAllCryptocurrencies();
-    if (cryptos.length === 0) return;
-
-    // Simple trading strategy: buy if price is down, sell if up
-    const randomCrypto = cryptos[Math.floor(Math.random() * Math.min(5, cryptos.length))];
-    const priceChange = parseFloat(randomCrypto.priceChange24h);
-    
-    // Risk-adjusted trading based on bot settings
-    const riskMultiplier = parseInt(botSettings.riskLevel) / 10;
-    const shouldTrade = Math.random() < (0.1 * riskMultiplier); // 10% base chance * risk level
-    
-    if (!shouldTrade) return;
-
-    const user = await storage.getUser(userId);
-    if (!user) return;
-
-    const balance = parseFloat(user.balance);
-    const maxTradeAmount = balance * 0.05 * riskMultiplier; // Max 5% of balance per trade * risk
-
-    if (maxTradeAmount < 1) return; // Don't trade amounts less than $1
-
     try {
-      const portfolioItem = await storage.getPortfolioItem(userId, randomCrypto.id);
-      const currentPrice = parseFloat(randomCrypto.currentPrice);
+      // Try to use advanced Binance strategy first
+      await binanceService.executeAdvancedStrategy(userId, botSettings.strategy, botSettings.riskLevel);
+    } catch (error) {
+      console.error('Advanced strategy failed, falling back to basic strategy:', error);
       
-      if (priceChange < -2 && balance > maxTradeAmount) {
-        // Price dropped, consider buying
-        const amount = maxTradeAmount / currentPrice;
+      // Fallback to basic strategy
+      const cryptos = await storage.getAllCryptocurrencies();
+      if (cryptos.length === 0) return;
+
+      // Simple trading strategy: buy if price is down, sell if up
+      const randomCrypto = cryptos[Math.floor(Math.random() * Math.min(5, cryptos.length))];
+      const priceChange = parseFloat(randomCrypto.priceChange24h);
+      
+      // Risk-adjusted trading based on bot settings
+      const riskMultiplier = parseInt(botSettings.riskLevel) / 10;
+      const shouldTrade = Math.random() < (0.1 * riskMultiplier); // 10% base chance * risk level
+      
+      if (!shouldTrade) return;
+
+      const user = await storage.getUser(userId);
+      if (!user) return;
+
+      const balance = parseFloat(user.balance);
+      const maxTradeAmount = balance * 0.05 * riskMultiplier; // Max 5% of balance per trade * risk
+
+      if (maxTradeAmount < 1) return; // Don't trade amounts less than $1
+
+      try {
+        const portfolioItem = await storage.getPortfolioItem(userId, randomCrypto.id);
+        const currentPrice = parseFloat(randomCrypto.currentPrice);
         
-        await this.executeTrade({
-          userId,
-          cryptoId: randomCrypto.id,
-          type: 'buy',
-          amount: amount.toString(),
-          price: currentPrice.toString(),
-          total: maxTradeAmount.toString(),
-          isBot: true
-        });
-      } else if (priceChange > 2 && portfolioItem) {
-        // Price increased, consider selling
-        const amount = Math.min(
-          parseFloat(portfolioItem.amount) * 0.3, // Sell max 30% of position
-          maxTradeAmount / currentPrice
-        );
-        
-        if (amount > 0) {
-          await this.executeTrade({
+        if (priceChange < -2 && balance > maxTradeAmount) {
+          // Price dropped, consider buying
+          const amount = maxTradeAmount / currentPrice;
+          
+          const result = await this.executeTrade({
             userId,
             cryptoId: randomCrypto.id,
-            type: 'sell',
+            type: 'buy',
             amount: amount.toString(),
             price: currentPrice.toString(),
-            total: (amount * currentPrice).toString(),
+            total: maxTradeAmount.toString(),
             isBot: true
           });
+
+          // Send Telegram notification
+          await telegramService.sendTradeNotification(result.trade, randomCrypto);
+          
+        } else if (priceChange > 2 && portfolioItem) {
+          // Price increased, consider selling
+          const amount = Math.min(
+            parseFloat(portfolioItem.amount) * 0.3, // Sell max 30% of position
+            maxTradeAmount / currentPrice
+          );
+          
+          if (amount > 0) {
+            const result = await this.executeTrade({
+              userId,
+              cryptoId: randomCrypto.id,
+              type: 'sell',
+              amount: amount.toString(),
+              price: currentPrice.toString(),
+              total: (amount * currentPrice).toString(),
+              isBot: true
+            });
+
+            // Send Telegram notification
+            await telegramService.sendTradeNotification(result.trade, randomCrypto);
+          }
         }
+      } catch (tradeError) {
+        console.error(`Bot trade execution error:`, tradeError);
       }
-    } catch (error) {
-      console.error(`Bot trade execution error:`, error.message);
     }
   }
 }

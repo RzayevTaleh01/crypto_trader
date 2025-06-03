@@ -155,42 +155,86 @@ class TradingEngine {
       // Try to use advanced Binance strategy first
       await binanceService.executeAdvancedStrategy(userId, botSettings.strategy, botSettings.riskLevel);
     } catch (error) {
-      console.error('Advanced strategy failed, falling back to basic strategy:', error);
+      console.error('Advanced strategy failed, using profitable strategies:', error);
       
-      // Fallback to basic strategy
+      // Use high-probability profitable strategies
+      const { ProfitableStrategies } = await import('./profitableStrategies');
       const cryptos = await storage.getAllCryptocurrencies();
       if (cryptos.length === 0) return;
 
-      // Simple trading strategy: buy if price is down, sell if up
-      const randomCrypto = cryptos[Math.floor(Math.random() * Math.min(5, cryptos.length))];
-      const priceChange = parseFloat(randomCrypto.priceChange24h);
-      
-      // Enhanced technical analysis with higher probability strategies
-      const riskMultiplier = parseInt(botSettings.riskLevel) / 10;
-      const volatility = Math.abs(priceChange);
-      
-      // Multi-factor trading decision with higher success probability
-      const momentumFactor = volatility > 3 ? 0.8 : 0.4; // High volatility = better opportunity
-      const trendFactor = priceChange > 0 ? 0.7 : 0.3; // Uptrend preference
-      const riskFactor = riskMultiplier;
-      
       const user = await storage.getUser(userId);
       if (!user) return;
 
       const balance = parseFloat(user.balance);
       
-      const tradingProbability = (momentumFactor + trendFactor + riskFactor) / 3;
-      const shouldTrade = Math.random() < Math.min(tradingProbability, 0.85); // Max 85% trade probability
-      
-      console.log(`Bot trading check for ${randomCrypto.symbol}: shouldTrade=${shouldTrade}, probability=${tradingProbability.toFixed(2)}, priceChange=${priceChange}%, balance=$${balance}`);
-      
-      if (!shouldTrade) {
-        console.log(`No trade this cycle - probability not met`);
-        return;
-      }
-      const maxTradeAmount = balance * 0.15 * riskMultiplier; // Max 15% of balance per trade for higher profits
+      // Analyze top volatile cryptocurrencies for best opportunities
+      const sortedCryptos = cryptos
+        .sort((a, b) => Math.abs(parseFloat(b.priceChange24h)) - Math.abs(parseFloat(a.priceChange24h)))
+        .slice(0, 3); // Top 3 most volatile
 
-      if (maxTradeAmount < 1) return; // Don't trade amounts less than $1
+      for (const crypto of sortedCryptos) {
+        const signal = await ProfitableStrategies.executeMultiStrategy(
+          userId, 
+          crypto, 
+          balance, 
+          parseInt(botSettings.riskLevel)
+        );
+
+        if (signal.action !== 'hold' && signal.confidence > 0.6) {
+          console.log(`🎯 PROFITABLE SIGNAL: ${signal.action.toUpperCase()} ${crypto.symbol} - ${signal.reason}`);
+          
+          const currentPrice = parseFloat(crypto.currentPrice);
+          const tradeAmount = Math.min(signal.amount, balance * 0.2); // Max 20% per trade
+          
+          if (tradeAmount < 0.000001) {
+            console.log(`Trade amount too small: ${tradeAmount}`);
+            continue;
+          }
+
+          if (signal.action === 'buy' && balance > (tradeAmount * currentPrice)) {
+            const result = await this.executeTrade({
+              userId,
+              cryptoId: crypto.id,
+              type: 'buy',
+              amount: tradeAmount.toFixed(6),
+              price: currentPrice.toFixed(2),
+              total: (tradeAmount * currentPrice).toFixed(2),
+              pnl: '0.00',
+              isBot: true
+            });
+            
+            if (result) {
+              console.log(`✅ PROFITABLE BUY executed: ${crypto.symbol} - ${signal.reason}`);
+              return; // Execute one trade per cycle
+            }
+          } else if (signal.action === 'sell') {
+            const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
+            if (portfolioItem && parseFloat(portfolioItem.amount) >= tradeAmount) {
+              const profit = (currentPrice - parseFloat(portfolioItem.averagePrice)) * tradeAmount;
+              
+              const result = await this.executeTrade({
+                userId,
+                cryptoId: crypto.id,
+                type: 'sell',
+                amount: tradeAmount.toFixed(6),
+                price: currentPrice.toFixed(2),
+                total: (tradeAmount * currentPrice).toFixed(2),
+                pnl: profit.toFixed(2),
+                isBot: true
+              });
+              
+              if (result) {
+                console.log(`✅ PROFITABLE SELL executed: ${crypto.symbol} - Profit: $${profit.toFixed(2)}`);
+                return; // Execute one trade per cycle
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`No profitable opportunities found this cycle`);
+      
+      const maxTradeAmount = balance * 0.15 * (parseInt(botSettings.riskLevel) / 10);
 
       try {
         const portfolioItem = await storage.getPortfolioItem(userId, randomCrypto.id);

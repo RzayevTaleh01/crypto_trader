@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 240 10% 3.9%; /* #1E1E2E */
+  --foreground: 0 0% 98%; /* #FFFFFF */
+  --muted: 240 4% 16%; /* #2D2D44 */
+  --muted-foreground: 215 15% 65%; /* #B8BCC8 */
+  --popover: 240 10% 3.9%; /* #1E1E2E */
+  --popover-foreground: 0 0% 98%; /* #FFFFFF */
+  --card: 240 4% 16%; /* #2D2D44 */
+  --card-foreground: 0 0% 98%; /* #FFFFFF */
+  --border: 215 15% 65%; /* #6C7293 */
+  --input: 240 4% 16%; /* #2D2D44 */
+  --primary: 175 100% 42%; /* #00D4AA */
+  --primary-foreground: 0 0% 98%; /* #FFFFFF */
+  --secondary: 240 4% 16%; /* #2D2D44 */
+  --secondary-foreground: 0 0% 98%; /* #FFFFFF */
+  --accent: 240 4% 16%; /* #2D2D44 */
+  --accent-foreground: 0 0% 98%; /* #FFFFFF */
+  --destructive: 0 70% 70%; /* #FF6B6B */
+  --destructive-foreground: 0 0% 98%; /* #FFFFFF */
+  --ring: 175 100% 42%; /* #00D4AA */
+  --radius: 0.5rem;
+  
+  /* Custom crypto colors */
+  --crypto-green: 175 100% 42%; /* #00D4AA */
+  --crypto-red: 0 70% 70%; /* #FF6B6B */
+  --crypto-blue: 174 82% 58%; /* #4ECDC4 */
+  --dark-bg: 240 10% 12%; /* #1E1E2E */
+  --dark-surface: 240 4% 16%; /* #2D2D44 */
+  --dark-surface-hover: 240 4% 20%; /* #363651 */
+  --text-primary: 0 0% 98%; /* #FFFFFF */
+  --text-secondary: 215 15% 65%; /* #B8BCC8 */
+  --text-muted: 215 15% 45%; /* #6C7293 */
+
+  /* Chart colors */
+  --chart-1: 175 100% 42%; /* #00D4AA */
+  --chart-2: 0 70% 70%; /* #FF6B6B */
+  --chart-3: 174 82% 58%; /* #4ECDC4 */
+  --chart-4: 45 93% 47%; /* #F39C12 */
+  --chart-5: 260 100% 65%; /* #9B59B6 */
+}
+
+.dark {
+  --background: 240 10% 3.9%; /* #1E1E2E */
+  --foreground: 0 0% 98%; /* #FFFFFF */
+  --muted: 240 4% 16%; /* #2D2D44 */
+  --muted-foreground: 215 15% 65%; /* #B8BCC8 */
+  --popover: 240 10% 3.9%; /* #1E1E2E */
+  --popover-foreground: 0 0% 98%; /* #FFFFFF */
+  --card: 240 4% 16%; /* #2D2D44 */
+  --card-foreground: 0 0% 98%; /* #FFFFFF */
+  --border: 215 15% 65%; /* #6C7293 */
+  --input: 240 4% 16%; /* #2D2D44 */
+  --primary: 175 100% 42%; /* #00D4AA */
+  --primary-foreground: 0 0% 98%; /* #FFFFFF */
+  --secondary: 240 4% 16%; /* #2D2D44 */
+  --secondary-foreground: 0 0% 98%; /* #FFFFFF */
+  --accent: 240 4% 16%; /* #2D2D44 */
+  --accent-foreground: 0 0% 98%; /* #FFFFFF */
+  --destructive: 0 70% 70%; /* #FF6B6B */
+  --destructive-foreground: 0 0% 98%; /* #FFFFFF */
+  --ring: 175 100% 42%; /* #00D4AA */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .crypto-green {
+    color: hsl(var(--crypto-green));
+  }
+  
+  .crypto-red {
+    color: hsl(var(--crypto-red));
+  }
+  
+  .crypto-blue {
+    color: hsl(var(--crypto-blue));
+  }
+  
+  .bg-crypto-green {
+    background-color: hsl(var(--crypto-green));
+  }
+  
+  .bg-crypto-red {
+    background-color: hsl(var(--crypto-red));
+  }
+  
+  .bg-crypto-blue {
+    background-color: hsl(var(--crypto-blue));
+  }
+  
+  .border-crypto-green {
+    border-color: hsl(var(--crypto-green));
+  }
+  
+  .text-crypto-green {
+    color: hsl(var(--crypto-green));
+  }
+  
+  .text-crypto-red {
+    color: hsl(var(--crypto-red));
+  }
+  
+  .text-crypto-blue {
+    color: hsl(var(--crypto-blue));
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--dark-bg));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--text-muted));
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--text-secondary));
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom slider styling */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: hsl(var(--crypto-green));
+  cursor: pointer;
+  border: 2px solid hsl(var(--dark-bg));
+}
+
+.slider::-webkit-slider-track {
+  width: 100%;
+  height: 8px;
+  cursor: pointer;
+  background: hsl(var(--dark-surface));
+  border-radius: 4px;
+}
+
+/* Chart container styling */
+.chart-container {
+  position: relative;
+  height: 320px;
+  width: 100%;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 250px;
+  }
+}
+
+/* Ensure proper dark theme */
+.dark {
+  color-scheme: dark;
+}

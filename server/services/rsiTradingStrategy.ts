@@ -156,10 +156,25 @@ export class RSITradingStrategy {
   private async buyOnPriceDrop(userId: number, cryptos: any[], balance: number) {
     console.log(`💰 DIP-BUYING: Analyzing ALL ${cryptos.length} coins for price drops with $${balance.toFixed(2)} balance...`);
 
-    // Analyze ALL cryptocurrencies for dip opportunities
+    // Get available trading pairs from Binance testnet first
+    const { binanceService } = await import('./binanceService');
+    const availablePairs = await binanceService.getTradingPairs();
+    
+    if (!availablePairs || availablePairs.length === 0) {
+      console.log(`⚠️ No trading pairs available from Binance testnet`);
+      return;
+    }
+
+    const availableSymbols = new Set(availablePairs.map(pair => pair.baseAsset));
+    console.log(`📋 Found ${availablePairs.length} trading pairs on Binance testnet`);
+
+    // Analyze only cryptocurrencies that are available on Binance testnet
     const dipOpportunities = [];
     
     for (const crypto of cryptos) {
+      // Skip if not available on Binance testnet
+      if (!availableSymbols.has(crypto.symbol)) continue;
+      
       const price = parseFloat(crypto.currentPrice);
       const change24h = parseFloat(crypto.priceChange24h);
       const priceHistory = this.priceHistory.get(crypto.symbol) || [];
@@ -238,6 +253,12 @@ export class RSITradingStrategy {
         // Check if we already have this position
         const existingPosition = await storage.getPortfolioItem(userId, opportunity.id);
         if (existingPosition) continue; // Skip if already holding
+
+        // Check minimum notional value (Binance requires minimum $10 for most pairs on testnet)
+        if (investmentPerCoin < 5) {
+          console.log(`⚠️ Skipping ${opportunity.symbol}: Investment amount $${investmentPerCoin.toFixed(2)} below minimum`);
+          continue;
+        }
 
         const quantity = investmentPerCoin / opportunity.price;
 

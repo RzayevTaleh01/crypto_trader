@@ -51,35 +51,39 @@ class BinanceService {
     }
   }
 
-  // Get real market data from CryptoCompare API (reliable and free)
+  // Get real market data from Binance testnet API only
   async getRealMarketData() {
+    if (!this.client) {
+      console.error('Binance API not initialized');
+      return null;
+    }
+
     try {
-      // Use CryptoCompare API which is reliable and doesn't require authentication
-      const response = await fetch('https://min-api.cryptocompare.com/data/top/totalvolfull?limit=50&tsym=USD');
+      // Get 24hr ticker statistics for all symbols
+      const tickers = await this.client.dailyStats();
       
-      if (!response.ok) {
-        throw new Error(`CryptoCompare API error: ${response.status}`);
+      if (!tickers || tickers.length === 0) {
+        throw new Error('No market data received from Binance');
       }
       
-      const result = await response.json();
-      const data = result.Data;
+      // Filter only USDT pairs and extract symbol data
+      const usdtPairs = tickers.filter((ticker: any) => ticker.symbol.endsWith('USDT'));
       
-      if (!data || data.length === 0) {
-        throw new Error('No market data received');
-      }
+      console.log(`✅ Fetched real market data for ${usdtPairs.length} cryptocurrencies from Binance testnet`);
       
-      console.log(`✅ Fetched real market data for ${data.length} cryptocurrencies from CryptoCompare`);
-      
-      return data.map((coin: any) => ({
-        symbol: coin.CoinInfo.Name,
-        name: coin.CoinInfo.FullName,
-        currentPrice: parseFloat(coin.RAW?.USD?.PRICE || 0),
-        priceChange24h: parseFloat(coin.RAW?.USD?.CHANGEPCT24HOUR || 0),
-        volume24h: parseFloat(coin.RAW?.USD?.VOLUME24HOUR || 0),
-        marketCap: parseFloat(coin.RAW?.USD?.MKTCAP || 0)
-      })).filter(coin => coin.currentPrice > 0);
+      return usdtPairs.map((ticker: any) => {
+        const symbol = ticker.symbol.replace('USDT', '');
+        return {
+          symbol: symbol,
+          name: this.getFullName(symbol),
+          currentPrice: parseFloat(ticker.lastPrice || 0),
+          priceChange24h: parseFloat(ticker.priceChangePercent || 0),
+          volume24h: parseFloat(ticker.volume || 0),
+          marketCap: 0 // Not available from Binance ticker
+        };
+      }).filter((coin: any) => coin.currentPrice > 0);
     } catch (error) {
-      console.error('Failed to fetch market data from CryptoCompare:', error);
+      console.error('Failed to fetch market data from Binance:', error);
       return null;
     }
   }
@@ -552,31 +556,33 @@ class BinanceService {
     return names[symbol] || symbol;
   }
 
-  // Get real price history from CryptoCompare for RSI calculation
-  async getKlineData(symbol: string, interval: string = '1h', limit: number = 20): Promise<number[]> {
+  // Get real price history from Binance testnet for RSI calculation
+  async getKlineData(symbol: string, interval: string = '1h', limit: number = 21): Promise<number[]> {
+    if (!this.client) {
+      console.error('Binance API not initialized');
+      return [];
+    }
+
     try {
-      // Get hourly price data from CryptoCompare
-      const response = await fetch(`https://min-api.cryptocompare.com/data/v2/histohour?fsym=${symbol}&tsym=USD&limit=${limit}`);
+      // Get kline/candlestick data from Binance testnet
+      const klines = await this.client.candles({
+        symbol: symbol + 'USDT',
+        interval: interval,
+        limit: limit
+      });
       
-      if (!response.ok) {
-        console.log(`CryptoCompare API error for ${symbol}: ${response.status}`);
+      if (!klines || klines.length === 0) {
+        console.log(`No price data available for ${symbol} on Binance testnet`);
         return [];
       }
       
-      const result = await response.json();
-      const data = result.Data?.Data;
+      // Extract closing prices for RSI calculation (index 4 is close price)
+      const prices = klines.map((kline: any) => parseFloat(kline.close));
+      console.log(`✅ Fetched ${prices.length} real price points for ${symbol} RSI calculation from Binance testnet`);
       
-      if (!data || data.length === 0) {
-        console.log(`No price data available for ${symbol}`);
-        return [];
-      }
-      
-      // Extract closing prices
-      const prices = data.map((item: any) => parseFloat(item.close));
-      console.log(`✅ Fetched ${prices.length} real price points for ${symbol} RSI calculation from CryptoCompare`);
       return prices;
     } catch (error) {
-      console.error(`Failed to fetch price history for ${symbol}:`, error);
+      console.error(`Failed to fetch price history for ${symbol} from Binance:`, error);
       return [];
     }
   }

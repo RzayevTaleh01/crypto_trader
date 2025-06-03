@@ -18,7 +18,7 @@ class CryptoService {
       return;
     }
 
-    console.log(`📊 Processing ${marketData.length} real cryptocurrencies from CoinCap API`);
+    console.log(`📊 Processing ${marketData.length} real cryptocurrencies from Binance testnet`);
 
     for (const coinData of marketData) {
       try {

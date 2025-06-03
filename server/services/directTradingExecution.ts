@@ -40,37 +40,50 @@ export class DirectTradingExecution {
 
     const availableSymbols = new Set(availablePairs.map((pair: any) => pair.baseAsset));
     console.log(`✅ Found ${availableSymbols.size} available trading symbols`);
+    console.log(`🔍 Available symbols: ${Array.from(availableSymbols).slice(0, 10).join(', ')}...`);
+    
+    // Alternative: use symbol mapping approach for broader compatibility
+    const alternativeSymbols = new Set(availablePairs.map((pair: any) => pair.symbol.replace('USDT', '')));
+    console.log(`🔄 Alternative mapping found ${alternativeSymbols.size} symbols`);
+    console.log(`📝 First 10 alternative symbols: ${Array.from(alternativeSymbols).slice(0, 10).join(', ')}`);
 
     // Find immediate trading opportunities
     const opportunities = [];
     
     for (const crypto of cryptos) {
-      if (!availableSymbols.has(crypto.symbol)) continue;
+      // Use broader symbol matching for testnet compatibility
+      if (!availableSymbols.has(crypto.symbol) && !alternativeSymbols.has(crypto.symbol)) continue;
       
       const currentPrice = parseFloat(crypto.currentPrice);
       const change24h = parseFloat(crypto.priceChange24h);
       
       if (currentPrice <= 0) continue;
 
-      // Ultra-aggressive scalping criteria
+      // Ultra-aggressive scalping criteria - lowered thresholds for more opportunities
       let score = 0;
       
-      // Prefer small negative movements (potential bounce)
-      if (change24h < -0.5 && change24h > -15) {
-        score += Math.abs(change24h) * 3;
+      // Accept ANY price movement for maximum trading
+      if (change24h < 0) {
+        score += Math.abs(change24h) * 2; // Buy any dip
       }
       
-      // Price range optimization
-      if (currentPrice >= 0.01 && currentPrice <= 50) {
-        score += 10;
+      // Even small positive movements for quick profits
+      if (change24h > 0 && change24h < 5) {
+        score += change24h * 1.5;
       }
       
-      // Volume and volatility bonus
-      if (Math.abs(change24h) > 1) {
+      // Price range optimization - very broad range
+      if (currentPrice >= 0.001 && currentPrice <= 1000) {
         score += 5;
       }
+      
+      // Any volatility is tradeable
+      if (Math.abs(change24h) > 0.1) {
+        score += 3;
+      }
 
-      if (score > 8) {
+      // Much lower threshold for maximum trading activity
+      if (score > 2) {
         opportunities.push({
           ...crypto,
           currentPrice,

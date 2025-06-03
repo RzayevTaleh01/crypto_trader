@@ -10,16 +10,69 @@ class CryptoService {
   }
 
   private async fetchCryptoPrices() {
-    // Binance API connection has issues - system paused until proper configuration
-    console.log('Crypto price updates paused - Binance testnet API connection requires troubleshooting');
-    return;
+    const { binanceService } = await import("./binanceService");
+    const marketData = await binanceService.getRealMarketData();
+    
+    if (!marketData) {
+      console.log('Failed to fetch real market data');
+      return;
+    }
+
+    console.log(`📊 Processing ${marketData.length} real cryptocurrencies from CoinCap API`);
+
+    for (const coinData of marketData) {
+      try {
+        // Check if cryptocurrency exists, if not create it
+        let crypto = await storage.getCryptocurrencyBySymbol(coinData.symbol);
+        
+        if (!crypto) {
+          const newCrypto: InsertCryptocurrency = {
+            symbol: coinData.symbol,
+            name: coinData.name,
+            currentPrice: coinData.currentPrice.toString(),
+            priceChange24h: coinData.priceChange24h.toString()
+          };
+          crypto = await storage.createCryptocurrency(newCrypto);
+        } else {
+          // Update existing cryptocurrency with real prices
+          await storage.updateCryptocurrencyPrice(
+            crypto.id,
+            coinData.currentPrice.toString(),
+            coinData.priceChange24h.toString()
+          );
+        }
+
+        // Broadcast real price updates
+        if (this.broadcastFunction) {
+          this.broadcastFunction({
+            type: 'priceUpdate',
+            data: {
+              id: crypto.id,
+              symbol: coinData.symbol,
+              name: coinData.name,
+              currentPrice: coinData.currentPrice,
+              priceChange24h: coinData.priceChange24h
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing ${coinData.symbol}:`, error);
+      }
+    }
   }
 
-  // Mock data generation removed - using only Binance testnet API
-
   async startPriceUpdates() {
-    console.log('Price updates disabled - Binance testnet API connection needs configuration');
-    // All automatic updates stopped until API connection is properly established
+    console.log('🚀 Starting real price updates with CoinCap API...');
+    
+    // Initial price fetch
+    await this.fetchCryptoPrices();
+    
+    // Set interval for regular updates (every 30 seconds)
+    this.updateInterval = setInterval(async () => {
+      await this.fetchCryptoPrices();
+    }, 30000);
+    
+    console.log('✅ Real market data updates started');
   }
 
   stopPriceUpdates() {

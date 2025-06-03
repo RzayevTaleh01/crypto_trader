@@ -37,28 +37,35 @@ class BinanceService {
     }
   }
 
-  // Get real market data from CoinGecko (authentic price data)
+  // Get real market data from CryptoCompare API (reliable and free)
   async getRealMarketData() {
     try {
-      const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
+      // Use CryptoCompare API which is reliable and doesn't require authentication
+      const response = await fetch('https://min-api.cryptocompare.com/data/top/totalvolfull?limit=50&tsym=USD');
       
       if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status}`);
+        throw new Error(`CryptoCompare API error: ${response.status}`);
       }
       
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.Data;
+      
+      if (!data || data.length === 0) {
+        throw new Error('No market data received');
+      }
+      
+      console.log(`✅ Fetched real market data for ${data.length} cryptocurrencies from CryptoCompare`);
       
       return data.map((coin: any) => ({
-        symbol: coin.symbol.toUpperCase(),
-        name: coin.name,
-        currentPrice: coin.current_price,
-        priceChange24h: coin.price_change_percentage_24h || 0,
-        volume24h: coin.total_volume || 0,
-        marketCap: coin.market_cap || 0,
-        coinGeckoId: coin.id
-      }));
+        symbol: coin.CoinInfo.Name,
+        name: coin.CoinInfo.FullName,
+        currentPrice: parseFloat(coin.RAW?.USD?.PRICE || 0),
+        priceChange24h: parseFloat(coin.RAW?.USD?.CHANGEPCT24HOUR || 0),
+        volume24h: parseFloat(coin.RAW?.USD?.VOLUME24HOUR || 0),
+        marketCap: parseFloat(coin.RAW?.USD?.MKTCAP || 0)
+      })).filter(coin => coin.currentPrice > 0);
     } catch (error) {
-      console.error('Failed to fetch market data from CoinGecko:', error);
+      console.error('Failed to fetch market data from CryptoCompare:', error);
       return null;
     }
   }
@@ -504,68 +511,28 @@ class BinanceService {
     return names[symbol] || symbol;
   }
 
-  // Get real price history from CoinGecko for RSI calculation
+  // Get real price history from CryptoCompare for RSI calculation
   async getKlineData(symbol: string, interval: string = '1h', limit: number = 20): Promise<number[]> {
     try {
-      // Map common symbols to CoinGecko IDs
-      const symbolMap: Record<string, string> = {
-        'BTC': 'bitcoin',
-        'ETH': 'ethereum',
-        'BNB': 'binancecoin',
-        'ADA': 'cardano',
-        'SOL': 'solana',
-        'DOT': 'polkadot',
-        'MATIC': 'matic-network',
-        'LINK': 'chainlink',
-        'XRP': 'ripple',
-        'LTC': 'litecoin',
-        'BCH': 'bitcoin-cash',
-        'DOGE': 'dogecoin',
-        'AVAX': 'avalanche-2',
-        'UNI': 'uniswap',
-        'FIL': 'filecoin',
-        'VET': 'vechain',
-        'ICP': 'internet-computer',
-        'ETC': 'ethereum-classic',
-        'XLM': 'stellar',
-        'TRX': 'tron',
-        'AAVE': 'aave',
-        'GRT': 'the-graph',
-        'MKR': 'maker',
-        'COMP': 'compound-governance-token',
-        'ZEC': 'zcash',
-        'DASH': 'dash',
-        'BAT': 'basic-attention-token',
-        'ENJ': 'enjincoin',
-        'MANA': 'decentraland',
-        'SAND': 'the-sandbox',
-        'CHZ': 'chiliz',
-        'THETA': 'theta-token',
-        'ZRX': '0x',
-        'CRV': 'curve-dao-token',
-        'SUSHI': 'sushi',
-        'YFI': 'yearn-finance'
-      };
-
-      const coinId = symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
-      
-      // Get price history for the last 7 days (hourly data)
-      const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=2&interval=hourly`);
+      // Get hourly price data from CryptoCompare
+      const response = await fetch(`https://min-api.cryptocompare.com/data/v2/histohour?fsym=${symbol}&tsym=USD&limit=${limit}`);
       
       if (!response.ok) {
-        console.log(`CoinGecko API error for ${symbol}: ${response.status}`);
+        console.log(`CryptoCompare API error for ${symbol}: ${response.status}`);
         return [];
       }
       
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.Data?.Data;
       
-      if (!data.prices || data.prices.length === 0) {
+      if (!data || data.length === 0) {
         console.log(`No price data available for ${symbol}`);
         return [];
       }
       
-      // Extract last 20 price points
-      const prices = data.prices.slice(-limit).map((item: any) => item[1]);
+      // Extract closing prices
+      const prices = data.map((item: any) => parseFloat(item.close));
+      console.log(`✅ Fetched ${prices.length} real price points for ${symbol} RSI calculation from CryptoCompare`);
       return prices;
     } catch (error) {
       console.error(`Failed to fetch price history for ${symbol}:`, error);

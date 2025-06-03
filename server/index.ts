@@ -48,13 +48,12 @@ app.use((req, res, next) => {
   console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
-  // Simulation disabled - awaiting Binance API credentials for authentic data
-  console.log('Simulation disabled - awaiting Binance testnet credentials');
+  // Enable real market data from CoinCap API (authentic data source)
+  console.log('🚀 Starting real market data updates with CoinCap API...');
+  const { cryptoService } = await import("./services/cryptoService");
+  cryptoService.startPriceUpdates();
 
-  // Bot will only start when manually activated through the dashboard
-
-  // Disable all automated trading - manual control only
-  console.log('🚫 Automated trading disabled - manual control enabled');
+  console.log('✅ Authentic trading system activated - using real market data');
 
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {

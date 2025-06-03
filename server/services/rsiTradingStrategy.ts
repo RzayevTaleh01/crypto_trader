@@ -154,35 +154,51 @@ export class RSITradingStrategy {
   }
 
   private async buyOnPriceDrop(userId: number, cryptos: any[], balance: number) {
-    console.log(`💰 DIP-BUYING: Analyzing all coins for price drops with $${balance.toFixed(2)} balance...`);
+    console.log(`💰 DIP-BUYING: Analyzing ALL ${cryptos.length} coins for price drops with $${balance.toFixed(2)} balance...`);
 
-    // Focus on major reliable cryptocurrencies for testnet
-    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA', 'DOT', 'LINK', 'UNI', 'MATIC', 'AVAX'];
-    
-    // Find coins with significant price drops and oversold RSI
+    // Analyze ALL cryptocurrencies for dip opportunities
     const dipOpportunities = [];
     
     for (const crypto of cryptos) {
-      if (!majorCoins.includes(crypto.symbol)) continue;
-      
       const price = parseFloat(crypto.currentPrice);
       const change24h = parseFloat(crypto.priceChange24h);
       const priceHistory = this.priceHistory.get(crypto.symbol) || [];
       
-      if (price <= 0 || change24h >= 0 || priceHistory.length < 10) continue;
+      if (price <= 0 || change24h >= 0) continue;
       
-      // Calculate RSI for this coin
-      const rsi = this.calculateRSI(priceHistory);
+      // Calculate RSI for this coin (if we have enough data)
+      const rsi = priceHistory.length >= 15 ? this.calculateRSI(priceHistory) : null;
       
-      // Only buy if price dropped significantly AND RSI is oversold
-      if (change24h <= -3 && rsi && rsi <= 35) {
-        dipOpportunities.push({
-          ...crypto,
-          price,
-          change24h,
-          rsi,
-          dipScore: Math.abs(change24h) + (35 - rsi) // Higher score = better opportunity
-        });
+      // Buy on ANY price drop, even small ones
+      if (change24h <= -1) {
+        // If we have RSI data, prefer oversold conditions
+        if (rsi && rsi <= 50) {
+          dipOpportunities.push({
+            ...crypto,
+            price,
+            change24h,
+            rsi,
+            dipScore: Math.abs(change24h) * 2 + (50 - rsi) // Higher score = better opportunity
+          });
+        } else if (!rsi && change24h <= -2) {
+          // No RSI data but any drop - still consider it
+          dipOpportunities.push({
+            ...crypto,
+            price,
+            change24h,
+            rsi: null,
+            dipScore: Math.abs(change24h) * 1.5 // Slightly lower score without RSI
+          });
+        } else if (rsi && change24h <= -3) {
+          // Even if RSI is not oversold, consider big drops
+          dipOpportunities.push({
+            ...crypto,
+            price,
+            change24h,
+            rsi,
+            dipScore: Math.abs(change24h) * 1.2
+          });
+        }
       }
     }
 
@@ -190,13 +206,21 @@ export class RSITradingStrategy {
     dipOpportunities.sort((a, b) => b.dipScore - a.dipScore);
     
     if (dipOpportunities.length === 0) {
-      console.log(`⚠️ No significant dips found in major coins with oversold RSI`);
+      console.log(`⚠️ No significant dips found in any coins (looking for -1% drops across ${cryptos.length} coins)`);
+      
+      // Debug: Show some sample coins and their price changes
+      const sampleCoins = cryptos.slice(0, 10).map(c => ({
+        symbol: c.symbol,
+        change: parseFloat(c.priceChange24h)
+      }));
+      console.log('📊 Sample coins:', sampleCoins);
       return;
     }
 
-    console.log(`🎯 Found ${dipOpportunities.length} dip opportunities:`);
-    dipOpportunities.slice(0, 5).forEach(opp => {
-      console.log(`💎 ${opp.symbol}: Drop: ${opp.change24h.toFixed(2)}%, RSI: ${opp.rsi.toFixed(1)}, Score: ${opp.dipScore.toFixed(1)}`);
+    console.log(`🎯 Found ${dipOpportunities.length} dip opportunities from ALL coins:`);
+    dipOpportunities.slice(0, 10).forEach(opp => {
+      const rsiText = opp.rsi ? `RSI: ${opp.rsi.toFixed(1)}` : 'No RSI';
+      console.log(`💎 ${opp.symbol}: Drop: ${opp.change24h.toFixed(2)}%, ${rsiText}, Score: ${opp.dipScore.toFixed(1)}`);
     });
 
     // Distribute balance across top 3-5 opportunities

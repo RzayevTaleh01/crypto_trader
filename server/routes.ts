@@ -532,6 +532,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const strategies = [
         {
+          id: 'optimized_scalping',
+          name: 'Ultra Scalping MAX',
+          description: 'Maksimum qazanc üçün ultra-sürətli mikro-treydler (0.1% hər mərhələdə)',
+          riskLevel: 'Optimal',
+          expectedReturn: '20-50%',
+          timeframe: '1-5 dəqiqə'
+        },
+        {
           id: 'rsi',
           name: 'RSI Oversold Strategy',
           description: 'Buys oversold cryptocurrencies based on RSI indicators',
@@ -554,14 +562,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           riskLevel: 'High',
           expectedReturn: '3-12%',
           timeframe: '1-30 minutes'
-        },
-        {
-          id: 'advanced',
-          name: 'Advanced Multi-Strategy',
-          description: 'Combined RSI, momentum, and profit optimization algorithms',
-          riskLevel: 'High',
-          expectedReturn: '10-30%',
-          timeframe: '15 minutes - 2 hours'
         }
       ];
       

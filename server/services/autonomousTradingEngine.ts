@@ -52,10 +52,18 @@ export class AutonomousTradingEngine {
 
     console.log(`🎯 Executing ${botSettings.strategy} strategy - Balance: $${balance.toFixed(2)}`);
 
-    // If RSI strategy is selected, use dedicated RSI trading engine
-    if (botSettings.strategy === 'rsi') {
+    // Execute specific strategy based on selection
+    if (botSettings.strategy === 'optimized_scalping') {
+      const { optimizedScalpingStrategy } = await import('./optimizedScalpingStrategy');
+      await optimizedScalpingStrategy.executeOptimizedScalping(userId);
+      return;
+    } else if (botSettings.strategy === 'rsi') {
       const { rsiTradingStrategy } = await import('./rsiTradingStrategy');
       await rsiTradingStrategy.executeRSIStrategy(userId);
+      return;
+    } else if (botSettings.strategy === 'arbitrage') {
+      const { arbitrageTradingStrategy } = await import('./arbitrageTradingStrategy');
+      await arbitrageTradingStrategy.executeArbitrageStrategy(userId);
       return;
     }
 

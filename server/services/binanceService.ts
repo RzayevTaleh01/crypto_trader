@@ -152,7 +152,7 @@ class BinanceService {
   // Advanced trading strategy implementation
   async executeAdvancedStrategy(userId: number, strategy: string, riskLevel: number) {
     if (!this.client) {
-      console.log('Using mock trading for advanced strategy');
+      console.log(`🤖 Bot executing ${strategy} strategy for user ${userId} (risk level: ${riskLevel})`);
       return this.executeMockStrategy(userId, strategy, riskLevel);
     }
 
@@ -260,28 +260,49 @@ class BinanceService {
   }
 
   private async executeMockStrategy(userId: number, strategy: string, riskLevel: number) {
-    // Fallback to existing mock trading logic
+    console.log(`Executing mock ${strategy} strategy for user ${userId} with risk level ${riskLevel}`);
+    
     const cryptos = await storage.getAllCryptocurrencies();
-    if (cryptos.length === 0) return;
+    if (cryptos.length === 0) {
+      console.log('No cryptocurrencies available for trading');
+      return;
+    }
 
     const randomCrypto = cryptos[Math.floor(Math.random() * Math.min(5, cryptos.length))];
     const priceChange = parseFloat(randomCrypto.priceChange24h);
-    const shouldTrade = Math.random() < (0.1 * (riskLevel / 10));
+    const tradingProbability = 0.3 * (riskLevel / 10); // 30% base chance
+    const shouldTrade = Math.random() < tradingProbability;
     
-    if (!shouldTrade) return;
+    console.log(`Bot check for ${randomCrypto.symbol}: priceChange=${priceChange}%, shouldTrade=${shouldTrade}, probability=${tradingProbability}`);
+    
+    if (!shouldTrade) {
+      console.log('No trade this cycle - probability not met');
+      return;
+    }
 
     const user = await storage.getUser(userId);
-    if (!user) return;
+    if (!user) {
+      console.log('User not found for trading');
+      return;
+    }
 
     const balance = parseFloat(user.balance);
-    const maxTradeAmount = balance * 0.05 * (riskLevel / 10);
-
-    if (maxTradeAmount < 1) return;
-
+    const maxTradeAmount = balance * 0.03 * (riskLevel / 10); // 3% of balance per trade
     const currentPrice = parseFloat(randomCrypto.currentPrice);
-    
-    if (priceChange < -2 && balance > maxTradeAmount) {
+
+    console.log(`Trading params: balance=$${balance}, maxTradeAmount=$${maxTradeAmount}, price=$${currentPrice}`);
+
+    if (maxTradeAmount < 1) {
+      console.log('Trade amount too small, skipping');
+      return;
+    }
+
+    // More lenient trading conditions
+    if (priceChange < -0.5 && balance > maxTradeAmount) {
+      // Buy on small dips
       const amount = maxTradeAmount / currentPrice;
+      
+      console.log(`Executing BUY trade: ${amount.toFixed(6)} ${randomCrypto.symbol} at $${currentPrice}`);
       
       const trade = await storage.createTrade({
         userId,
@@ -293,7 +314,40 @@ class BinanceService {
         isBot: true
       });
 
+      console.log(`✅ Bot BUY trade completed: Trade ID ${trade.id}`);
       await telegramService.sendTradeNotification(trade, randomCrypto);
+      
+    } else if (priceChange > 0.5) {
+      // Sell on small gains - check if user has this crypto in portfolio
+      const portfolioItem = await storage.getPortfolioItem(userId, randomCrypto.id);
+      
+      if (portfolioItem && parseFloat(portfolioItem.amount) > 0) {
+        const sellAmount = Math.min(
+          parseFloat(portfolioItem.amount) * 0.5, // Sell max 50% of position
+          maxTradeAmount / currentPrice
+        );
+        
+        if (sellAmount > 0) {
+          console.log(`Executing SELL trade: ${sellAmount.toFixed(6)} ${randomCrypto.symbol} at $${currentPrice}`);
+          
+          const trade = await storage.createTrade({
+            userId,
+            cryptoId: randomCrypto.id,
+            type: 'sell',
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: (sellAmount * currentPrice).toString(),
+            isBot: true
+          });
+
+          console.log(`✅ Bot SELL trade completed: Trade ID ${trade.id}`);
+          await telegramService.sendTradeNotification(trade, randomCrypto);
+        }
+      } else {
+        console.log(`No ${randomCrypto.symbol} in portfolio to sell`);
+      }
+    } else {
+      console.log(`No suitable trading conditions for ${randomCrypto.symbol} (change: ${priceChange}%)`);
     }
   }
 

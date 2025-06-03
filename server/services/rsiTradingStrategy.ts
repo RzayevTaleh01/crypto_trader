@@ -166,13 +166,16 @@ export class RSITradingStrategy {
 
         console.log(`📊 ${crypto.symbol}: Price $${currentPrice.toFixed(6)}, RSI: ${rsi?.toFixed(1) || 'N/A'}, Change: ${priceChange}%`);
 
-        if (rsi && rsi < 30) {
+        // More aggressive oversold threshold for better trading opportunities
+        if (rsi && rsi < 55) {
           oversoldCandidates.push({
             crypto,
             rsi,
             price: currentPrice
           });
           console.log(`🟢 OVERSOLD FOUND: ${crypto.symbol} - RSI: ${rsi.toFixed(1)}`);
+        } else if (rsi && rsi < 60) {
+          console.log(`⚠️ CLOSE TO OVERSOLD: ${crypto.symbol} - RSI: ${rsi.toFixed(1)}`);
         }
       }
     }

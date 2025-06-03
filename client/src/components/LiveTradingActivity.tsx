@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Activity, Bot, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface TradingActivity {
   timestamp: string;
@@ -20,15 +21,50 @@ export default function LiveTradingActivity() {
 
   const { data: botSettings } = useQuery({
     queryKey: ['/api/bot-settings'],
-    refetchInterval: 2000,
+    refetchInterval: 5000, // Reduced frequency
   });
 
   const { data: recentTrades } = useQuery({
     queryKey: ['/api/trades/user/1'],
-    refetchInterval: 3000,
+    refetchInterval: 10000, // Reduced frequency since we use WebSocket for live updates
   });
 
-  // Update activities from real trading data
+  // WebSocket for real-time updates
+  const { socket } = useWebSocket();
+
+  // Listen for real-time trading updates via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewTrade = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'newTrade') {
+          const trade = message.data;
+          const newActivity = {
+            timestamp: new Date(trade.createdAt).toLocaleTimeString('az-AZ'),
+            action: 'EXECUTED',
+            symbol: trade.cryptocurrency?.symbol || 'N/A',
+            amount: parseFloat(trade.amount).toFixed(6),
+            price: `$${parseFloat(trade.price).toFixed(2)}`,
+            total: `$${parseFloat(trade.total).toFixed(2)}`,
+            type: trade.type.toUpperCase(),
+            strategy: botSettings?.strategy || 'scalping'
+          };
+
+          // Add new trade to the beginning and limit to 10
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    socket.addEventListener('message', handleNewTrade);
+    return () => socket.removeEventListener('message', handleNewTrade);
+  }, [socket, botSettings]);
+
+  // Initial load of trading data
   useEffect(() => {
     const safeBotSettings = botSettings || {};
     const trades = Array.isArray(recentTrades) ? recentTrades : [];

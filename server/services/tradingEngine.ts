@@ -3,8 +3,14 @@ import type { InsertTrade } from "@shared/schema";
 import { binanceService } from "./binanceService";
 import { telegramService } from "./telegramService";
 
+let broadcastFunction: ((data: any) => void) | null = null;
+
 class TradingEngine {
   private activeBots = new Map<number, NodeJS.Timeout>();
+
+  setBroadcastFunction(fn: (data: any) => void) {
+    broadcastFunction = fn;
+  }
 
   async executeTrade(tradeData: InsertTrade) {
     try {
@@ -52,6 +58,18 @@ class TradingEngine {
 
       // Update portfolio
       await this.updatePortfolio(tradeData.userId, tradeData.cryptoId, tradeData.type, tradeAmount, tradePrice);
+
+      // Broadcast new trade via WebSocket
+      if (broadcastFunction) {
+        const crypto = await storage.getCryptocurrency(tradeData.cryptoId);
+        broadcastFunction({
+          type: 'newTrade',
+          data: {
+            ...trade,
+            cryptocurrency: crypto
+          }
+        });
+      }
 
       return {
         trade,

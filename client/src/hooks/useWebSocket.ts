@@ -65,5 +65,5 @@ export function useWebSocket() {
     };
   }, [queryClient]);
 
-  return wsRef.current;
+  return { socket: wsRef.current };
 }

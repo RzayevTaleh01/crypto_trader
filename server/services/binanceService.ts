@@ -1,4 +1,4 @@
-import * as BinanceAPI from 'binance-api-node';
+import Binance from 'binance-api-node';
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
 
@@ -16,7 +16,7 @@ class BinanceService {
     }
 
     try {
-      this.client = BinanceAPI.default({
+      this.client = Binance({
         apiKey,
         apiSecret
       });

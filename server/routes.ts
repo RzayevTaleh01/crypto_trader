@@ -33,6 +33,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize crypto service with broadcast function
   cryptoService.setBroadcastFunction(broadcast);
+  
+  // Initialize trading engine with broadcast function
+  tradingEngine.setBroadcastFunction(broadcast);
 
   // User routes
   app.post("/api/auth/register", async (req, res) => {

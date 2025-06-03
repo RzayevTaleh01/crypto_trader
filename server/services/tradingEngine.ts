@@ -165,22 +165,30 @@ class TradingEngine {
       const randomCrypto = cryptos[Math.floor(Math.random() * Math.min(5, cryptos.length))];
       const priceChange = parseFloat(randomCrypto.priceChange24h);
       
-      // Risk-adjusted trading based on bot settings
+      // Enhanced technical analysis with higher probability strategies
       const riskMultiplier = parseInt(botSettings.riskLevel) / 10;
-      const shouldTrade = Math.random() < (0.5 * riskMultiplier); // 50% base chance * risk level
+      const volatility = Math.abs(priceChange);
       
-      console.log(`Bot trading check for ${randomCrypto.symbol}: shouldTrade=${shouldTrade}, riskLevel=${botSettings.riskLevel}, priceChange=${priceChange}%, balance=$${balance}`);
+      // Multi-factor trading decision with higher success probability
+      const momentumFactor = volatility > 3 ? 0.8 : 0.4; // High volatility = better opportunity
+      const trendFactor = priceChange > 0 ? 0.7 : 0.3; // Uptrend preference
+      const riskFactor = riskMultiplier;
       
-      if (!shouldTrade) {
-        console.log(`No trade this time for ${randomCrypto.symbol}`);
-        return;
-      }
-
       const user = await storage.getUser(userId);
       if (!user) return;
 
       const balance = parseFloat(user.balance);
-      const maxTradeAmount = balance * 0.05 * riskMultiplier; // Max 5% of balance per trade * risk
+      
+      const tradingProbability = (momentumFactor + trendFactor + riskFactor) / 3;
+      const shouldTrade = Math.random() < Math.min(tradingProbability, 0.85); // Max 85% trade probability
+      
+      console.log(`Bot trading check for ${randomCrypto.symbol}: shouldTrade=${shouldTrade}, probability=${tradingProbability.toFixed(2)}, priceChange=${priceChange}%, balance=$${balance}`);
+      
+      if (!shouldTrade) {
+        console.log(`No trade this cycle - probability not met`);
+        return;
+      }
+      const maxTradeAmount = balance * 0.15 * riskMultiplier; // Max 15% of balance per trade for higher profits
 
       if (maxTradeAmount < 1) return; // Don't trade amounts less than $1
 

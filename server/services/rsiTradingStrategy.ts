@@ -9,35 +9,34 @@ export class RSITradingStrategy {
     this.broadcastFn = fn;
   }
 
-  // Calculate RSI (Relative Strength Index)
   private calculateRSI(prices: number[], period: number = 14): number | null {
-    if (prices.length < period + 1) {
-      return null; // Not enough data
-    }
+    if (prices.length < period + 1) return null;
 
-    const deltas: number[] = [];
+    const gains: number[] = [];
+    const losses: number[] = [];
+
     for (let i = 1; i < prices.length; i++) {
-      deltas.push(prices[i] - prices[i - 1]);
+      const change = prices[i] - prices[i - 1];
+      gains.push(change > 0 ? change : 0);
+      losses.push(change < 0 ? -change : 0);
     }
 
-    const gains = deltas.map(delta => delta > 0 ? delta : 0);
-    const losses = deltas.map(delta => delta < 0 ? -delta : 0);
+    const avgGain = gains.slice(-period).reduce((a, b) => a + b, 0) / period;
+    const avgLoss = losses.slice(-period).reduce((a, b) => a + b, 0) / period;
 
-    const avgGain = gains.slice(-period).reduce((sum, gain) => sum + gain, 0) / period;
-    const avgLoss = losses.slice(-period).reduce((sum, loss) => sum + loss, 0) / period;
-
-    if (avgLoss === 0) {
-      return 100;
-    }
-
+    if (avgLoss === 0) return 100;
     const rs = avgGain / avgLoss;
     return 100 - (100 / (1 + rs));
   }
 
-  // Get real price history from Binance testnet
   private async getRealPriceHistory(symbol: string): Promise<number[]> {
-    const { binanceService } = await import('./binanceService');
-    return await binanceService.getKlineData(symbol);
+    try {
+      const { binanceService } = await import('./binanceService');
+      return await binanceService.getKlineData(symbol, '1h', 21);
+    } catch (error) {
+      console.log(`Failed to get real price data for ${symbol}:`, error);
+      return [];
+    }
   }
 
   async executeRSIStrategy(userId: number): Promise<void> {
@@ -45,87 +44,57 @@ export class RSITradingStrategy {
     if (!user) return;
 
     const balance = parseFloat(user.balance);
-    const cryptos = await storage.getAllCryptocurrencies();
     const portfolio = await storage.getUserPortfolio(userId);
+    const cryptos = await storage.getAllCryptocurrencies();
 
     console.log(`📊 Executing RSI Strategy - Balance: $${balance.toFixed(2)}, Cryptos: ${cryptos.length}, Portfolio: ${portfolio.length}`);
 
-    // Step 1: Always check for profit-taking opportunities first
+    // Step 1: Quick profit taking on existing positions (minimum 5 cent gains)
     if (portfolio.length > 0) {
-      console.log(`🔍 RSI SELL CHECK: Analyzing ${portfolio.length} portfolio positions for profit opportunities...`);
-      await this.sellOverboughtPositions(userId, portfolio, cryptos);
+      await this.sellProfitablePositions(userId, portfolio, cryptos);
     }
 
-    // Step 2: Buy oversold cryptocurrencies if we have balance
-    if (balance > 2) {
-      await this.buyOversoldCryptos(userId, cryptos, balance);
+    // Step 2: Buy high-momentum coins for short-term gains
+    if (balance > 1) {
+      await this.buyHighMomentumCoins(userId, cryptos, balance);
     }
   }
 
-  private async sellOverboughtPositions(userId: number, portfolio: any[], cryptos: any[]) {
-    console.log(`🔍 RSI SELL CHECK: Analyzing ${portfolio.length} portfolio positions for overbought conditions...`);
-    
+  private async sellProfitablePositions(userId: number, portfolio: any[], cryptos: any[]) {
+    console.log(`🔍 RSI SELL CHECK: Analyzing ${portfolio.length} portfolio positions for profit opportunities...`);
+
     for (const position of portfolio) {
       const crypto = cryptos.find(c => c.id === position.cryptoId);
       if (!crypto) continue;
 
-      const currentPrice = parseFloat(crypto.currentPrice);
-      const priceChange = parseFloat(crypto.priceChange24h);
-      const volatility = Math.abs(priceChange);
-      const avgPrice = parseFloat(position.averagePrice);
-      const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
-      
-      // Get real price history from Binance for RSI calculation
-      const priceHistory = await this.getRealPriceHistory(crypto.symbol);
-      if (priceHistory.length === 0) continue;
-      
-      const rsi = this.calculateRSI(priceHistory);
-
       const amount = parseFloat(position.amount);
-      const currentValue = amount * currentPrice;
+      const avgPrice = parseFloat(position.averagePrice);
+      const currentPrice = parseFloat(crypto.currentPrice);
       const investedValue = amount * avgPrice;
+      const currentValue = amount * currentPrice;
       const absoluteProfit = currentValue - investedValue;
-      
-      console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}% ($${absoluteProfit.toFixed(3)}), Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
-      
-      // Very aggressive trading - sell immediately on RSI > 65 or any profit
-      if ((absoluteProfit > 0.01) || (rsi && rsi > 65)) {
-        console.log(`💎 TRADE TRIGGER: ${crypto.symbol} - Profit: $${absoluteProfit.toFixed(3)}, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
+
+      console.log(`💰 ${crypto.symbol}: Profit: $${absoluteProfit.toFixed(3)}, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
+
+      // Quick profit taking - sell on minimum 5 cent gains
+      if (absoluteProfit >= 0.05) {
+        console.log(`💎 QUICK PROFIT: ${crypto.symbol} - Profit: $${absoluteProfit.toFixed(3)} (≥5¢)`);
         
-        if (absoluteProfit > 0.005) { // Sell on any profit above half a cent
-          const sellAmount = amount * 0.7; // Sell 70% of overbought position
-          const totalValue = sellAmount * currentPrice;
-          const profit = (currentPrice - avgPrice) * sellAmount;
+        const sellAmount = amount * 0.7; // Sell 70% of position
+        const totalValue = sellAmount * currentPrice;
+        const profit = (currentPrice - avgPrice) * sellAmount;
 
-          console.log(`🔴 RSI SELL: ${sellAmount.toFixed(6)} ${crypto.symbol} - RSI: ${rsi?.toFixed(1) || 'N/A'} (Overbought)`);
+        console.log(`🔴 RSI SELL: ${sellAmount.toFixed(6)} ${crypto.symbol} - Quick Profit: $${profit.toFixed(3)}`);
 
-          // Execute real Binance testnet trade
+        try {
           const { binanceService } = await import('./binanceService');
+          const result = await binanceService.executeRealTrade(crypto.symbol, 'SELL', sellAmount, userId);
           
-          try {
-            const result = await binanceService.executeRealTrade(crypto.symbol, 'SELL', sellAmount, userId);
-            
-            if (result.success) {
-              console.log(`🎯 BINANCE SELL EXECUTED: ${sellAmount.toFixed(6)} ${crypto.symbol} at $${currentPrice}`);
-              await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
-            } else {
-              console.log(`❌ Binance trade failed: ${result.message}`);
-              // Fallback to database-only trade
-              const tradeData: InsertTrade = {
-                userId,
-                cryptoId: position.cryptoId,
-                type: 'sell',
-                amount: sellAmount.toString(),
-                price: currentPrice.toString(),
-                total: totalValue.toString(),
-                isBot: true
-              };
-              await storage.createTrade(tradeData);
-              await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
-            }
-          } catch (error) {
-            console.log(`❌ Binance API error, using database trade:`, error);
-            // Fallback to database-only trade
+          if (result.success) {
+            console.log(`🎯 BINANCE SELL EXECUTED: ${sellAmount.toFixed(6)} ${crypto.symbol}`);
+            await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+          } else {
+            console.log(`❌ Binance trade failed: ${result.message}`);
             const tradeData: InsertTrade = {
               userId,
               cryptoId: position.cryptoId,
@@ -138,193 +107,170 @@ export class RSITradingStrategy {
             await storage.createTrade(tradeData);
             await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
           }
+        } catch (error) {
+          console.log(`❌ Binance API error, using database trade:`, error);
+          const tradeData: InsertTrade = {
+            userId,
+            cryptoId: position.cryptoId,
+            type: 'sell',
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: totalValue.toString(),
+            isBot: true
+          };
+          await storage.createTrade(tradeData);
+          await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+        }
 
-          // Update balance
-          const user = await storage.getUser(userId);
-          if (user) {
-            const newBalance = parseFloat(user.balance) + totalValue;
-            await storage.updateUserBalance(userId, newBalance.toString());
-          }
+        // Update balance
+        const updatedUser = await storage.getUser(userId);
+        if (updatedUser) {
+          const newBalance = parseFloat(updatedUser.balance) + totalValue;
+          await storage.updateUserBalance(userId, newBalance.toString());
+        }
 
-          // Broadcast and notify
-          if (this.broadcastFn) {
-            this.broadcastFn({
-              type: 'trade',
-              data: {
-                action: 'sell',
-                symbol: crypto.symbol,
-                amount: sellAmount.toFixed(6),
-                price: currentPrice.toFixed(2),
-                total: totalValue.toFixed(2),
-                strategy: `RSI Overbought: ${rsi.toFixed(1)}`,
-                profit: profit.toFixed(2)
-              }
-            });
-          }
+        if (this.broadcastFn) {
+          this.broadcastFn({
+            type: 'trade',
+            data: {
+              action: 'sell',
+              symbol: crypto.symbol,
+              amount: sellAmount.toFixed(6),
+              price: currentPrice.toFixed(6),
+              total: totalValue.toFixed(2),
+              strategy: `Quick Profit: $${profit.toFixed(3)}`,
+              profit: profit.toFixed(2)
+            }
+          });
+        }
 
-          // No notifications - focus on trading execution only
+        try {
+          const tradeData: InsertTrade = {
+            userId,
+            cryptoId: position.cryptoId,
+            type: 'sell',
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: totalValue.toString(),
+            isBot: true
+          };
+          await telegramService.sendTradeNotification(tradeData, crypto, position);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
         }
       }
     }
   }
 
-  private async buyOversoldCryptos(userId: number, cryptos: any[], balance: number) {
-    const oversoldCandidates = [];
+  private async buyHighMomentumCoins(userId: number, cryptos: any[], balance: number) {
+    if (balance < 1) return;
 
-    console.log(`🔍 RSI Strategy: Analyzing top 20 cryptocurrencies for immediate oversold execution...`);
+    console.log(`🔍 SHORT-TERM STRATEGY: Finding highest-gaining coins for quick profits with $${balance.toFixed(2)}...`);
 
-    // Limit to top 20 cryptos for immediate execution
-    const topCryptos = cryptos.slice(0, 20);
-    
-    // Find oversold cryptocurrencies
-    for (const crypto of topCryptos) {
-      const currentPrice = parseFloat(crypto.currentPrice);
-      const priceChange = parseFloat(crypto.priceChange24h);
-      const volatility = Math.abs(priceChange);
-      
-      if (currentPrice > 0.001) { // Filter out very low value coins
-        const priceHistory = await this.getRealPriceHistory(crypto.symbol);
-        if (priceHistory.length === 0) continue;
-        
-        const rsi = this.calculateRSI(priceHistory);
+    // Find highest gaining coins (short-term momentum)
+    const highGainCryptos = cryptos
+      .filter(crypto => {
+        const price = parseFloat(crypto.currentPrice);
+        const change24h = parseFloat(crypto.priceChange24h);
+        return price > 0.01 && price < 50 && change24h > 2; // Rising coins only, reasonable price range
+      })
+      .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h))
+      .slice(0, 8); // Top 8 highest gainers
 
-        console.log(`📊 ${crypto.symbol}: Price $${currentPrice.toFixed(6)}, RSI: ${rsi?.toFixed(1) || 'N/A'}, Change: ${priceChange}%`);
-
-        // Very aggressive oversold threshold - buy frequently
-        if (rsi && rsi < 65) {
-          oversoldCandidates.push({
-            crypto,
-            rsi,
-            price: currentPrice
-          });
-          console.log(`🟢 OVERSOLD FOUND: ${crypto.symbol} - RSI: ${rsi.toFixed(1)}`);
-          
-          // Execute immediate trade if RSI is very low (below 30)
-          if (rsi < 30) {
-            console.log(`🚨 IMMEDIATE BUY TRIGGERED: ${crypto.symbol} - RSI: ${rsi.toFixed(1)} (Extremely Oversold)`);
-            const investAmount = Math.min(balance * 0.98, balance);
-            const quantity = investAmount / currentPrice;
-            
-            try {
-              const { binanceService } = await import('./binanceService');
-              const result = await binanceService.executeRealTrade(crypto.symbol, 'BUY', quantity, userId);
-              
-              if (result.success) {
-                console.log(`🎯 IMMEDIATE BINANCE BUY: ${quantity.toFixed(6)} ${crypto.symbol} at $${currentPrice}`);
-                await this.updatePortfolioAfterBuy(userId, crypto.id, quantity, currentPrice);
-                
-                const newBalance = balance - investAmount;
-                await storage.updateUserBalance(userId, newBalance.toString());
-                
-                const tradeData: InsertTrade = {
-                  userId,
-                  cryptoId: crypto.id,
-                  type: 'buy',
-                  amount: quantity.toString(),
-                  price: currentPrice.toString(),
-                  total: investAmount.toString(),
-                  isBot: true
-                };
-                await storage.createTrade(tradeData);
-                
-                if (this.broadcastFn) {
-                  this.broadcastFn({
-                    type: 'trade',
-                    data: {
-                      action: 'buy',
-                      symbol: crypto.symbol,
-                      amount: quantity.toFixed(6),
-                      price: currentPrice.toFixed(2),
-                      total: investAmount.toFixed(2),
-                      strategy: `Immediate RSI: ${rsi.toFixed(1)}`,
-                      profit: '0.00'
-                    }
-                  });
-                }
-
-                // Send Telegram notification for buy trade
-                try {
-                  await telegramService.sendTradeNotification(tradeData, crypto);
-                } catch (error) {
-                  console.log('Telegram notification error:', error);
-                }
-                return; // Exit immediately after successful trade
-              }
-            } catch (error) {
-              console.log(`❌ Immediate trade failed for ${crypto.symbol}:`, error);
-            }
-          }
-        }
-      }
+    if (highGainCryptos.length === 0) {
+      console.log(`⚠️ No high-momentum coins found`);
+      return;
     }
 
-    console.log(`🎯 Found ${oversoldCandidates.length} oversold candidates`);
+    const maxPositions = 4; // Maximum 4 positions at once
+    const investPerCoin = Math.min(balance / maxPositions, balance * 0.25); // Max 25% per coin
 
-    // Sort by lowest RSI (most oversold)
-    oversoldCandidates.sort((a, b) => a.rsi - b.rsi);
+    if (investPerCoin < 1) return;
 
-    // Buy the most oversold cryptocurrency
-    if (oversoldCandidates.length > 0) {
-      const best = oversoldCandidates[0];
-      const investAmount = Math.min(balance * 0.98, balance); // Invest 98% of available balance for maximum profit
-      const quantity = investAmount / best.price;
+    let tradesExecuted = 0;
 
-      console.log(`🟢 RSI BUY: ${quantity.toFixed(6)} ${best.crypto.symbol} - RSI: ${best.rsi.toFixed(1)} (Oversold)`);
+    for (const crypto of highGainCryptos) {
+      if (tradesExecuted >= maxPositions) break;
 
-      // Execute real Binance testnet trade
-      const { binanceService } = await import('./binanceService');
-      
       try {
-        const result = await binanceService.executeRealTrade(best.crypto.symbol, 'BUY', quantity, userId);
-        
-        if (result.success) {
-          console.log(`🎯 BINANCE BUY EXECUTED: ${quantity.toFixed(6)} ${best.crypto.symbol} at $${best.price}`);
-          await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
-        } else {
-          console.log(`❌ Binance trade failed: ${result.message} - Skipping ${best.crypto.symbol}`);
-          return; // Skip this trade and wait for next cycle
+        // Check if we already have this position
+        const existingPosition = await storage.getPortfolioItem(userId, crypto.id);
+        if (existingPosition) continue; // Skip if already holding
+
+        const currentPrice = parseFloat(crypto.currentPrice);
+        const priceChange24h = parseFloat(crypto.priceChange24h);
+        const quantity = investPerCoin / currentPrice;
+
+        // Only buy strong momentum coins
+        if (priceChange24h > 3) {
+          console.log(`🟢 HIGH-MOMENTUM BUY: ${crypto.symbol} - Gain: ${priceChange24h.toFixed(2)}%, Price: $${currentPrice.toFixed(6)}, Invest: $${investPerCoin.toFixed(2)}`);
+
+          try {
+            const { binanceService } = await import('./binanceService');
+            const result = await binanceService.executeRealTrade(crypto.symbol, 'BUY', quantity, userId);
+            
+            if (result.success) {
+              console.log(`🎯 BINANCE HIGH-MOMENTUM BUY: ${quantity.toFixed(6)} ${crypto.symbol}`);
+
+              await this.updatePortfolioAfterBuy(userId, crypto.id, quantity, currentPrice);
+              
+              const user = await storage.getUser(userId);
+              if (user) {
+                const newBalance = parseFloat(user.balance) - investPerCoin;
+                await storage.updateUserBalance(userId, newBalance.toString());
+              }
+
+              const tradeData: InsertTrade = {
+                userId,
+                cryptoId: crypto.id,
+                type: 'buy',
+                amount: quantity.toString(),
+                price: currentPrice.toString(),
+                total: investPerCoin.toString(),
+                isBot: true
+              };
+              await storage.createTrade(tradeData);
+              
+              if (this.broadcastFn) {
+                this.broadcastFn({
+                  type: 'trade',
+                  data: {
+                    action: 'buy',
+                    symbol: crypto.symbol,
+                    amount: quantity.toFixed(6),
+                    price: currentPrice.toFixed(6),
+                    total: investPerCoin.toFixed(2),
+                    strategy: `High-Momentum: +${priceChange24h.toFixed(1)}%`,
+                    profit: '0.00'
+                  }
+                });
+              }
+
+              try {
+                await telegramService.sendTradeNotification(tradeData, crypto);
+              } catch (error) {
+                console.log('Telegram notification error:', error);
+              }
+
+              tradesExecuted++;
+            }
+          } catch (error) {
+            console.log(`❌ High-momentum trade failed for ${crypto.symbol}:`, error);
+          }
         }
       } catch (error) {
-        console.log(`❌ Binance API error, using database trade:`, error);
-        // Fallback to database-only trade
-        const tradeData: InsertTrade = {
-          userId,
-          cryptoId: best.crypto.id,
-          type: 'buy',
-          amount: quantity.toString(),
-          price: best.price.toString(),
-          total: investAmount.toString(),
-          isBot: true
-        };
-        await storage.createTrade(tradeData);
-        await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+        console.log(`❌ Analysis failed for ${crypto.symbol}:`, error);
       }
+    }
 
-      // Update balance
-      const newBalance = balance - investAmount;
-      await storage.updateUserBalance(userId, newBalance.toString());
-
-      // Broadcast and notify
-      if (this.broadcastFn) {
-        this.broadcastFn({
-          type: 'trade',
-          data: {
-            action: 'buy',
-            symbol: best.crypto.symbol,
-            amount: quantity.toFixed(6),
-            price: best.price.toFixed(2),
-            total: investAmount.toFixed(2),
-            strategy: `RSI Oversold: ${best.rsi.toFixed(1)}`,
-            profit: '0.00'
-          }
-        });
-      }
-
-      // No notifications - focus on trading execution only
+    if (tradesExecuted === 0) {
+      console.log(`⚠️ No suitable high-momentum opportunities found`);
+    } else {
+      console.log(`✅ Executed ${tradesExecuted} high-momentum trades`);
     }
   }
 
-  private async updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {
+  private async updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number): Promise<void> {
     const existing = await storage.getPortfolioItem(userId, cryptoId);
     
     if (existing) {
@@ -344,21 +290,19 @@ export class RSITradingStrategy {
     }
   }
 
-  private async updatePortfolioAfterSell(userId: number, cryptoId: number, soldAmount: number) {
+  private async updatePortfolioAfterSell(userId: number, cryptoId: number, soldAmount: number): Promise<void> {
     const existing = await storage.getPortfolioItem(userId, cryptoId);
     
     if (existing) {
       const currentAmount = parseFloat(existing.amount);
-      const newAmount = Math.max(0, currentAmount - soldAmount);
+      const remainingAmount = currentAmount - soldAmount;
       
-      if (newAmount < 0.001) {
+      if (remainingAmount <= 0.000001) {
         await storage.deletePortfolioItem(userId, cryptoId);
       } else {
-        const sellRatio = soldAmount / currentAmount;
-        const currentTotal = parseFloat(existing.totalInvested);
-        const newTotal = currentTotal * (1 - sellRatio);
-        
-        await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), existing.averagePrice, newTotal.toString());
+        const avgPrice = parseFloat(existing.averagePrice);
+        const newTotalInvested = remainingAmount * avgPrice;
+        await storage.updatePortfolioItem(userId, cryptoId, remainingAmount.toString(), avgPrice.toString(), newTotalInvested.toString());
       }
     }
   }

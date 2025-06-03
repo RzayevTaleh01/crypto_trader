@@ -17,6 +17,17 @@ export class AutonomousTradingEngine {
 
     console.log(`🤖 Starting autonomous trading bot for user ${userId}`);
     
+    // Execute immediately first
+    try {
+      const botSettings = await storage.getBotSettings(userId);
+      if (botSettings && botSettings.isActive) {
+        console.log(`📊 Initial strategy execution: ${botSettings.strategy}`);
+        await this.executeStrategy(userId, botSettings);
+      }
+    } catch (error) {
+      console.log('Initial trading execution error:', error);
+    }
+    
     const botInterval = setInterval(async () => {
       try {
         const botSettings = await storage.getBotSettings(userId);
@@ -25,11 +36,12 @@ export class AutonomousTradingEngine {
           return;
         }
         
+        console.log(`🔄 Strategy cycle: ${botSettings.strategy}`);
         await this.executeStrategy(userId, botSettings);
       } catch (error) {
         console.log('Autonomous trading error:', error);
       }
-    }, 10000); // Execute every 10 seconds
+    }, 5000); // Execute every 5 seconds for faster trading
 
     this.activeBots.set(userId, botInterval);
   }
@@ -52,8 +64,11 @@ export class AutonomousTradingEngine {
 
     console.log(`🎯 Executing ${botSettings.strategy} strategy - Balance: $${balance.toFixed(2)}`);
 
+    console.log(`🎯 Executing ${botSettings.strategy} strategy - Balance: $${balance.toFixed(2)}`);
+
     // Execute specific strategy based on selection
     if (botSettings.strategy === 'optimized_scalping') {
+      console.log(`⚡ STARTING OPTIMIZED SCALPING for user ${userId}`);
       const { optimizedScalpingStrategy } = await import('./optimizedScalpingStrategy');
       await optimizedScalpingStrategy.executeOptimizedScalping(userId);
       return;

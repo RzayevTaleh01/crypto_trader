@@ -596,11 +596,6 @@ class BinanceService {
       if (!marketData) return;
 
       for (const coin of marketData) {
-        // Send alert for significant price movements
-        if (Math.abs(coin.priceChange24h) > 5) {
-          await telegramService.sendPriceAlert(coin.symbol, coin.currentPrice, coin.priceChange24h);
-        }
-
         // Update database with real prices
         const crypto = await storage.getCryptocurrencyBySymbol(coin.symbol);
         if (crypto) {

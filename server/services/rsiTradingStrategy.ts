@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { InsertTrade } from '@shared/schema';
+import { telegramService } from './telegramService';
 
 export class RSITradingStrategy {
   private broadcastFn: ((data: any) => void) | null = null;
@@ -239,6 +240,13 @@ export class RSITradingStrategy {
                       profit: '0.00'
                     }
                   });
+                }
+
+                // Send Telegram notification for buy trade
+                try {
+                  await telegramService.sendTradeNotification(tradeData, crypto);
+                } catch (error) {
+                  console.log('Telegram notification error:', error);
                 }
                 return; // Exit immediately after successful trade
               }

@@ -2,6 +2,7 @@ import { storage } from '../storage';
 import { InsertTrade } from '@shared/schema';
 import { advancedTechnicalAnalysis } from './advancedTechnicalAnalysis';
 import { binanceService } from './binanceService';
+import { telegramService } from './telegramService';
 
 export interface MomentumSignal {
   action: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
@@ -223,6 +224,13 @@ export class MomentumTradingStrategy {
           });
         }
 
+        // Send Telegram notification for sell trade
+        try {
+          await telegramService.sendTradeNotification(tradeData, crypto, position);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
+        }
+
       } else {
         console.log(`❌ Binance momentum sell failed: ${result.message}`);
       }
@@ -281,6 +289,13 @@ export class MomentumTradingStrategy {
               confidence: candidate.analysis.signal.confidence.toFixed(1)
             }
           });
+        }
+
+        // Send Telegram notification for buy trade
+        try {
+          await telegramService.sendTradeNotification(tradeData, crypto);
+        } catch (error) {
+          console.log('Telegram notification error:', error);
         }
 
       } else {

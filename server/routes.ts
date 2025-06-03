@@ -163,6 +163,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bot settings routes
+  app.get("/api/bot-settings", async (req, res) => {
+    try {
+      const userId = 1; // Default user for demo
+      let settings = await storage.getBotSettings(userId);
+      
+      if (!settings) {
+        settings = await storage.createBotSettings({
+          userId,
+          isActive: false,
+          strategy: "scalping",
+          riskLevel: 5,
+          maxDailyLoss: "50",
+          targetProfit: "100",
+          tradingPairs: ["BTC/USDT", "ETH/USDT"]
+        });
+      }
+
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch bot settings", error: error.message });
+    }
+  });
+
   app.get("/api/bot-settings/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);

@@ -1,4 +1,4 @@
-import Binance from 'binance-api-node';
+import * as Binance from 'binance-api-node';
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
 

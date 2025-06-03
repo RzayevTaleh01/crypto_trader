@@ -243,12 +243,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.updateBotSettings(userId, settingsData);
       
-      if (settingsData.isActive !== undefined) {
-        if (settingsData.isActive) {
-          tradingEngine.startBot(userId);
-        } else {
-          tradingEngine.stopBot(userId);
-        }
+      // All automated trading permanently disabled
+      if (settingsData.isActive) {
+        console.log('🚫 Automated trading activation blocked - manual control only');
+        settingsData.isActive = false;
       }
 
       broadcast({

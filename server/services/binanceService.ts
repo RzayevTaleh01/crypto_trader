@@ -91,16 +91,27 @@ class BinanceService {
     }
 
     try {
-      // Get current market price
-      const ticker = await this.client.prices({ symbol: symbol + 'USDT' });
-      const currentPrice = parseFloat(ticker[symbol + 'USDT']);
+      // Check if symbol is available on Binance testnet
+      const binanceSymbol = symbol + 'USDT';
+      const availablePairs = await this.getTradingPairs();
+      
+      if (!availablePairs.includes(binanceSymbol)) {
+        throw new Error(`Symbol ${binanceSymbol} not available on Binance testnet`);
+      }
 
+      // Get current market price
+      const ticker = await this.client.prices({ symbol: binanceSymbol });
+      const currentPrice = parseFloat(ticker[binanceSymbol]);
+
+      // Round quantity to appropriate precision for Binance
+      const roundedQuantity = this.roundToPrecision(quantity, symbol);
+      
       // Execute market order
       const order = await this.client.order({
         symbol: symbol + 'USDT',
         side,
         type: 'MARKET',
-        quantity: quantity.toString()
+        quantity: roundedQuantity.toString()
       });
 
       console.log('Binance order executed:', order);
@@ -509,6 +520,22 @@ class BinanceService {
     } else {
       console.log(`Waiting for better conditions on ${selectedCrypto.symbol} (${priceChange}% change)`);
     }
+  }
+
+  private roundToPrecision(quantity: number, symbol: string): number {
+    // Most cryptocurrencies have different precision requirements
+    // Common precisions: BTC/ETH: 6 decimals, others: 2-4 decimals
+    let precision = 6; // Default precision
+    
+    if (symbol === 'BTC' || symbol === 'ETH') {
+      precision = 6;
+    } else if (symbol === 'USDT' || symbol === 'USDC') {
+      precision = 2;
+    } else {
+      precision = 4;
+    }
+    
+    return parseFloat(quantity.toFixed(precision));
   }
 
   private getFullName(symbol: string): string {

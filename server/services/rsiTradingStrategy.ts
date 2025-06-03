@@ -241,7 +241,8 @@ export class RSITradingStrategy {
 
         const quantity = investmentPerCoin / opportunity.price;
 
-        console.log(`🟢 DIP BUY: ${opportunity.symbol} - Drop: ${opportunity.change24h.toFixed(2)}%, RSI: ${opportunity.rsi.toFixed(1)}, Invest: $${investmentPerCoin.toFixed(2)}`);
+        const rsiText = opportunity.rsi ? `RSI: ${opportunity.rsi.toFixed(1)}` : 'No RSI';
+        console.log(`🟢 DIP BUY: ${opportunity.symbol} - Drop: ${opportunity.change24h.toFixed(2)}%, ${rsiText}, Invest: $${investmentPerCoin.toFixed(2)}`);
 
         const { binanceService } = await import('./binanceService');
         const result = await binanceService.executeRealTrade(opportunity.symbol, 'BUY', quantity, userId);
@@ -277,7 +278,7 @@ export class RSITradingStrategy {
                 amount: quantity.toFixed(6),
                 price: opportunity.price.toFixed(6),
                 total: investmentPerCoin.toFixed(2),
-                strategy: `Dip Buy: ${opportunity.change24h.toFixed(1)}%, RSI: ${opportunity.rsi.toFixed(1)}`,
+                strategy: `Dip Buy: ${opportunity.change24h.toFixed(1)}%, ${opportunity.rsi ? `RSI: ${opportunity.rsi.toFixed(1)}` : 'No RSI'}`,
                 profit: '0.00'
               }
             });

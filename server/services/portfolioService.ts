@@ -27,36 +27,54 @@ class PortfolioService {
 
   async getPortfolioPerformance(userId: number, hours: number) {
     const portfolio = await storage.getUserPortfolio(userId);
+    const trades = await storage.getUserTrades(userId, 100); // Get more trades for better data
     
     if (portfolio.length === 0) {
       return [];
     }
 
-    // Get price history for all cryptocurrencies in portfolio
+    // Calculate portfolio performance based on actual trading history
     const performanceData = [];
-    const intervals = Math.min(hours, 24); // Max 24 data points
-    const step = Math.max(1, Math.floor(hours / intervals));
+    const intervals = Math.min(hours, 24);
     
+    // Get current portfolio value
+    let currentTotalValue = 0;
+    for (const item of portfolio) {
+      const crypto = await storage.getCryptocurrency(item.cryptoId);
+      const currentPrice = parseFloat(crypto?.currentPrice || "0");
+      currentTotalValue += parseFloat(item.amount) * currentPrice;
+    }
+    
+    // Calculate historical portfolio values based on price history
     for (let i = 0; i < intervals; i++) {
-      const hoursBack = i * step;
-      let totalValue = 0;
+      const hoursBack = (intervals - 1 - i);
+      const timestamp = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
       
+      let historicalValue = 0;
+      
+      // For each portfolio item, get historical price
       for (const item of portfolio) {
-        const priceHistory = await storage.getPriceHistory(item.cryptoId, hoursBack + step);
-        const historicalPrice = priceHistory.length > 0 
-          ? parseFloat(priceHistory[priceHistory.length - 1].price)
-          : parseFloat((await storage.getCryptocurrency(item.cryptoId))?.currentPrice || "0");
+        const priceHistory = await storage.getPriceHistory(item.cryptoId, hoursBack + 1);
+        let historicalPrice;
         
-        totalValue += parseFloat(item.amount) * historicalPrice;
+        if (priceHistory.length > 0) {
+          historicalPrice = parseFloat(priceHistory[0].price);
+        } else {
+          // Fallback to current price if no historical data
+          const crypto = await storage.getCryptocurrency(item.cryptoId);
+          historicalPrice = parseFloat(crypto?.currentPrice || "0");
+        }
+        
+        historicalValue += parseFloat(item.amount) * historicalPrice;
       }
       
       performanceData.push({
-        timestamp: new Date(Date.now() - hoursBack * 60 * 60 * 1000),
-        value: totalValue
+        timestamp: timestamp.toISOString(),
+        value: historicalValue
       });
     }
     
-    return performanceData.reverse(); // Oldest to newest
+    return performanceData;
   }
 
   async getPortfolioSummary(userId: number) {

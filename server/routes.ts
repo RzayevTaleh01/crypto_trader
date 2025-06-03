@@ -151,6 +151,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/portfolio/performance", async (req, res) => {
+    try {
+      const userId = 1; // Default user for demo
+      const hours = req.query.hours ? parseInt(req.query.hours as string) : 24;
+      const performance = await portfolioService.getPortfolioPerformance(userId, hours);
+      res.json(performance);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch portfolio performance", error: error.message });
+    }
+  });
+
   app.get("/api/portfolio/performance/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);

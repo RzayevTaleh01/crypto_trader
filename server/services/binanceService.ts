@@ -19,14 +19,15 @@ class BinanceService {
     }
 
     try {
-      const Binance = require('binance-api-node');
+      const Binance = require('binance-api-node').default;
       this.client = Binance({
         apiKey,
         apiSecret,
-        test: this.isTestnet
+        httpBase: 'https://testnet.binance.vision',
+        wsBase: 'wss://testnet.binance.vision/ws'
       });
 
-      console.log(`✅ Binance ${this.isTestnet ? 'Testnet' : 'Mainnet'} API initialized`);
+      console.log(`✅ Binance Testnet API initialized successfully`);
       this.testConnection();
       this.monitorPrices();
     } catch (error) {

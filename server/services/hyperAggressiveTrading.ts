@@ -10,11 +10,15 @@ export class HyperAggressiveTrading {
     this.broadcastFn = fn;
   }
 
+  initialize() {
+    console.log('🔥 HYPER-AGGRESSIVE TRADING ENGINE ACTIVATED - Maximum frequency mode');
+  }
+
   async executeHyperAggressive(userId: number): Promise<void> {
     const now = Date.now();
     
-    // Force trades every 10 seconds minimum
-    if (now - this.lastTradeTime < 10000) {
+    // Force trades every 5 seconds minimum for maximum activity
+    if (now - this.lastTradeTime < 5000) {
       return;
     }
 
@@ -53,8 +57,9 @@ export class HyperAggressiveTrading {
       const avgPrice = parseFloat(position.averagePrice);
       const profitPercent = ((currentPrice - avgPrice) / avgPrice) * 100;
 
-      // Sell on ANY profit > 0.01% (hyper-aggressive)
-      if (profitPercent > 0.01) {
+      // Sell on ANY profit > 0.001% (ultra-hyper-aggressive) OR force sell after holding for 2 minutes
+      const holdingTime = now - new Date(position.updatedAt).getTime();
+      if (profitPercent > 0.001 || holdingTime > 120000) {
         await this.executeInstantSell(userId, position, crypto, profitPercent);
       }
     }

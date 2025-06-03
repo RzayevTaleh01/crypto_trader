@@ -18,52 +18,87 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const { data: settings } = useQuery({
+  const { data: settingsResponse } = useQuery({
     queryKey: ['/api/bot-settings', userId],
     enabled: !!userId,
     refetchInterval: 3000, // Refresh every 3 seconds for real-time status
   });
 
+  const settings = settingsResponse || {};
+
   const [localSettings, setLocalSettings] = useState({
-    strategy: settings?.strategy || 'scalping',
-    riskLevel: settings?.riskLevel || 5,
-    maxDailyLoss: settings?.maxDailyLoss || '50',
-    targetProfit: settings?.targetProfit || '100'
+    strategy: settings.strategy || 'scalping',
+    riskLevel: settings.riskLevel || 5,
+    maxDailyLoss: settings.maxDailyLoss || '50',
+    targetProfit: settings.targetProfit || '100'
   });
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (newSettings: any) => {
-      return apiRequest('PUT', `/api/bot-settings/${userId}`, newSettings);
+      const response = await fetch(`/api/bot-settings/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings)
+      });
+      if (!response.ok) throw new Error('Failed to update settings');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/bot-settings', userId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/bot-settings'] });
       toast({
-        title: "Settings Updated",
-        description: "Bot settings have been updated successfully.",
+        title: "Bot ayarları yeniləndi",
+        description: "Bot strategiyası və parametrləri uğurla dəyişdirildi.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update bot settings.",
+        title: "Xəta",
+        description: "Bot ayarları yenilənmədi.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const toggleBotMutation = useMutation({
+    mutationFn: async (isActive: boolean) => {
+      const response = await fetch(`/api/bot-settings/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...localSettings, isActive })
+      });
+      if (!response.ok) throw new Error('Failed to toggle bot');
+      return response.json();
+    },
+    onSuccess: (data, isActive) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/bot-settings'] });
+      toast({
+        title: isActive ? "Bot işə salındı" : "Bot dayandırıldı",
+        description: isActive ? "Bot avtomatik ticarətə başladı." : "Bot ticarəti dayandırdı.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Xəta",
+        description: "Bot vəziyyəti dəyişdirilmədi.",
         variant: "destructive",
       });
     }
   });
 
   const handleStartBot = () => {
-    updateSettingsMutation.mutate({ ...localSettings, isActive: true });
+    toggleBotMutation.mutate(true);
   };
 
   const handleStopBot = () => {
-    updateSettingsMutation.mutate({ isActive: false });
+    toggleBotMutation.mutate(false);
   };
 
   const handleSettingChange = (key: string, value: any) => {
-    setLocalSettings(prev => ({ ...prev, [key]: value }));
+    const newSettings = { ...localSettings, [key]: value };
+    setLocalSettings(newSettings);
     
-    // Auto-save settings (except bot activation)
-    updateSettingsMutation.mutate({ [key]: value });
+    // Auto-save settings immediately
+    updateSettingsMutation.mutate(newSettings);
   };
 
   return (

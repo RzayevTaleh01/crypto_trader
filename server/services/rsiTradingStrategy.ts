@@ -58,16 +58,21 @@ export class RSITradingStrategy {
 
     console.log(`📊 Executing RSI Strategy - Balance: $${balance.toFixed(2)}, Cryptos: ${cryptos.length}, Portfolio: ${portfolio.length}`);
 
-    // Step 1: Sell overbought positions (RSI > 70)
-    await this.sellOverboughtPositions(userId, portfolio, cryptos);
+    // Step 1: Always check for profit-taking opportunities first
+    if (portfolio.length > 0) {
+      console.log(`🔍 RSI SELL CHECK: Analyzing ${portfolio.length} portfolio positions for profit opportunities...`);
+      await this.sellOverboughtPositions(userId, portfolio, cryptos);
+    }
 
-    // Step 2: Buy oversold cryptocurrencies (RSI < 30)
+    // Step 2: Buy oversold cryptocurrencies if we have balance
     if (balance > 2) {
       await this.buyOversoldCryptos(userId, cryptos, balance);
     }
   }
 
   private async sellOverboughtPositions(userId: number, portfolio: any[], cryptos: any[]) {
+    console.log(`🔍 RSI SELL CHECK: Analyzing ${portfolio.length} portfolio positions for overbought conditions...`);
+    
     for (const position of portfolio) {
       const crypto = cryptos.find(c => c.id === position.cryptoId);
       if (!crypto) continue;
@@ -75,18 +80,23 @@ export class RSITradingStrategy {
       const currentPrice = parseFloat(crypto.currentPrice);
       const priceChange = parseFloat(crypto.priceChange24h);
       const volatility = Math.abs(priceChange);
+      const avgPrice = parseFloat(position.averagePrice);
+      const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
       
       // Generate price history for RSI calculation
       const priceHistory = this.generatePriceHistory(currentPrice, volatility);
       const rsi = this.calculateRSI(priceHistory);
 
-      if (rsi && rsi > 70) {
-        const amount = parseFloat(position.amount);
-        const avgPrice = parseFloat(position.averagePrice);
-        const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
+      console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
 
-        // Sell if overbought and profitable
-        if (profitPercentage > 0.5) {
+      // Immediate profit taking: any positive profit OR RSI > 60
+      if (profitPercentage > 0.02 || (rsi && rsi > 60)) {
+        const amount = parseFloat(position.amount);
+
+        // Execute sell order for profit realization
+        console.log(`💎 PROFIT OPPORTUNITY: ${crypto.symbol} - Profit: ${profitPercentage.toFixed(2)}%, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
+        
+        if (profitPercentage > -10) { // Only avoid major losses
           const sellAmount = amount * 0.7; // Sell 70% of overbought position
           const totalValue = sellAmount * currentPrice;
           const profit = (currentPrice - avgPrice) * sellAmount;

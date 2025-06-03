@@ -77,8 +77,12 @@ export class AutonomousTradingEngine {
       const amount = parseFloat(position.amount);
       const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
 
-      // Enhanced profit taking: dynamic sell ratios based on profit level
-      if (profitPercentage > 0.5) {
+      // Only sell if there's meaningful profit (minimum $0.05 and 0.5%)
+      const currentValue = amount * currentPrice;
+      const investedValue = amount * avgPrice;
+      const absoluteProfit = currentValue - investedValue;
+
+      if (absoluteProfit > 0.05 && profitPercentage > 0.5) {
         let sellRatio = 0.4; // Base sell ratio
         if (profitPercentage > 2) sellRatio = 0.6; // Higher profits, sell more
         if (profitPercentage > 5) sellRatio = 0.8; // Very high profits, sell most

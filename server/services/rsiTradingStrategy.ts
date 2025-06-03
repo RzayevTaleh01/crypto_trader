@@ -89,14 +89,19 @@ export class RSITradingStrategy {
 
       console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
 
-      // Immediate profit taking: any positive profit OR RSI > 60
-      if (profitPercentage > 0.02 || (rsi && rsi > 60)) {
-        const amount = parseFloat(position.amount);
-
-        // Execute sell order for profit realization
-        console.log(`💎 PROFIT OPPORTUNITY: ${crypto.symbol} - Profit: ${profitPercentage.toFixed(2)}%, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
+      // Only sell if there's real profit (minimum $0.05 or 0.5%)
+      const minProfitDollar = 0.05;
+      const minProfitPercent = 0.5;
+      const amount = parseFloat(position.amount);
+      const currentValue = amount * currentPrice;
+      const investedValue = amount * avgPrice;
+      const absoluteProfit = currentValue - investedValue;
+      
+      if ((absoluteProfit > minProfitDollar && profitPercentage > minProfitPercent) || (rsi && rsi > 75)) {
+        // Execute sell order only for meaningful profits
+        console.log(`💎 REAL PROFIT: ${crypto.symbol} - $${absoluteProfit.toFixed(2)} (${profitPercentage.toFixed(2)}%), RSI: ${rsi?.toFixed(1) || 'N/A'}`);
         
-        if (profitPercentage > -10) { // Only avoid major losses
+        if (absoluteProfit > 0.02) { // Only sell if profit is at least 2 cents
           const sellAmount = amount * 0.7; // Sell 70% of overbought position
           const totalValue = sellAmount * currentPrice;
           const profit = (currentPrice - avgPrice) * sellAmount;

@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Play, Square, Bot, Settings } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Play, Square, Bot, Settings, TrendingUp, Zap, Target } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,12 +22,21 @@ interface BotConfig {
   isActive: boolean;
 }
 
+interface TradingStrategy {
+  id: string;
+  name: string;
+  description: string;
+  riskLevel: string;
+  expectedReturn: string;
+  timeframe: string;
+}
+
 export default function BotSettings({ userId }: BotSettingsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   const [config, setConfig] = useState<BotConfig>({
-    strategy: 'scalping',
+    strategy: 'rsi',
     riskLevel: 5,
     maxDailyLoss: '50',
     targetProfit: '100',
@@ -40,16 +50,19 @@ export default function BotSettings({ userId }: BotSettingsProps) {
     refetchInterval: 3000,
   });
 
+  const { data: availableStrategies } = useQuery({
+    queryKey: ['/api/strategies/available'],
+  });
+
   // Load server settings only once with type safety
   useEffect(() => {
     if (serverSettings && !hasLoaded) {
-      const safeSettings = serverSettings || {};
       setConfig({
-        strategy: safeSettings.strategy || 'scalping',
-        riskLevel: safeSettings.riskLevel || 5,
-        maxDailyLoss: safeSettings.maxDailyLoss || '50',
-        targetProfit: safeSettings.targetProfit || '100',
-        isActive: Boolean(safeSettings.isActive)
+        strategy: serverSettings.strategy || 'rsi',
+        riskLevel: serverSettings.riskLevel || 5,
+        maxDailyLoss: serverSettings.maxDailyLoss || '50',
+        targetProfit: serverSettings.targetProfit || '100',
+        isActive: Boolean(serverSettings.isActive)
       });
       setHasLoaded(true);
     }
@@ -58,10 +71,9 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   // Update only bot status from server
   useEffect(() => {
     if (serverSettings && hasLoaded) {
-      const safeSettings = serverSettings || {};
       setConfig(prev => ({
         ...prev,
-        isActive: Boolean(safeSettings.isActive)
+        isActive: Boolean(serverSettings.isActive)
       }));
     }
   }, [serverSettings?.isActive, hasLoaded]);
@@ -138,25 +150,52 @@ export default function BotSettings({ userId }: BotSettingsProps) {
         </div>
         
         <div className="space-y-6">
-          {/* Trading Strategy */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Ticarət Strategiyası</Label>
-            <Select 
-              value={config.strategy} 
-              onValueChange={(value) => handleConfigChange('strategy', value)}
-              disabled={isRunning || isUpdating}
-            >
-              <SelectTrigger className="w-full bg-background border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scalping">Scalping - Qısa müddətli qazanc</SelectItem>
-                <SelectItem value="momentum">Momentum - Trend izləmə</SelectItem>
-                <SelectItem value="mean-reversion">Mean Reversion - Orta dəyər qaytarma</SelectItem>
-                <SelectItem value="grid">Grid - Şəbəkə ticarəti</SelectItem>
-                <SelectItem value="rsi">RSI - Aşırı alış/satış göstəricisi</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Available Strategies */}
+          <div className="space-y-4">
+            <Label className="text-sm font-medium mb-3 block">Mövcud Ticarət Strategiyaları</Label>
+            
+            {availableStrategies?.strategies?.map((strategy: TradingStrategy) => (
+              <div 
+                key={strategy.id}
+                className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                  config.strategy === strategy.id
+                    ? 'border-crypto-blue bg-crypto-blue/10'
+                    : 'border-border bg-background hover:border-crypto-blue/50'
+                }`}
+                onClick={() => !isRunning && !isUpdating && handleConfigChange('strategy', strategy.id)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-semibold text-foreground">{strategy.name}</h4>
+                      {strategy.id === 'rsi' && <Target className="h-4 w-4 text-crypto-blue" />}
+                      {strategy.id === 'momentum' && <TrendingUp className="h-4 w-4 text-crypto-green" />}
+                      {strategy.id === 'arbitrage' && <Zap className="h-4 w-4 text-crypto-orange" />}
+                      {strategy.id === 'advanced' && <Bot className="h-4 w-4 text-crypto-red" />}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{strategy.description}</p>
+                    
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Badge variant="outline" className="text-xs">
+                        Risk: {strategy.riskLevel}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Qazanc: {strategy.expectedReturn}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        Müddət: {strategy.timeframe}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {config.strategy === strategy.id && (
+                    <div className="ml-3">
+                      <div className="w-2 h-2 bg-crypto-blue rounded-full animate-pulse" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Risk Level */}

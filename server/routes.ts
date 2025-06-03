@@ -347,56 +347,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/trades/sell-profitable", async (req, res) => {
     try {
+      const { profitRealizationService } = await import('./services/profitRealizationService');
       const { userId } = req.body;
-      const portfolioItems = await storage.getUserPortfolio(userId);
-      const trades = [];
-      let totalProfit = 0;
-      
-      for (const item of portfolioItems) {
-        const crypto = await storage.getCryptocurrency(item.cryptoId);
-        if (!crypto) continue;
-        
-        const currentPrice = parseFloat(crypto.currentPrice);
-        const avgPrice = parseFloat(item.averagePrice);
-        const amount = parseFloat(item.amount);
-        const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
-        
-        // Only sell if profitable (minimum 0.5% profit)
-        if (profitPercentage > 0.5) {
-          const sellAmount = amount; // Sell entire position
-          const totalValue = sellAmount * currentPrice;
-          const profit = (currentPrice - avgPrice) * sellAmount;
-          
-          const tradeData = {
-            userId,
-            cryptoId: item.cryptoId,
-            type: 'sell' as const,
-            amount: sellAmount.toString(),
-            price: currentPrice.toString(),
-            total: totalValue.toString(),
-            isBot: false
-          };
-          
-          const trade = await storage.createTrade(tradeData);
-          await updatePortfolioAfterSell(userId, item.cryptoId, sellAmount);
-          
-          // Update balance
-          const user = await storage.getUser(userId);
-          if (user) {
-            const newBalance = parseFloat(user.balance) + totalValue;
-            await storage.updateUserBalance(userId, newBalance.toString());
-          }
-          
-          trades.push(trade);
-          totalProfit += profit;
-        }
-      }
-      
-      res.json({ 
-        trades, 
-        totalProfit: totalProfit.toFixed(2),
-        message: `Sold ${trades.length} profitable positions for $${totalProfit.toFixed(2)} profit`
-      });
+      const result = await profitRealizationService.sellAllProfitablePositions(userId);
+      res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to sell profitable positions", error: error.message });
     }

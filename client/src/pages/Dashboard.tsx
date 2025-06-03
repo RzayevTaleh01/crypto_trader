@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import StatsGrid from "@/components/StatsGrid";
 import PortfolioChart from "@/components/PortfolioChart";
-
-
+import PortfolioHoldings from "@/components/PortfolioHoldings";
 import BotSettings from "@/components/BotSettings";
 import BalanceManager from "@/components/BalanceManager";
 import TelegramCommands from "@/components/TelegramCommands";
@@ -130,8 +129,11 @@ export default function Dashboard() {
           {/* Stats grid */}
           <StatsGrid userId={userId} />
 
-          {/* Portfolio Chart */}
-          <PortfolioChart userId={userId} />
+          {/* Portfolio Chart and Holdings */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <PortfolioChart userId={userId} />
+            <PortfolioHoldings userId={userId} />
+          </div>
 
           {/* Bot settings and Live Trading Activity */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -176,13 +176,35 @@ export class RSITradingStrategy {
       return;
     }
 
-    // Use only BTC and ETH for reliable trading on testnet
-    const highGainCryptos = cryptos
-      .filter(crypto => {
-        const change24h = parseFloat(crypto.priceChange24h);
-        return ['BTC', 'ETH'].includes(crypto.symbol) && change24h > -5; // Accept any reasonable price movement
-      })
-      .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h));
+    // Analyze ALL cryptocurrencies and select most profitable ones
+    const profitableCoins = [];
+    
+    for (const crypto of cryptos) {
+      const price = parseFloat(crypto.currentPrice);
+      const change24h = parseFloat(crypto.priceChange24h);
+      const volume = parseFloat(crypto.volume24h) || 0;
+      
+      // Skip invalid data
+      if (price <= 0 || isNaN(price)) continue;
+      
+      // Calculate profitability score
+      const profitScore = this.calculateProfitabilityScore(crypto, price, change24h, volume);
+      
+      if (profitScore > 0) {
+        profitableCoins.push({
+          ...crypto,
+          price,
+          change24h,
+          volume,
+          profitScore
+        });
+      }
+    }
+    
+    // Sort by profitability score and select top candidates
+    const highGainCryptos = profitableCoins
+      .sort((a, b) => b.profitScore - a.profitScore)
+      .slice(0, 8); // Top 8 most profitable
 
     if (highGainCryptos.length === 0) {
       console.log(`⚠️ No high-momentum coins found`);
@@ -312,6 +334,33 @@ export class RSITradingStrategy {
         await storage.updatePortfolioItem(userId, cryptoId, remainingAmount.toString(), avgPrice.toString(), newTotalInvested.toString());
       }
     }
+  }
+
+  private calculateProfitabilityScore(crypto: any, price: number, change24h: number, volume: number): number {
+    // Multi-factor profitability analysis
+    let score = 0;
+    
+    // 1. Price momentum (40% weight)
+    if (change24h > 5) score += 40;
+    else if (change24h > 2) score += 25;
+    else if (change24h > 0) score += 10;
+    else if (change24h > -2) score += 5;
+    
+    // 2. Volume strength (30% weight)
+    if (volume > 1000000) score += 30;
+    else if (volume > 100000) score += 20;
+    else if (volume > 10000) score += 10;
+    
+    // 3. Price range suitability (20% weight)
+    if (price > 0.01 && price < 100) score += 20;
+    else if (price >= 100 && price < 1000) score += 15;
+    else if (price >= 1000) score += 10;
+    
+    // 4. Symbol reliability (10% weight)
+    const reliableSymbols = ['BTC', 'ETH', 'BNB', 'ADA', 'DOT', 'SOL', 'MATIC', 'LINK', 'UNI', 'AVAX'];
+    if (reliableSymbols.includes(crypto.symbol)) score += 10;
+    
+    return score;
   }
 }
 

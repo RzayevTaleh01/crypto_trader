@@ -7,6 +7,7 @@ import RecentTrades from "@/components/RecentTrades";
 import BotSettings from "@/components/BotSettings";
 import BalanceManager from "@/components/BalanceManager";
 import TelegramCommands from "@/components/TelegramCommands";
+import LiveTradingActivity from "@/components/LiveTradingActivity";
 
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet, User } from "lucide-react";
@@ -142,9 +143,10 @@ export default function Dashboard() {
           {/* Recent Trades */}
           <RecentTrades userId={userId} />
 
-          {/* Bot settings */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* Bot settings and Live Trading Activity */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <BotSettings userId={userId} />
+            <LiveTradingActivity />
             <BalanceManager userId={userId} currentBalance={user?.balance || '0.00'} />
           </div>
 

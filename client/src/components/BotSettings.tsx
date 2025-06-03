@@ -48,7 +48,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
         riskLevel: serverSettings.riskLevel || 5,
         maxDailyLoss: serverSettings.maxDailyLoss || '50',
         targetProfit: serverSettings.targetProfit || '100',
-        isActive: serverSettings.isActive || false
+        isActive: Boolean(serverSettings.isActive)
       });
       setHasLoaded(true);
     }
@@ -59,7 +59,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
     if (serverSettings && hasLoaded) {
       setConfig(prev => ({
         ...prev,
-        isActive: serverSettings.isActive || false
+        isActive: Boolean(serverSettings.isActive)
       }));
     }
   }, [serverSettings?.isActive, hasLoaded]);

@@ -129,24 +129,7 @@ export class AutonomousTradingEngine {
           });
         }
 
-        // Send Telegram notification with detailed profit info
-        try {
-          const { telegramService } = await import('./telegramService');
-          await telegramService.sendTradeNotification({
-            type: 'sell',
-            amount: sellAmount.toString(),
-            price: currentPrice.toString(),
-            total: totalValue.toString(),
-            symbol: crypto.symbol,
-            profit: profit.toFixed(2),
-            strategy: `Avtomatik Kar Götürme: +${profitPercentage.toFixed(2)}%`,
-            isBot: true
-          }, crypto);
-          
-          console.log(`📱 Telegram: ${crypto.symbol} satış bildirişi göndərildi - $${profit.toFixed(2)} kar`);
-        } catch (error) {
-          console.log('Telegram notification failed:', error);
-        }
+        // No notifications - focus on trading execution only
       }
     }
   }
@@ -301,20 +284,7 @@ export class AutonomousTradingEngine {
       });
     }
 
-    // Send Telegram notification
-    try {
-      const { telegramService } = await import('./telegramService');
-      await telegramService.sendTradeNotification({
-        type: 'buy',
-        amount: quantity.toString(),
-        price: currentPrice.toString(),
-        total: investAmount.toString(),
-        symbol: crypto.symbol,
-        strategy: reason
-      }, crypto);
-    } catch (error) {
-      console.log('Telegram notification failed:', error);
-    }
+    // No notifications - focus on trading execution only
   }
 
   private async updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {

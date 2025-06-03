@@ -17,10 +17,10 @@ export class ProfitSimulator {
     this.simulationActive = true;
     console.log('🎯 Starting profit simulation with realistic market movements...');
     
-    // Simulate profitable price movements every 10 seconds for quick gains
+    // Simulate profitable price movements every 45 seconds for sustained growth
     setInterval(async () => {
       await this.simulateMarketMovements();
-    }, 10000);
+    }, 45000);
     
     // Initial simulation
     await this.simulateMarketMovements();

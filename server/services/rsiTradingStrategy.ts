@@ -89,9 +89,9 @@ export class RSITradingStrategy {
 
       console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
 
-      // Optimized for small budget high efficiency
-      const minProfitDollar = 0.02; // Minimum $0.02 profit for micro trades
-      const minProfitPercent = 0.3;  // 0.3% minimum percentage for quick gains
+      // Wait for better profits - hold longer for bigger gains
+      const minProfitDollar = 0.05; // Minimum $0.05 profit - wait for better gains
+      const minProfitPercent = 2.0;  // 2% minimum - be more patient
       const amount = parseFloat(position.amount);
       const currentValue = amount * currentPrice;
       const investedValue = amount * avgPrice;
@@ -103,7 +103,7 @@ export class RSITradingStrategy {
         // Execute sell order only for meaningful profits with real market movement
         console.log(`💎 SIGNIFICANT PROFIT: ${crypto.symbol} - $${absoluteProfit.toFixed(2)} (${profitPercentage.toFixed(2)}%), Price Movement: $${priceMovement.toFixed(4)}, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
         
-        if (absoluteProfit > 0.01) { // Only sell if profit is at least 1 cent
+        if (absoluteProfit > 0.03) { // Only sell if profit is at least 3 cents
           const sellAmount = amount * 0.7; // Sell 70% of overbought position
           const totalValue = sellAmount * currentPrice;
           const profit = (currentPrice - avgPrice) * sellAmount;

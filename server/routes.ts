@@ -287,9 +287,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/user", async (req, res) => {
     try {
       const userId = 1; // Default user for demo
-      const stats = await storage.getUserStats(userId);
+      
+      // Get real-time data
+      const trades = await storage.getUserTrades(userId);
+      const portfolio = await storage.getUserPortfolio(userId);
+      const cryptos = await storage.getAllCryptocurrencies();
+      
+      let totalProfit = 0;
+      let totalPortfolioValue = 0;
+      let totalInvested = 0;
+      
+      // Calculate current portfolio profit (unrealized)
+      for (const item of portfolio) {
+        if (parseFloat(item.amount) > 0) {
+          const crypto = cryptos.find(c => c.id === item.cryptoId);
+          if (crypto) {
+            const currentPrice = parseFloat(crypto.currentPrice);
+            const avgPrice = parseFloat(item.averagePrice);
+            const amount = parseFloat(item.amount);
+            const invested = parseFloat(item.totalInvested);
+            const currentValue = amount * currentPrice;
+            
+            totalPortfolioValue += currentValue;
+            totalInvested += invested;
+            
+            const unrealizedProfit = currentValue - invested;
+            totalProfit += unrealizedProfit;
+            
+            console.log(`📈 ${crypto.symbol}: Invested: $${invested.toFixed(2)}, Current: $${currentValue.toFixed(2)}, P&L: $${unrealizedProfit.toFixed(2)}`);
+          }
+        }
+      }
+      
+      // Add realized profits from completed sell trades
+      const sellTrades = trades.filter(t => t.type === 'sell');
+      let realizedProfit = 0;
+      let winningTrades = 0;
+      
+      for (const sellTrade of sellTrades) {
+        const buyTrades = trades.filter(t => 
+          t.type === 'buy' && 
+          t.cryptoId === sellTrade.cryptoId &&
+          t.createdAt < sellTrade.createdAt
+        );
+        
+        if (buyTrades.length > 0) {
+          let totalBuyValue = 0;
+          let totalBuyAmount = 0;
+          
+          for (const buyTrade of buyTrades) {
+            const buyPrice = parseFloat(buyTrade.price);
+            const buyAmount = parseFloat(buyTrade.amount);
+            totalBuyValue += buyPrice * buyAmount;
+            totalBuyAmount += buyAmount;
+          }
+          
+          if (totalBuyAmount > 0) {
+            const avgBuyPrice = totalBuyValue / totalBuyAmount;
+            const sellPrice = parseFloat(sellTrade.price);
+            const sellAmount = parseFloat(sellTrade.amount);
+            const tradeProfit = (sellPrice - avgBuyPrice) * sellAmount;
+            
+            realizedProfit += tradeProfit;
+            totalProfit += tradeProfit;
+            
+            if (tradeProfit > 0) winningTrades++;
+            
+            console.log(`💰 Realized: ${sellTrade.cryptoId} - Sell: $${sellPrice.toFixed(4)} vs Buy: $${avgBuyPrice.toFixed(4)} = $${tradeProfit.toFixed(4)}`);
+          }
+        }
+      }
+      
+      const activeTrades = portfolio.filter(item => parseFloat(item.amount) > 0).length;
+      const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
+      
+      console.log(`🎯 TOTAL PROFIT: $${totalProfit.toFixed(2)} (Realized: $${realizedProfit.toFixed(2)}, Unrealized: $${(totalProfit - realizedProfit).toFixed(2)})`);
+      
+      const stats = {
+        totalProfit: totalProfit.toFixed(2),
+        activeTrades,
+        winRate: winRate.toFixed(1),
+        todayProfit: totalProfit.toFixed(2),
+        uptime: "99.7"
+      };
+      
       res.json(stats);
     } catch (error) {
+      console.error('Analytics error:', error);
       res.status(500).json({ message: "Failed to fetch analytics", error: error.message });
     }
   });

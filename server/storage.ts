@@ -252,7 +252,7 @@ export class DatabaseStorage implements IStorage {
     const sellTrades = userTrades.filter(trade => trade.type === 'sell');
     
     for (const sellTrade of sellTrades) {
-      // Get average buy price for this crypto
+      // Get weighted average buy price for this crypto (considering amounts)
       const buyTrades = userTrades.filter(trade => 
         trade.type === 'buy' && 
         trade.cryptoId === sellTrade.cryptoId &&
@@ -260,13 +260,26 @@ export class DatabaseStorage implements IStorage {
       );
       
       if (buyTrades.length > 0) {
-        const avgBuyPrice = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.price), 0) / buyTrades.length;
+        // Calculate weighted average buy price
+        let totalBuyValue = 0;
+        let totalBuyAmount = 0;
+        
+        for (const buyTrade of buyTrades) {
+          const buyPrice = parseFloat(buyTrade.price);
+          const buyAmount = parseFloat(buyTrade.amount);
+          totalBuyValue += buyPrice * buyAmount;
+          totalBuyAmount += buyAmount;
+        }
+        
+        const weightedAvgBuyPrice = totalBuyAmount > 0 ? totalBuyValue / totalBuyAmount : 0;
         const sellPrice = parseFloat(sellTrade.price);
-        const amount = parseFloat(sellTrade.amount);
-        const profit = (sellPrice - avgBuyPrice) * amount;
+        const sellAmount = parseFloat(sellTrade.amount);
+        const profit = (sellPrice - weightedAvgBuyPrice) * sellAmount;
         
         totalProfit += profit;
         if (profit > 0) winningTrades++;
+        
+        console.log(`💰 Profit calc: ${sellTrade.cryptoId} - Sell: $${sellPrice.toFixed(4)} vs Buy: $${weightedAvgBuyPrice.toFixed(4)} = $${profit.toFixed(4)}`);
       }
     }
 

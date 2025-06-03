@@ -170,7 +170,7 @@ Salam! Mən sizin avtomatik kripto trading köməkçinizəm.
   }
 
   // Send trading notifications
-  async sendTradeNotification(trade: any, crypto: any) {
+  async sendTradeNotification(trade: any, crypto: any, portfolioItem?: any) {
     if (!this.bot || !this.chatId) return;
 
     const emoji = trade.type === 'buy' ? '🟢 ALIŞ' : '🔴 SATIŞ';
@@ -181,14 +181,26 @@ Salam! Mən sizin avtomatik kripto trading köməkçinizəm.
 ${emoji} *Yeni Treyd!*
 
 💎 *${crypto.symbol}* - ${trade.type.toUpperCase()}
-💰 Məbləğ: ${parseFloat(trade.amount).toFixed(6)}
-💵 Qiymət: $${parseFloat(trade.price).toFixed(2)}
-💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+💰 Məbləğ: ${parseFloat(trade.amount).toFixed(6)}`;
 
-    // Show profit information for sell orders
-    if (trade.type === 'sell' && trade.profit) {
+    // Show detailed price information
+    if (trade.type === 'buy') {
       message += `
+🛒 Alış Qiyməti: $${parseFloat(trade.price).toFixed(6)}
+📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}
+💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+    } else if (trade.type === 'sell') {
+      const buyPrice = portfolioItem ? parseFloat(portfolioItem.averagePrice) : parseFloat(trade.price);
+      message += `
+🛒 Alış Qiyməti: $${buyPrice.toFixed(6)}
+🔥 Satış Qiyməti: $${parseFloat(trade.price).toFixed(6)}
+📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}
+💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
+      
+      if (trade.profit) {
+        message += `
 ${profitEmoji} *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
+      }
       
       if (trade.strategy) {
         message += `
@@ -197,8 +209,8 @@ ${profitEmoji} *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
     }
 
     message += `
-🤖 Bot Treydi: ${trade.isBot ? 'Bəli' : 'Xeyr'}
 
+🤖 Bot Treydi: ${trade.isBot ? 'Bəli' : 'Xeyr'}
 📅 ${new Date().toLocaleString('az-AZ')}
     `;
 

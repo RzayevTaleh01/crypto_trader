@@ -167,15 +167,31 @@ export class RSITradingStrategy {
 
     console.log(`🔍 SHORT-TERM STRATEGY: Finding highest-gaining coins for quick profits with $${balance.toFixed(2)}...`);
 
-    // Find highest gaining coins (short-term momentum)
+    // Get available trading pairs from Binance testnet
+    const { binanceService } = await import('./binanceService');
+    const availablePairs = await binanceService.getTradingPairs();
+    
+    if (!availablePairs || availablePairs.length === 0) {
+      console.log(`⚠️ No trading pairs available from Binance testnet`);
+      return;
+    }
+
+    // Extract base assets from available pairs (remove USDT suffix)
+    const availableSymbols = availablePairs
+      .filter(pair => pair.endsWith('USDT'))
+      .map(pair => pair.replace('USDT', ''));
+    
+    console.log(`📋 Available testnet symbols: ${availableSymbols.slice(0, 10).join(', ')}...`);
+    
+    // Find highest gaining coins from available pairs
     const highGainCryptos = cryptos
       .filter(crypto => {
         const price = parseFloat(crypto.currentPrice);
         const change24h = parseFloat(crypto.priceChange24h);
-        return price > 0.01 && price < 50 && change24h > 2; // Rising coins only, reasonable price range
+        return availableSymbols.includes(crypto.symbol) && price > 0.01 && change24h > 1;
       })
       .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h))
-      .slice(0, 8); // Top 8 highest gainers
+      .slice(0, 6); // Top 6 highest gainers from available pairs
 
     if (highGainCryptos.length === 0) {
       console.log(`⚠️ No high-momentum coins found`);

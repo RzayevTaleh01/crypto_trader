@@ -167,18 +167,22 @@ class BinanceService {
 
   // Get trading pairs info
   async getTradingPairs() {
-    if (!this.client) return null;
+    if (!this.client) return [];
 
     try {
       const exchangeInfo = await this.client.exchangeInfo();
-      return exchangeInfo.symbols.filter((symbol: any) => 
-        symbol.status === 'TRADING' && 
-        symbol.symbol.endsWith('USDT') &&
-        ['BTC', 'ETH', 'BNB', 'ADA', 'SOL', 'DOT', 'MATIC', 'LINK'].includes(symbol.baseAsset)
-      );
+      const tradingPairs = exchangeInfo.symbols
+        .filter((symbol: any) => 
+          symbol.status === 'TRADING' && 
+          symbol.symbol.endsWith('USDT')
+        )
+        .map((symbol: any) => symbol.symbol);
+      
+      console.log(`📋 Found ${tradingPairs.length} trading pairs on Binance testnet`);
+      return tradingPairs;
     } catch (error) {
       console.error('Failed to get trading pairs:', error);
-      return null;
+      return [];
     }
   }
 

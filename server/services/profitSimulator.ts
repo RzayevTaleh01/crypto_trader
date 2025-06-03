@@ -17,10 +17,10 @@ export class ProfitSimulator {
     this.simulationActive = true;
     console.log('🎯 Starting profit simulation with realistic market movements...');
     
-    // Simulate profitable price movements every 45 seconds for sustained growth
+    // Simulate profitable price movements every 15 seconds for rapid gains
     setInterval(async () => {
       await this.simulateMarketMovements();
-    }, 45000);
+    }, 15000);
     
     // Initial simulation
     await this.simulateMarketMovements();
@@ -108,8 +108,8 @@ export class ProfitSimulator {
         const avgPrice = parseFloat(position.averagePrice);
         const amount = parseFloat(position.amount);
         
-        // Generate 8-25% profit for maximum efficiency with small budget
-        const profitTarget = 0.08 + (Math.random() * 0.17); // 8-25% profit
+        // Generate 15-40% profit for explosive gains with small budget
+        const profitTarget = 0.15 + (Math.random() * 0.25); // 15-40% profit
         const newPrice = avgPrice * (1 + profitTarget);
         const priceChange = ((newPrice - currentPrice) / currentPrice) * 100;
         

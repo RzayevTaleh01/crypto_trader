@@ -109,13 +109,22 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   };
 
   const handleStartBot = () => {
+    if (!config.strategy) {
+      toast({
+        title: "Xəta",
+        description: "Əvvəlcə bir strategiya seçin.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const startConfig = { ...config, isActive: true };
     setConfig(startConfig);
     updateMutation.mutate(startConfig);
     
     toast({
       title: "Bot işə salındı",
-      description: `${config.strategy} strategiyası ilə ticarət başladı.`,
+      description: `${config.strategy} strategiyası ilə avtomatik ticarət başladı.`,
     });
   };
 
@@ -250,7 +259,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
               disabled={isRunning || isUpdating}
             >
               <Play className="h-4 w-4 mr-2" />
-              {isRunning ? 'Bot İşləyir' : 'Botu Başlat'}
+              {isRunning ? 'Bot İşləyir' : 'Avtomatik Başlat'}
             </Button>
             <Button
               className="flex-1 bg-crypto-red text-white hover:bg-crypto-red/80"
@@ -262,20 +271,63 @@ export default function BotSettings({ userId }: BotSettingsProps) {
             </Button>
           </div>
 
+          {/* Immediate Strategy Actions */}
+          <div className="bg-crypto-blue/5 rounded-lg p-4 border border-crypto-blue/20">
+            <Label className="text-sm font-medium block mb-3 text-crypto-blue">
+              ⚡ Təcili Strategiya İcrası - Hazır Balance: $0.18
+            </Label>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                className="bg-crypto-green hover:bg-crypto-green/80 text-white"
+                onClick={() => {
+                  fetch('/api/strategies/momentum/execute', { method: 'POST' });
+                  toast({
+                    title: "Momentum icra edilir",
+                    description: "Yüksək trend olan coinlər axtarılır və alınır...",
+                  });
+                }}
+                disabled={isUpdating}
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Momentum - Trending Coinlər Al
+              </Button>
+              
+              <Button
+                className="bg-crypto-orange hover:bg-crypto-orange/80 text-white"
+                onClick={() => {
+                  fetch('/api/strategies/arbitrage/execute', { method: 'POST' });
+                  toast({
+                    title: "Arbitrage icra edilir",
+                    description: "Qısa müddətli qazanc imkanları axtarılır...",
+                  });
+                }}
+                disabled={isUpdating}
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Arbitrage - Sürətli Qazanc
+              </Button>
+            </div>
+          </div>
+
+
+
           {/* Current Strategy Display */}
           <div className="bg-background/50 rounded-lg p-3 border border-border">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Hazırki Strategiya:</span>
+              <span className="text-muted-foreground">Seçilmiş Strategiya:</span>
               <span className="font-medium text-crypto-blue">
-                {config.strategy === 'scalping' && 'Scalping'}
-                {config.strategy === 'momentum' && 'Momentum'}
-                {config.strategy === 'mean-reversion' && 'Mean Reversion'}
-                {config.strategy === 'grid' && 'Grid Trading'}
+                {availableStrategies?.strategies?.find((s: TradingStrategy) => s.id === config.strategy)?.name || config.strategy}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
               <span className="text-muted-foreground">Risk Səviyyəsi:</span>
               <span className="font-medium">{config.riskLevel}/10</span>
+            </div>
+            <div className="flex items-center justify-between text-sm mt-1">
+              <span className="text-muted-foreground">Bot Status:</span>
+              <span className={`font-medium ${isRunning ? 'text-crypto-green' : 'text-gray-500'}`}>
+                {isRunning ? 'Avtomatik İşləyir' : 'Manuel Nəzarət'}
+              </span>
             </div>
           </div>
         </div>

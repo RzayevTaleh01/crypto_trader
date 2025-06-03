@@ -617,16 +617,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('🚀 Momentum trading strategy connected to WebSocket');
     console.log('⚡ Arbitrage trading strategy connected to WebSocket');
     
-    // Check for active bots and start them
-    try {
-      const activeBotSettings = await storage.getBotSettings(1); // Assuming user ID 1
-      if (activeBotSettings && activeBotSettings.isActive) {
-        console.log('🚀 Starting autonomous trading bot for active user:', 1);
-        autonomousTradingEngine.startBot(1);
-      }
-    } catch (error) {
-      console.log('No active bot found on startup');
-    }
+    // Manual start only - no auto-start on server restart
+    console.log('🎯 Trading system ready - manual start required through Bot Configuration');
   }, 1000);
 
   // Start crypto price updates

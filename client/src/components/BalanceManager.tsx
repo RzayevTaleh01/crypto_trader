@@ -1,12 +1,11 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Plus, Minus, DollarSign, TrendingUp } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DollarSign, Plus, Minus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface BalanceManagerProps {
   userId: number;
@@ -14,141 +13,134 @@ interface BalanceManagerProps {
 }
 
 export default function BalanceManager({ userId, currentBalance }: BalanceManagerProps) {
-  const [amount, setAmount] = useState('');
-  const [operation, setOperation] = useState<'add' | 'subtract'>('add');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [amount, setAmount] = useState("100");
 
-  const balanceUpdateMutation = useMutation({
-    mutationFn: async ({ amount, operation }: { amount: string, operation: 'add' | 'subtract' }) => {
-      const currentBalanceNum = parseFloat(currentBalance) || 0;
-      const amountNum = parseFloat(amount) || 0;
-      
-      const newBalance = operation === 'add' 
-        ? currentBalanceNum + amountNum 
-        : Math.max(0, currentBalanceNum - amountNum);
-
-      return apiRequest(`/api/user/${userId}/balance`, {
+  const updateBalanceMutation = useMutation({
+    mutationFn: async (newBalance: string) => {
+      const response = await fetch(`/api/user/${userId}/balance`, {
         method: 'PATCH',
-        body: { balance: newBalance.toFixed(2) }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: newBalance })
       });
+      if (!response.ok) throw new Error('Failed to update balance');
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user', userId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics'] });
       toast({
-        title: 'Balance Updated',
-        description: `Successfully ${operation === 'add' ? 'added' : 'subtracted'} $${amount}`,
+        title: "Balans yeniləndi",
+        description: "Ticarət balansı uğurla dəyişdirildi.",
       });
-      setAmount('');
     },
     onError: () => {
       toast({
-        title: 'Error',
-        description: 'Failed to update balance',
-        variant: 'destructive',
+        title: "Xəta",
+        description: "Balans yenilənmədi.",
+        variant: "destructive",
       });
     }
   });
 
-  const handleBalanceUpdate = () => {
-    if (!amount || parseFloat(amount) <= 0) {
-      toast({
-        title: 'Invalid Amount',
-        description: 'Please enter a valid amount',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    balanceUpdateMutation.mutate({ amount, operation });
+  const handleSetBalance = (newBalance: string) => {
+    if (parseFloat(newBalance) < 0) return;
+    updateBalanceMutation.mutate(newBalance);
   };
 
-  const quickAmounts = ['10', '50', '100', '500', '1000'];
+  const handleAddFunds = () => {
+    const newBalance = (parseFloat(currentBalance) + parseFloat(amount)).toFixed(2);
+    handleSetBalance(newBalance);
+  };
+
+  const handleRemoveFunds = () => {
+    const newBalance = Math.max(0, parseFloat(currentBalance) - parseFloat(amount)).toFixed(2);
+    handleSetBalance(newBalance);
+  };
+
+  const quickAmounts = ["50", "100", "250", "500", "1000"];
 
   return (
     <Card className="bg-card border-border">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <DollarSign className="h-5 w-5 text-crypto-green" />
-          <span>Balance Manager</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center p-4 bg-crypto-green/10 rounded-lg">
-          <p className="text-sm text-muted-foreground">Current Balance</p>
-          <p className="text-2xl font-bold text-crypto-green">${currentBalance}</p>
-        </div>
+      <CardContent className="p-6">
+        <h3 className="text-xl font-bold mb-6 flex items-center">
+          <DollarSign className="h-5 w-5 mr-2 text-crypto-green" />
+          Balance Manager
+        </h3>
+        
+        <div className="space-y-6">
+          {/* Current Balance Display */}
+          <div className="text-center">
+            <Label className="text-sm text-muted-foreground">Mövcud Balans</Label>
+            <div className="text-3xl font-bold text-crypto-green">
+              ${parseFloat(currentBalance).toFixed(2)}
+            </div>
+          </div>
 
-        <div className="space-y-3">
-          <Label>Operation</Label>
-          <div className="flex space-x-2">
+          {/* Amount Input */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Məbləğ</Label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="bg-background border-border text-lg text-center"
+              placeholder="100"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          {/* Quick Amount Buttons */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Tez Seçim</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {quickAmounts.map((quickAmount) => (
+                <Button
+                  key={quickAmount}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAmount(quickAmount)}
+                  className="text-sm"
+                >
+                  ${quickAmount}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Add/Remove Buttons */}
+          <div className="flex space-x-3">
             <Button
-              variant={operation === 'add' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOperation('add')}
-              className="flex-1"
+              className="flex-1 bg-crypto-green text-white hover:bg-crypto-green/80"
+              onClick={handleAddFunds}
+              disabled={updateBalanceMutation.isPending || !amount || parseFloat(amount) <= 0}
             >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Funds
+              <Plus className="h-4 w-4 mr-2" />
+              Əlavə Et
             </Button>
             <Button
-              variant={operation === 'subtract' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setOperation('subtract')}
-              className="flex-1"
+              className="flex-1 bg-crypto-red text-white hover:bg-crypto-red/80"
+              onClick={handleRemoveFunds}
+              disabled={updateBalanceMutation.isPending || !amount || parseFloat(amount) <= 0}
             >
-              <Minus className="h-4 w-4 mr-1" />
-              Withdraw
+              <Minus className="h-4 w-4 mr-2" />
+              Çıxart
             </Button>
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>Amount ($)</Label>
-          <Input
-            type="number"
-            placeholder="Enter amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            min="0"
-            step="0.01"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Quick Amounts</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {quickAmounts.map((quickAmount) => (
-              <Button
-                key={quickAmount}
-                variant="outline"
-                size="sm"
-                onClick={() => setAmount(quickAmount)}
-                className="text-xs"
-              >
-                ${quickAmount}
-              </Button>
-            ))}
+          {/* Set Exact Balance */}
+          <div className="border-t border-border pt-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => handleSetBalance(amount)}
+              disabled={updateBalanceMutation.isPending || !amount}
+            >
+              Dəqiq Balans Təyin Et: ${amount}
+            </Button>
           </div>
-        </div>
-
-        <Button
-          onClick={handleBalanceUpdate}
-          disabled={balanceUpdateMutation.isPending || !amount}
-          className="w-full"
-        >
-          {balanceUpdateMutation.isPending ? 'Processing...' : 
-           `${operation === 'add' ? 'Add' : 'Withdraw'} $${amount || '0'}`}
-        </Button>
-
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p className="flex items-center">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            Higher balance = more trading opportunities
-          </p>
-          <p>• Minimum $50 recommended for optimal bot performance</p>
-          <p>• Bot uses max 5% of balance per trade</p>
         </div>
       </CardContent>
     </Card>

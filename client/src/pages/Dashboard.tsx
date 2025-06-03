@@ -5,6 +5,7 @@ import PortfolioChart from "@/components/PortfolioChart";
 import TopCoins from "@/components/TopCoins";
 import RecentTrades from "@/components/RecentTrades";
 import BotSettings from "@/components/BotSettings";
+import BalanceManager from "@/components/BalanceManager";
 import TelegramCommands from "@/components/TelegramCommands";
 import TradingPanel from "@/components/TradingPanel";
 import { Button } from "@/components/ui/button";
@@ -151,7 +152,7 @@ export default function Dashboard() {
           {/* Bot settings */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <BotSettings userId={userId} />
-            <div></div>
+            <BalanceManager userId={userId} currentBalance={user?.balance || '0.00'} />
           </div>
 
           {/* Telegram commands */}

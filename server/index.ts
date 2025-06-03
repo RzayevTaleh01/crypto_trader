@@ -48,21 +48,8 @@ app.use((req, res, next) => {
 
   // Bot will only start when manually activated through the dashboard
 
-  // Start smart trading system
-  setTimeout(async () => {
-    const { smartTradingEngine } = await import('./services/smartTradingEngine');
-    
-    // Execute smart trading every 15 seconds
-    setInterval(async () => {
-      try {
-        await smartTradingEngine.executeSmartTrading(1);
-      } catch (error) {
-        console.log('Smart trading error:', error);
-      }
-    }, 15000);
-    
-    console.log('💰 Smart trading system started');
-  }, 3000);
+  // Disable all automated trading - manual control only
+  console.log('🚫 Automated trading disabled - manual control enabled');
 
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {

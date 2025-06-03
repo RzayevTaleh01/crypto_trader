@@ -311,6 +311,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual trading endpoints
+  app.post("/api/trades/manual", async (req, res) => {
+    try {
+      const tradeData = insertTradeSchema.parse(req.body);
+      const trade = await storage.createTrade(tradeData);
+      
+      // Update portfolio and balance
+      const { userId, cryptoId, type, amount, price, total } = tradeData;
+      const quantity = parseFloat(amount);
+      const priceNum = parseFloat(price);
+      const totalNum = parseFloat(total);
+      
+      if (type === 'buy') {
+        await updatePortfolioAfterBuy(userId, cryptoId, quantity, priceNum);
+        const user = await storage.getUser(userId);
+        if (user) {
+          const newBalance = parseFloat(user.balance) - totalNum;
+          await storage.updateUserBalance(userId, newBalance.toString());
+        }
+      } else {
+        await updatePortfolioAfterSell(userId, cryptoId, quantity);
+        const user = await storage.getUser(userId);
+        if (user) {
+          const newBalance = parseFloat(user.balance) + totalNum;
+          await storage.updateUserBalance(userId, newBalance.toString());
+        }
+      }
+      
+      res.json(trade);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to execute manual trade", error: error.message });
+    }
+  });
+
+  app.post("/api/trades/sell-profitable", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      const portfolioItems = await storage.getUserPortfolio(userId);
+      const trades = [];
+      let totalProfit = 0;
+      
+      for (const item of portfolioItems) {
+        const crypto = await storage.getCryptocurrency(item.cryptoId);
+        if (!crypto) continue;
+        
+        const currentPrice = parseFloat(crypto.currentPrice);
+        const avgPrice = parseFloat(item.averagePrice);
+        const amount = parseFloat(item.amount);
+        const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
+        
+        // Only sell if profitable (minimum 0.5% profit)
+        if (profitPercentage > 0.5) {
+          const sellAmount = amount; // Sell entire position
+          const totalValue = sellAmount * currentPrice;
+          const profit = (currentPrice - avgPrice) * sellAmount;
+          
+          const tradeData = {
+            userId,
+            cryptoId: item.cryptoId,
+            type: 'sell' as const,
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: totalValue.toString(),
+            isBot: false
+          };
+          
+          const trade = await storage.createTrade(tradeData);
+          await updatePortfolioAfterSell(userId, item.cryptoId, sellAmount);
+          
+          // Update balance
+          const user = await storage.getUser(userId);
+          if (user) {
+            const newBalance = parseFloat(user.balance) + totalValue;
+            await storage.updateUserBalance(userId, newBalance.toString());
+          }
+          
+          trades.push(trade);
+          totalProfit += profit;
+        }
+      }
+      
+      res.json({ 
+        trades, 
+        totalProfit: totalProfit.toFixed(2),
+        message: `Sold ${trades.length} profitable positions for $${totalProfit.toFixed(2)} profit`
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to sell profitable positions", error: error.message });
+    }
+  });
+
+  async function updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {
+    const existing = await storage.getPortfolioItem(userId, cryptoId);
+    
+    if (existing) {
+      const newAmount = parseFloat(existing.amount) + quantity;
+      const newTotal = parseFloat(existing.totalInvested) + (quantity * price);
+      const newAvgPrice = newTotal / newAmount;
+      
+      await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), newAvgPrice.toString(), newTotal.toString());
+    } else {
+      await storage.createPortfolioItem({
+        userId,
+        cryptoId,
+        amount: quantity.toString(),
+        averagePrice: price.toString(),
+        totalInvested: (quantity * price).toString()
+      });
+    }
+  }
+
+  async function updatePortfolioAfterSell(userId: number, cryptoId: number, soldAmount: number) {
+    const existing = await storage.getPortfolioItem(userId, cryptoId);
+    
+    if (existing) {
+      const currentAmount = parseFloat(existing.amount);
+      const newAmount = Math.max(0, currentAmount - soldAmount);
+      
+      if (newAmount < 0.001) {
+        await storage.deletePortfolioItem(userId, cryptoId);
+      } else {
+        const sellRatio = soldAmount / currentAmount;
+        const currentTotal = parseFloat(existing.totalInvested);
+        const newTotal = currentTotal * (1 - sellRatio);
+        
+        await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), existing.averagePrice, newTotal.toString());
+      }
+    }
+  }
+
   // Start crypto price updates
   cryptoService.startPriceUpdates();
 

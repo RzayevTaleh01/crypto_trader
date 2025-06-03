@@ -51,8 +51,8 @@ class BinanceService {
       // Get 24hr ticker statistics
       const tickers = await this.client.dailyStats();
       
-      // Filter for major cryptocurrencies
-      const majorPairs = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT'];
+      // Filter for major cryptocurrencies with more trading opportunities
+      const majorPairs = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'XRPUSDT', 'LTCUSDT', 'BCHUSDT', 'DOGEUSDT', 'AVAXUSDT', 'UNIUSDT', 'FILUSDT', 'VETUSDT', 'ICPUSDT', 'ETCUSDT', 'XLMUSDT', 'TRXUSDT', 'AAVEUSDT', 'GRTUSDT', 'MKRUSDT', 'COMPUSDT', 'ZECUSDT', 'DASHUSDT', 'BATUSDT', 'ENJUSDT', 'MANAUSDT', 'SANDUSDT', 'CHZUSDT', 'THETAUSDT', 'ZRXUSDT', 'KAVAUSDT', 'CRVUSDT', 'SUSHIUSDT', 'YFIUSDT', 'SNXUSDT', 'RENUSDT', 'KNCUSDT'];
       const filteredTickers = tickers.filter((ticker: any) => majorPairs.includes(ticker.symbol));
 
       return filteredTickers.map((ticker: any) => ({

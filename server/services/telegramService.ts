@@ -190,11 +190,14 @@ ${emoji} *Yeni Treyd!*
 📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}
 💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
     } else if (trade.type === 'sell') {
-      const buyPrice = portfolioItem ? parseFloat(portfolioItem.averagePrice) : parseFloat(trade.price);
+      const sellPrice = parseFloat(trade.price);
+      const buyPrice = portfolioItem ? parseFloat(portfolioItem.averagePrice) : sellPrice;
+      const currentPrice = parseFloat(crypto.currentPrice);
+      
       message += `
 🛒 Alış Qiyməti: $${buyPrice.toFixed(6)}
-🔥 Satış Qiyməti: $${parseFloat(trade.price).toFixed(6)}
-📊 Hazırki Qiymət: $${parseFloat(crypto.currentPrice).toFixed(6)}
+🔥 Satış Qiyməti: $${sellPrice.toFixed(6)}
+📊 Hazırki Qiymət: $${currentPrice.toFixed(6)}
 💼 Ümumi: $${parseFloat(trade.total).toFixed(2)}`;
       
       if (trade.profit) {

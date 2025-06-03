@@ -160,7 +160,7 @@ export class RSITradingStrategy {
               profit: profit.toFixed(2),
               strategy: `RSI ${rsi?.toFixed(1)} - Kar: ${profitPercentage >= 0 ? '+' : ''}${profitPercentage.toFixed(2)}%`,
               isBot: true
-            }, crypto);
+            }, crypto, portfolio);
             
             console.log(`📱 Telegram notification sent: ${crypto.symbol} SELL with $${profit.toFixed(2)} profit`);
           } catch (error) {

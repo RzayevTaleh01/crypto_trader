@@ -102,14 +102,27 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Header Row */}
+        <div className="grid grid-cols-5 gap-4 p-3 bg-muted/30 rounded-lg text-sm font-medium text-muted-foreground">
+          <div>Coin</div>
+          <div className="text-center">Alış Qiyməti</div>
+          <div className="text-center">Hazırki Qiymət</div>
+          <div className="text-center">Məbləğ</div>
+          <div className="text-center">Kar/Zərər</div>
+        </div>
+
         {holdings.map((holding: PortfolioHolding) => {
           const currentValue = parseFloat(holding.currentValue || '0');
           const pnl = parseFloat(holding.pnl || '0');
           const pnlPercentage = parseFloat(holding.pnlPercentage || '0');
           const amount = parseFloat(holding.amount);
+          const avgPrice = parseFloat(holding.averagePrice);
+          const currentPrice = parseFloat(holding.cryptocurrency.currentPrice);
+          const priceChange24h = parseFloat(holding.cryptocurrency.priceChange24h);
           
           return (
-            <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <div key={holding.id} className="grid grid-cols-5 gap-4 p-3 bg-muted/50 rounded-lg items-center">
+              {/* Coin Info */}
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                   <span className="text-xs font-medium text-primary">
@@ -118,34 +131,49 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
                 </div>
                 <div>
                   <div className="font-medium">{holding.cryptocurrency.symbol}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {amount.toFixed(6)} coins
+                  <div className="text-xs text-muted-foreground">
+                    {holding.cryptocurrency.name}
                   </div>
                 </div>
               </div>
               
-              <div className="text-right">
-                <div className="font-medium">${currentValue.toFixed(2)}</div>
-                <div className="text-sm text-muted-foreground">
-                  Avg: ${parseFloat(holding.averagePrice).toFixed(2)}
+              {/* Buy Price */}
+              <div className="text-center">
+                <div className="font-medium text-blue-600">
+                  ${avgPrice.toFixed(6)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Ortalama
                 </div>
               </div>
               
-              <div className="text-right">
+              {/* Current Price */}
+              <div className="text-center">
+                <div className="font-medium">
+                  ${currentPrice.toFixed(6)}
+                </div>
+                <div className={`text-xs ${priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}% 24s
+                </div>
+              </div>
+              
+              {/* Amount & Value */}
+              <div className="text-center">
+                <div className="font-medium">
+                  {amount.toFixed(6)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  ${currentValue.toFixed(2)} dəyər
+                </div>
+              </div>
+              
+              {/* P&L */}
+              <div className="text-center">
                 <Badge variant={pnl >= 0 ? "default" : "destructive"} className="mb-1">
-                  {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                  {pnl >= 0 ? '+' : ''}${pnl.toFixed(3)}
                 </Badge>
-                <div className={`text-sm ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`text-sm font-medium ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {pnlPercentage >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%
-                </div>
-              </div>
-              
-              <div className="text-right">
-                <div className="text-sm font-medium">
-                  ${parseFloat(holding.cryptocurrency.currentPrice).toFixed(2)}
-                </div>
-                <div className={`text-xs ${parseFloat(holding.cryptocurrency.priceChange24h) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {parseFloat(holding.cryptocurrency.priceChange24h) >= 0 ? '+' : ''}{parseFloat(holding.cryptocurrency.priceChange24h).toFixed(2)}%
                 </div>
               </div>
             </div>

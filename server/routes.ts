@@ -483,14 +483,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Advanced Trading Strategy Analysis
+  app.get('/api/advanced-analysis/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const { advancedTechnicalAnalysis } = await import('./services/advancedTechnicalAnalysis');
+      
+      const analysis = await advancedTechnicalAnalysis.getComprehensiveAnalysis(symbol);
+      res.json({ success: true, analysis });
+    } catch (error) {
+      console.log('Advanced analysis error:', error);
+      res.status(500).json({ success: false, message: 'Analysis failed' });
+    }
+  });
+
+  // Execute Momentum Strategy
+  app.post('/api/strategies/momentum/execute', async (req, res) => {
+    try {
+      const userId = 1; // Default user
+      const { momentumTradingStrategy } = await import('./services/momentumTradingStrategy');
+      momentumTradingStrategy.setBroadcastFunction(broadcast);
+      
+      await momentumTradingStrategy.executeMomentumStrategy(userId);
+      res.json({ success: true, message: 'Momentum strategy executed' });
+    } catch (error) {
+      console.log('Momentum strategy error:', error);
+      res.status(500).json({ success: false, message: 'Strategy execution failed' });
+    }
+  });
+
+  // Execute Arbitrage Strategy
+  app.post('/api/strategies/arbitrage/execute', async (req, res) => {
+    try {
+      const userId = 1; // Default user
+      const { arbitrageTradingStrategy } = await import('./services/arbitrageTradingStrategy');
+      arbitrageTradingStrategy.setBroadcastFunction(broadcast);
+      
+      await arbitrageTradingStrategy.executeArbitrageStrategy(userId);
+      res.json({ success: true, message: 'Arbitrage strategy executed' });
+    } catch (error) {
+      console.log('Arbitrage strategy error:', error);
+      res.status(500).json({ success: false, message: 'Strategy execution failed' });
+    }
+  });
+
+  // Get Available Trading Strategies
+  app.get('/api/strategies/available', async (req, res) => {
+    try {
+      const strategies = [
+        {
+          id: 'rsi',
+          name: 'RSI Oversold Strategy',
+          description: 'Buys oversold cryptocurrencies based on RSI indicators',
+          riskLevel: 'Medium',
+          expectedReturn: '5-15%',
+          timeframe: '1-24 hours'
+        },
+        {
+          id: 'momentum',
+          name: 'Momentum Trading',
+          description: 'Multi-indicator momentum analysis with MACD, Bollinger Bands, and trend analysis',
+          riskLevel: 'Medium-High',
+          expectedReturn: '8-25%',
+          timeframe: '30 minutes - 4 hours'
+        },
+        {
+          id: 'arbitrage',
+          name: 'Arbitrage & Scalping',
+          description: 'High-frequency trading exploiting price inefficiencies and volatility',
+          riskLevel: 'High',
+          expectedReturn: '3-12%',
+          timeframe: '1-30 minutes'
+        },
+        {
+          id: 'advanced',
+          name: 'Advanced Multi-Strategy',
+          description: 'Combined RSI, momentum, and profit optimization algorithms',
+          riskLevel: 'High',
+          expectedReturn: '10-30%',
+          timeframe: '15 minutes - 2 hours'
+        }
+      ];
+      
+      res.json({ success: true, strategies });
+    } catch (error) {
+      console.log('Strategies list error:', error);
+      res.status(500).json({ success: false, message: 'Failed to get strategies' });
+    }
+  });
+
+  // Update Bot Strategy
+  app.put('/api/bot-settings/strategy', async (req, res) => {
+    try {
+      const userId = 1; // Default user
+      const { strategy } = req.body;
+      
+      const validStrategies = ['rsi', 'momentum', 'arbitrage', 'advanced', 'scalping', 'grid'];
+      if (!validStrategies.includes(strategy)) {
+        return res.status(400).json({ success: false, message: 'Invalid strategy' });
+      }
+      
+      await storage.updateBotSettings(userId, { strategy });
+      
+      // Restart bot with new strategy if it's active
+      const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
+      const botSettings = await storage.getBotSettings(userId);
+      if (botSettings && botSettings.isActive) {
+        autonomousTradingEngine.stopBot(userId);
+        autonomousTradingEngine.startBot(userId);
+      }
+      
+      res.json({ success: true, message: 'Strategy updated successfully' });
+    } catch (error) {
+      console.log('Strategy update error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update strategy' });
+    }
+  });
+
   // Connect autonomous trading engine to WebSocket and start for active bots
   setTimeout(async () => {
     const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
     const { rsiTradingStrategy } = await import('./services/rsiTradingStrategy');
+    const { momentumTradingStrategy } = await import('./services/momentumTradingStrategy');
+    const { arbitrageTradingStrategy } = await import('./services/arbitrageTradingStrategy');
+    
     autonomousTradingEngine.setBroadcastFunction(broadcast);
     rsiTradingStrategy.setBroadcastFunction(broadcast);
+    momentumTradingStrategy.setBroadcastFunction(broadcast);
+    arbitrageTradingStrategy.setBroadcastFunction(broadcast);
+    
     console.log('🤖 Autonomous trading engine connected to WebSocket');
     console.log('📊 RSI trading strategy connected to WebSocket');
+    console.log('🚀 Momentum trading strategy connected to WebSocket');
+    console.log('⚡ Arbitrage trading strategy connected to WebSocket');
     
     // Check for active bots and start them
     try {

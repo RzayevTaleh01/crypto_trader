@@ -56,7 +56,7 @@ export class RSITradingStrategy {
     const cryptos = await storage.getAllCryptocurrencies();
     const portfolio = await storage.getUserPortfolio(userId);
 
-    console.log(`📊 Executing RSI Strategy - Balance: $${balance.toFixed(2)}`);
+    console.log(`📊 Executing RSI Strategy - Balance: $${balance.toFixed(2)}, Cryptos: ${cryptos.length}, Portfolio: ${portfolio.length}`);
 
     // Step 1: Sell overbought positions (RSI > 70)
     await this.sellOverboughtPositions(userId, portfolio, cryptos);
@@ -152,6 +152,8 @@ export class RSITradingStrategy {
   private async buyOversoldCryptos(userId: number, cryptos: any[], balance: number) {
     const oversoldCandidates = [];
 
+    console.log(`🔍 RSI Strategy: Analyzing ${cryptos.length} cryptocurrencies for oversold conditions...`);
+
     // Find oversold cryptocurrencies
     for (const crypto of cryptos) {
       const currentPrice = parseFloat(crypto.currentPrice);
@@ -162,15 +164,20 @@ export class RSITradingStrategy {
         const priceHistory = this.generatePriceHistory(currentPrice, volatility);
         const rsi = this.calculateRSI(priceHistory);
 
+        console.log(`📊 ${crypto.symbol}: Price $${currentPrice.toFixed(6)}, RSI: ${rsi?.toFixed(1) || 'N/A'}, Change: ${priceChange}%`);
+
         if (rsi && rsi < 30) {
           oversoldCandidates.push({
             crypto,
             rsi,
             price: currentPrice
           });
+          console.log(`🟢 OVERSOLD FOUND: ${crypto.symbol} - RSI: ${rsi.toFixed(1)}`);
         }
       }
     }
+
+    console.log(`🎯 Found ${oversoldCandidates.length} oversold candidates`);
 
     // Sort by lowest RSI (most oversold)
     oversoldCandidates.sort((a, b) => a.rsi - b.rsi);

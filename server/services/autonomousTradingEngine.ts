@@ -51,6 +51,13 @@ export class AutonomousTradingEngine {
 
     console.log(`🎯 Executing ${botSettings.strategy} strategy - Balance: $${balance.toFixed(2)}`);
 
+    // If RSI strategy is selected, use dedicated RSI trading engine
+    if (botSettings.strategy === 'rsi') {
+      const { rsiTradingStrategy } = await import('./rsiTradingStrategy');
+      await rsiTradingStrategy.executeRSIStrategy(userId);
+      return;
+    }
+
     // Step 1: Sell profitable positions
     await this.sellProfitablePositions(userId, portfolio);
 

@@ -45,6 +45,7 @@ app.use((req, res, next) => {
   const { profitSimulator } = await import("./services/profitSimulator");
   
   telegramService.initialize();
+  console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
   // Start profit simulation for realistic trading profits

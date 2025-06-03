@@ -12,7 +12,9 @@ class BinanceService {
     const apiSecret = process.env.BINANCE_API_SECRET;
 
     if (!apiKey || !apiSecret) {
-      console.log('Binance API credentials not provided, using mock trading');
+      console.log('⚠️  Binance API credentials not provided');
+      console.log('📊 Please provide BINANCE_API_KEY and BINANCE_API_SECRET for real market data');
+      console.log('🔗 Create testnet keys at: https://testnet.binance.vision/');
       return;
     }
 
@@ -20,14 +22,16 @@ class BinanceService {
       const Binance = require('binance-api-node');
       this.client = Binance({
         apiKey,
-        apiSecret
+        apiSecret,
+        test: this.isTestnet
       });
 
-      console.log(`Binance API initialized (${this.isTestnet ? 'Testnet' : 'Mainnet'})`);
+      console.log(`✅ Binance ${this.isTestnet ? 'Testnet' : 'Mainnet'} API initialized`);
       this.testConnection();
       this.monitorPrices();
     } catch (error) {
-      console.error('Failed to initialize Binance API:', error);
+      console.error('❌ Failed to initialize Binance API:', error);
+      console.log('💡 Please verify your API credentials are correct');
     }
   }
 
@@ -43,9 +47,12 @@ class BinanceService {
     }
   }
 
-  // Get real market data
+  // Get real market data from Binance testnet
   async getRealMarketData() {
-    if (!this.client) return null;
+    if (!this.client) {
+      console.log('Binance client not initialized - please provide API credentials');
+      return null;
+    }
 
     try {
       // Get 24hr ticker statistics

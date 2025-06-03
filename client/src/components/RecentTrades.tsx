@@ -8,11 +8,13 @@ interface RecentTradesProps {
 }
 
 export default function RecentTrades({ userId }: RecentTradesProps) {
-  const { data: trades = [] } = useQuery({
+  const { data: tradesResponse } = useQuery({
     queryKey: ['/api/trades/user', userId],
     enabled: !!userId,
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
+
+  const trades = tradesResponse?.trades || [];
 
   const getColorClasses = (symbol: string) => {
     const colors = {

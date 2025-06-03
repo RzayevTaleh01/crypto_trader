@@ -46,6 +46,20 @@ app.use((req, res, next) => {
   telegramService.initialize();
   binanceService.initialize();
 
+  // Auto-start trading bot for existing active bot settings
+  setTimeout(async () => {
+    try {
+      const { tradingEngine } = await import('./services/tradingEngine');
+      const activeBotSettings = await storage.getBotSettings(1);
+      if (activeBotSettings && activeBotSettings.isActive) {
+        console.log('🚀 Auto-starting trading bot for user 1');
+        await tradingEngine.startBot(1);
+      }
+    } catch (error) {
+      console.log('Could not auto-start bot:', error);
+    }
+  }, 3000); // Start after 3 seconds
+
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {
     await telegramService.sendDailyReport();

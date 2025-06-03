@@ -8,31 +8,20 @@ class BinanceService {
   private isTestnet: boolean = true; // Using testnet for real trading practice
 
   initialize() {
-    const apiKey = process.env.BINANCE_API_KEY;
-    const apiSecret = process.env.BINANCE_API_SECRET;
-
-    if (!apiKey || !apiSecret) {
-      console.log('⚠️  Binance API credentials not provided');
-      console.log('📊 Please provide BINANCE_API_KEY and BINANCE_API_SECRET for real market data');
-      console.log('🔗 Create testnet keys at: https://testnet.binance.vision/');
-      return;
-    }
-
     try {
       const Binance = require('binance-api-node').default;
+      
+      // Initialize with public endpoints only for real market data
       this.client = Binance({
-        apiKey,
-        apiSecret,
-        httpBase: 'https://testnet.binance.vision',
-        wsBase: 'wss://testnet.binance.vision/ws'
+        httpBase: 'https://api.binance.com',
+        wsBase: 'wss://stream.binance.com:9443/ws'
       });
 
-      console.log(`✅ Binance Testnet API initialized successfully`);
-      this.testConnection();
+      console.log(`✅ Binance API initialized for real market data`);
+      console.log(`🎯 Using authentic market prices and real RSI calculations`);
       this.monitorPrices();
     } catch (error) {
       console.error('❌ Failed to initialize Binance API:', error);
-      console.log('💡 Please verify your API credentials are correct');
     }
   }
 
@@ -48,31 +37,28 @@ class BinanceService {
     }
   }
 
-  // Get real market data from Binance testnet
+  // Get real market data from CoinGecko (authentic price data)
   async getRealMarketData() {
-    if (!this.client) {
-      console.log('Binance client not initialized - please provide API credentials');
-      return null;
-    }
-
     try {
-      // Get 24hr ticker statistics
-      const tickers = await this.client.dailyStats();
+      const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
       
-      // Filter for major cryptocurrencies with more trading opportunities
-      const majorPairs = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 'XRPUSDT', 'LTCUSDT', 'BCHUSDT', 'DOGEUSDT', 'AVAXUSDT', 'UNIUSDT', 'FILUSDT', 'VETUSDT', 'ICPUSDT', 'ETCUSDT', 'XLMUSDT', 'TRXUSDT', 'AAVEUSDT', 'GRTUSDT', 'MKRUSDT', 'COMPUSDT', 'ZECUSDT', 'DASHUSDT', 'BATUSDT', 'ENJUSDT', 'MANAUSDT', 'SANDUSDT', 'CHZUSDT', 'THETAUSDT', 'ZRXUSDT', 'KAVAUSDT', 'CRVUSDT', 'SUSHIUSDT', 'YFIUSDT', 'SNXUSDT', 'RENUSDT', 'KNCUSDT'];
-      const filteredTickers = tickers.filter((ticker: any) => majorPairs.includes(ticker.symbol));
-
-      return filteredTickers.map((ticker: any) => ({
-        symbol: ticker.symbol.replace('USDT', ''),
-        name: this.getFullName(ticker.symbol.replace('USDT', '')),
-        currentPrice: parseFloat(ticker.lastPrice),
-        priceChange24h: parseFloat(ticker.priceChangePercent),
-        volume24h: parseFloat(ticker.volume),
-        quoteVolume: parseFloat(ticker.quoteVolume)
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      return data.map((coin: any) => ({
+        symbol: coin.symbol.toUpperCase(),
+        name: coin.name,
+        currentPrice: coin.current_price,
+        priceChange24h: coin.price_change_percentage_24h || 0,
+        volume24h: coin.total_volume || 0,
+        marketCap: coin.market_cap || 0,
+        coinGeckoId: coin.id
       }));
     } catch (error) {
-      console.error('Failed to fetch market data from Binance:', error);
+      console.error('Failed to fetch market data from CoinGecko:', error);
       return null;
     }
   }
@@ -518,24 +504,71 @@ class BinanceService {
     return names[symbol] || symbol;
   }
 
-  // Get real kline data for RSI calculation
+  // Get real price history from CoinGecko for RSI calculation
   async getKlineData(symbol: string, interval: string = '1h', limit: number = 20): Promise<number[]> {
-    if (!this.client) {
-      console.log('Binance client not initialized for kline data');
-      return [];
-    }
-
     try {
-      const klines = await this.client.candles({
-        symbol: symbol + 'USDT',
-        interval,
-        limit
-      });
+      // Map common symbols to CoinGecko IDs
+      const symbolMap: Record<string, string> = {
+        'BTC': 'bitcoin',
+        'ETH': 'ethereum',
+        'BNB': 'binancecoin',
+        'ADA': 'cardano',
+        'SOL': 'solana',
+        'DOT': 'polkadot',
+        'MATIC': 'matic-network',
+        'LINK': 'chainlink',
+        'XRP': 'ripple',
+        'LTC': 'litecoin',
+        'BCH': 'bitcoin-cash',
+        'DOGE': 'dogecoin',
+        'AVAX': 'avalanche-2',
+        'UNI': 'uniswap',
+        'FIL': 'filecoin',
+        'VET': 'vechain',
+        'ICP': 'internet-computer',
+        'ETC': 'ethereum-classic',
+        'XLM': 'stellar',
+        'TRX': 'tron',
+        'AAVE': 'aave',
+        'GRT': 'the-graph',
+        'MKR': 'maker',
+        'COMP': 'compound-governance-token',
+        'ZEC': 'zcash',
+        'DASH': 'dash',
+        'BAT': 'basic-attention-token',
+        'ENJ': 'enjincoin',
+        'MANA': 'decentraland',
+        'SAND': 'the-sandbox',
+        'CHZ': 'chiliz',
+        'THETA': 'theta-token',
+        'ZRX': '0x',
+        'CRV': 'curve-dao-token',
+        'SUSHI': 'sushi',
+        'YFI': 'yearn-finance'
+      };
 
-      // Extract closing prices
-      return klines.map((kline: any) => parseFloat(kline.close));
+      const coinId = symbolMap[symbol.toUpperCase()] || symbol.toLowerCase();
+      
+      // Get price history for the last 7 days (hourly data)
+      const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=2&interval=hourly`);
+      
+      if (!response.ok) {
+        console.log(`CoinGecko API error for ${symbol}: ${response.status}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      if (!data.prices || data.prices.length === 0) {
+        console.log(`No price data available for ${symbol}`);
+        return [];
+      }
+      
+      // Extract last 20 price points
+      const prices = data.prices.slice(-limit).map((item: any) => item[1]);
+      return prices;
     } catch (error) {
-      console.error(`Failed to fetch kline data for ${symbol}:`, error);
+      console.error(`Failed to fetch price history for ${symbol}:`, error);
       return [];
     }
   }

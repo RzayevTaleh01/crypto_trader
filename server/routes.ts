@@ -209,6 +209,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Balance management route
+  app.patch("/api/user/:id/balance", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { balance } = req.body;
+      
+      if (!balance || isNaN(parseFloat(balance))) {
+        return res.status(400).json({ message: "Valid balance amount required" });
+      }
+      
+      await storage.updateUserBalance(userId, balance);
+      res.json({ message: "Balance updated successfully", newBalance: balance });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update balance", error: error.message });
+    }
+  });
+
   // Analytics routes
   app.get("/api/analytics/user", async (req, res) => {
     try {

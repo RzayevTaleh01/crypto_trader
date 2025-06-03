@@ -61,6 +61,15 @@ app.use((req, res, next) => {
     }
   }, 3000); // Start after 3 seconds
 
+  // Start profit optimization system
+  setTimeout(async () => {
+    const { ProfitOptimizer } = await import('./services/profitOptimizer');
+    setInterval(async () => {
+      await ProfitOptimizer.executeAllStrategies(1);
+    }, 20000); // Execute profit strategies every 20 seconds
+    console.log('💰 Profit optimization system started');
+  }, 5000);
+
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {
     await telegramService.sendDailyReport();

@@ -210,6 +210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Analytics routes
+  app.get("/api/analytics/user", async (req, res) => {
+    try {
+      const userId = 1; // Default user for demo
+      const stats = await storage.getUserStats(userId);
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch analytics", error: error.message });
+    }
+  });
+
   app.get("/api/analytics/user/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);

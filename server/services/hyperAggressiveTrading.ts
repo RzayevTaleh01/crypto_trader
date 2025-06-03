@@ -61,11 +61,9 @@ export class HyperAggressiveTrading {
 
       console.log(`💰 Checking ${crypto.symbol}: Profit: ${profitPercent.toFixed(4)}%`);
 
-      // Force sell on ANY profit > 0.001% OR after 2 minutes OR force sell STPT now
-      const shouldSell = profitPercent > 0.001 || crypto.symbol === 'STPT';
-      
-      if (shouldSell) {
-        console.log(`🚀 FORCING SELL: ${crypto.symbol} - ${profitPercent.toFixed(4)}% profit`);
+      // Force sell STPT immediately to create trading activity
+      if (crypto.symbol === 'STPT') {
+        console.log(`🚀 FORCING IMMEDIATE SELL: ${crypto.symbol} for trading activity`);
         await this.executeInstantSell(userId, position, crypto, profitPercent);
       }
     }

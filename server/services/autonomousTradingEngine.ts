@@ -77,13 +77,11 @@ export class AutonomousTradingEngine {
       await hyperAggressiveTrading.executeHyperAggressive(userId);
       return;
     } else if (botSettings.strategy === 'ultra_scalping_max') {
-      console.log(`🔥 STARTING HYPER-AGGRESSIVE TRADING for user ${userId}`);
-      const { optimizedScalpingStrategy } = await import('./optimizedScalpingStrategy');
-      const { hyperAggressiveTrading } = await import('./hyperAggressiveTrading');
+      console.log(`🔥 EXECUTING FORCED TRADING for user ${userId}`);
+      const { forcedTradingExecution } = await import('./forcedTradingExecution');
       
-      // Execute both strategies for maximum "al sat al sat" activity
-      await optimizedScalpingStrategy.executeOptimizedScalping(userId);
-      await hyperAggressiveTrading.executeHyperAggressive(userId);
+      // Execute forced trading for immediate al sat al sat activity
+      await forcedTradingExecution.executeForcedTrades(userId);
       return;
     } else if (botSettings.strategy === 'rsi') {
       const { rsiTradingStrategy } = await import('./rsiTradingStrategy');

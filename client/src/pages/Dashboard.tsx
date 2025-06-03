@@ -3,7 +3,7 @@ import Sidebar from "@/components/Sidebar";
 import StatsGrid from "@/components/StatsGrid";
 import PortfolioChart from "@/components/PortfolioChart";
 import TopCoins from "@/components/TopCoins";
-import RecentTrades from "@/components/RecentTrades";
+
 import BotSettings from "@/components/BotSettings";
 import BalanceManager from "@/components/BalanceManager";
 import TelegramCommands from "@/components/TelegramCommands";
@@ -139,9 +139,6 @@ export default function Dashboard() {
               <TopCoins />
             </div>
           </div>
-
-          {/* Recent Trades */}
-          <RecentTrades userId={userId} />
 
           {/* Bot settings and Live Trading Activity */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

@@ -107,15 +107,40 @@ class BinanceService {
       const ticker = await this.client.prices({ symbol: binanceSymbol });
       const currentPrice = parseFloat(ticker[binanceSymbol]);
 
-      // Round quantity to appropriate precision for Binance
-      const roundedQuantity = this.roundToPrecision(quantity, symbol);
+      // Get symbol info for proper quantity calculation
+      const exchangeInfo = await this.client.exchangeInfo();
+      const symbolInfo = exchangeInfo.symbols.find((s: any) => s.symbol === binanceSymbol);
+      
+      if (!symbolInfo) {
+        throw new Error(`Symbol info not found for ${binanceSymbol}`);
+      }
+
+      // Get LOT_SIZE filter
+      const lotSizeFilter = symbolInfo.filters.find((f: any) => f.filterType === 'LOT_SIZE');
+      if (!lotSizeFilter) {
+        throw new Error(`LOT_SIZE filter not found for ${binanceSymbol}`);
+      }
+
+      const minQty = parseFloat(lotSizeFilter.minQty);
+      const stepSize = parseFloat(lotSizeFilter.stepSize);
+      
+      // Calculate proper quantity respecting LOT_SIZE constraints
+      let properQuantity = Math.max(quantity, minQty);
+      properQuantity = Math.floor(properQuantity / stepSize) * stepSize;
+      
+      // Ensure we meet minimum requirements
+      if (properQuantity < minQty) {
+        properQuantity = minQty;
+      }
+
+      console.log(`📊 ${binanceSymbol} - Min: ${minQty}, Step: ${stepSize}, Calculated: ${properQuantity}`);
       
       // Execute market order
       const order = await this.client.order({
-        symbol: symbol + 'USDT',
+        symbol: binanceSymbol,
         side,
         type: 'MARKET',
-        quantity: roundedQuantity.toString()
+        quantity: properQuantity.toString()
       });
 
       console.log('Binance order executed:', order);
@@ -130,9 +155,9 @@ class BinanceService {
         userId,
         cryptoId: crypto.id,
         type: side.toLowerCase() as 'buy' | 'sell',
-        amount: quantity.toString(),
+        amount: properQuantity.toString(),
         price: currentPrice.toString(),
-        total: (quantity * currentPrice).toString(),
+        total: (properQuantity * currentPrice).toString(),
         isBot: true
       });
 

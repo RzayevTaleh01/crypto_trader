@@ -48,10 +48,8 @@ app.use((req, res, next) => {
   console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
-  // Start profit simulation for realistic trading profits
-  setTimeout(() => {
-    profitSimulator.startProfitSimulation();
-  }, 5000);
+  // Simulation disabled - awaiting Binance API credentials for authentic data
+  console.log('Simulation disabled - awaiting Binance testnet credentials');
 
   // Bot will only start when manually activated through the dashboard
 

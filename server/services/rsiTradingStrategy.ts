@@ -188,8 +188,8 @@ export class RSITradingStrategy {
 
         console.log(`📊 ${crypto.symbol}: Price $${currentPrice.toFixed(6)}, RSI: ${rsi?.toFixed(1) || 'N/A'}, Change: ${priceChange}%`);
 
-        // More aggressive oversold threshold for better trading opportunities
-        if (rsi && rsi < 55) {
+        // Very aggressive oversold threshold - buy frequently
+        if (rsi && rsi < 65) {
           oversoldCandidates.push({
             crypto,
             rsi,
@@ -210,7 +210,7 @@ export class RSITradingStrategy {
     // Buy the most oversold cryptocurrency
     if (oversoldCandidates.length > 0) {
       const best = oversoldCandidates[0];
-      const investAmount = Math.min(balance * 0.3, 3); // Invest up to 30% of balance or $3
+      const investAmount = Math.min(balance * 0.95, balance); // Invest 95% of available balance
       const quantity = investAmount / best.price;
 
       console.log(`🟢 RSI BUY: ${quantity.toFixed(6)} ${best.crypto.symbol} - RSI: ${best.rsi.toFixed(1)} (Oversold)`);

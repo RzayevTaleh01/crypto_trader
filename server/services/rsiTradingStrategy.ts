@@ -242,19 +242,8 @@ export class RSITradingStrategy {
           console.log(`🎯 BINANCE BUY EXECUTED: ${quantity.toFixed(6)} ${best.crypto.symbol} at $${best.price}`);
           await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
         } else {
-          console.log(`❌ Binance trade failed: ${result.message}`);
-          // Fallback to database-only trade
-          const tradeData: InsertTrade = {
-            userId,
-            cryptoId: best.crypto.id,
-            type: 'buy',
-            amount: quantity.toString(),
-            price: best.price.toString(),
-            total: investAmount.toString(),
-            isBot: true
-          };
-          await storage.createTrade(tradeData);
-          await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+          console.log(`❌ Binance trade failed: ${result.message} - Skipping ${best.crypto.symbol}`);
+          return; // Skip this trade and wait for next cycle
         }
       } catch (error) {
         console.log(`❌ Binance API error, using database trade:`, error);

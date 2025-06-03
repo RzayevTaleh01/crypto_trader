@@ -16,7 +16,7 @@ class BinanceService {
     }
 
     try {
-      this.client = Binance({
+      this.client = (Binance as any).default({
         apiKey,
         apiSecret
       });

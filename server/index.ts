@@ -48,32 +48,11 @@ app.use((req, res, next) => {
 
   // Bot will only start when manually activated through the dashboard
 
-  // Start advanced profit optimization system with WebSocket integration
+  // Start advanced profit optimization system 
   setTimeout(async () => {
     const { advancedTradingEngine } = await import('./services/advancedTradingEngine');
     
-    // Get the broadcast function from routes setup
-    let broadcastFunction: ((data: any) => void) | null = null;
-    
-    // Wait for server setup to complete
-    setTimeout(() => {
-      const { WebSocket } = require('ws');
-      
-      // Access the global WebSocket server if available
-      if (global.wss) {
-        broadcastFunction = (data: any) => {
-          global.wss.clients.forEach((client: any) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify(data));
-            }
-          });
-        };
-      }
-      
-      advancedTradingEngine.setBroadcastFunction(broadcastFunction);
-    }, 2000);
-    
-    // Execute multiple advanced strategies every 12 seconds for faster profit capture
+    // Execute multiple advanced strategies every 10 seconds for faster profit capture
     setInterval(async () => {
       try {
         await advancedTradingEngine.executeRSIMomentumStrategy(1);
@@ -82,7 +61,7 @@ app.use((req, res, next) => {
       } catch (error) {
         console.log('Advanced trading error:', error);
       }
-    }, 12000);
+    }, 10000);
     
     console.log('💰 Advanced profit optimization system started');
   }, 3000);

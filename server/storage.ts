@@ -249,7 +249,8 @@ export class DatabaseStorage implements IStorage {
       return sum + (parseFloat(trade.pnl || "0"));
     }, 0);
 
-    const activeTrades = userPortfolio.length;
+    // Count actual active positions (non-zero amounts)
+    const activeTrades = userPortfolio.filter(item => parseFloat(item.amount) > 0).length;
     
     const winningTrades = userTrades.filter(trade => parseFloat(trade.pnl || "0") > 0).length;
     const winRate = userTrades.length > 0 ? (winningTrades / userTrades.length) * 100 : 0;

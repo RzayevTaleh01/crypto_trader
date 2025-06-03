@@ -49,6 +49,7 @@ app.use((req, res, next) => {
   // Auto-start trading bot for existing active bot settings
   setTimeout(async () => {
     try {
+      const { storage } = await import('./storage');
       const { tradingEngine } = await import('./services/tradingEngine');
       const activeBotSettings = await storage.getBotSettings(1);
       if (activeBotSettings && activeBotSettings.isActive) {

@@ -80,28 +80,23 @@ export class RSITradingStrategy {
       
       const rsi = this.calculateRSI(priceHistory);
 
-      console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}%, Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
-
-      // Wait for better profits - hold longer for bigger gains
-      const minProfitDollar = 0.05; // Minimum $0.05 profit - wait for better gains
-      const minProfitPercent = 2.0;  // 2% minimum - be more patient
       const amount = parseFloat(position.amount);
       const currentValue = amount * currentPrice;
       const investedValue = amount * avgPrice;
       const absoluteProfit = currentValue - investedValue;
-      const priceMovement = Math.abs(currentPrice - avgPrice);
       
-      // Only sell if there's significant profit AND actual price movement
-      if ((absoluteProfit > minProfitDollar && profitPercentage > minProfitPercent && priceMovement > avgPrice * 0.005) || (rsi && rsi > 80)) {
-        // Execute sell order only for meaningful profits with real market movement
-        console.log(`💎 SIGNIFICANT PROFIT: ${crypto.symbol} - $${absoluteProfit.toFixed(2)} (${profitPercentage.toFixed(2)}%), Price Movement: $${priceMovement.toFixed(4)}, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
+      console.log(`💰 ${crypto.symbol}: RSI: ${rsi?.toFixed(1) || 'N/A'}, Profit: ${profitPercentage.toFixed(2)}% ($${absoluteProfit.toFixed(3)}), Price: $${currentPrice.toFixed(6)} vs Avg: $${avgPrice.toFixed(6)}`);
+      
+      // Very aggressive trading - sell immediately on RSI > 65 or any profit
+      if ((absoluteProfit > 0.01) || (rsi && rsi > 65)) {
+        console.log(`💎 TRADE TRIGGER: ${crypto.symbol} - Profit: $${absoluteProfit.toFixed(3)}, RSI: ${rsi?.toFixed(1) || 'N/A'}`);
         
-        if (absoluteProfit > 0.03) { // Only sell if profit is at least 3 cents
+        if (absoluteProfit > 0.005) { // Sell on any profit above half a cent
           const sellAmount = amount * 0.7; // Sell 70% of overbought position
           const totalValue = sellAmount * currentPrice;
           const profit = (currentPrice - avgPrice) * sellAmount;
 
-          console.log(`🔴 RSI SELL: ${sellAmount.toFixed(6)} ${crypto.symbol} - RSI: ${rsi.toFixed(1)} (Overbought)`);
+          console.log(`🔴 RSI SELL: ${sellAmount.toFixed(6)} ${crypto.symbol} - RSI: ${rsi?.toFixed(1) || 'N/A'} (Overbought)`);
 
           // Execute real Binance testnet trade
           const { binanceService } = await import('./binanceService');

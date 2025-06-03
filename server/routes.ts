@@ -527,6 +527,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Execute Direct Scalping Strategy
+  app.post('/api/strategies/direct-scalping/execute', async (req, res) => {
+    try {
+      const userId = 1; // Default user
+      const { directTradingExecution } = await import('./services/directTradingExecution');
+      directTradingExecution.setBroadcastFunction(broadcast);
+      
+      await directTradingExecution.executeImmediateScalping(userId);
+      res.json({ success: true, message: 'Direct scalping executed' });
+    } catch (error) {
+      console.log('Direct scalping error:', error);
+      res.status(500).json({ success: false, message: 'Direct scalping failed' });
+    }
+  });
+
   // Get Available Trading Strategies
   app.get('/api/strategies/available', async (req, res) => {
     try {

@@ -4,7 +4,7 @@ import { telegramService } from './telegramService';
 
 class BinanceService {
   private client: any = null;
-  private isTestnet: boolean = true; // Default to testnet for safety
+  private isTestnet: boolean = true; // Using testnet for real trading practice
 
   initialize() {
     const apiKey = process.env.BINANCE_API_KEY;
@@ -23,6 +23,7 @@ class BinanceService {
 
       console.log(`Binance API initialized (${this.isTestnet ? 'Testnet' : 'Mainnet'})`);
       this.testConnection();
+      this.monitorPrices();
     } catch (error) {
       console.error('Failed to initialize Binance API:', error);
     }

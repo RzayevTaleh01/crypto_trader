@@ -227,7 +227,7 @@ export class RSITradingStrategy {
     // Buy the most oversold cryptocurrency
     if (oversoldCandidates.length > 0) {
       const best = oversoldCandidates[0];
-      const investAmount = Math.min(balance * 0.95, balance); // Invest 95% of available balance
+      const investAmount = Math.min(balance * 0.98, balance); // Invest 98% of available balance for maximum profit
       const quantity = investAmount / best.price;
 
       console.log(`🟢 RSI BUY: ${quantity.toFixed(6)} ${best.crypto.symbol} - RSI: ${best.rsi.toFixed(1)} (Oversold)`);

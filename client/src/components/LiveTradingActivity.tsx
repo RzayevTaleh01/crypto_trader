@@ -25,7 +25,8 @@ export default function LiveTradingActivity() {
   // Simulate real-time trading activity based on bot logs
   useEffect(() => {
     const interval = setInterval(() => {
-      if (botSettings?.isActive) {
+      const safeBotSettings = botSettings || {};
+      if (safeBotSettings.isActive) {
         const symbols = ['BTC', 'ETH', 'STETH', 'WSTETH', 'AVAX', 'SOL'];
         const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
         const priceChange = (Math.random() * 10 - 5).toFixed(2);
@@ -38,7 +39,7 @@ export default function LiveTradingActivity() {
           priceChange: priceChange + '%',
           probability: probability,
           decision: parseFloat(probability) > 0.3 ? 'TRADE' : 'HOLD',
-          strategy: botSettings.strategy || 'momentum'
+          strategy: safeBotSettings.strategy || 'momentum'
         };
 
         setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
@@ -48,8 +49,9 @@ export default function LiveTradingActivity() {
     return () => clearInterval(interval);
   }, [botSettings?.isActive, botSettings?.strategy]);
 
-  const isActive = botSettings?.isActive;
-  const currentStrategy = botSettings?.strategy || 'scalping';
+  const safeBotSettings = botSettings || {};
+  const isActive = safeBotSettings.isActive;
+  const currentStrategy = safeBotSettings.strategy || 'scalping';
 
   const getStrategyName = (strategy: string) => {
     switch (strategy) {

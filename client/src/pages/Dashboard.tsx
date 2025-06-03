@@ -83,7 +83,7 @@ export default function Dashboard() {
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
-        botStatus={botSettings?.isActive ? 'Active' : 'Inactive'}
+        botStatus={(botSettings || {}).isActive ? 'Active' : 'Inactive'}
       />
 
       {/* Main content */}

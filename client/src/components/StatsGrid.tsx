@@ -28,7 +28,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       icon: TrendingUp,
       bgColor: "bg-crypto-green/20",
       iconColor: "text-crypto-green",
-      change: stats.totalProfit > 0 ? "+18.2%" : "0%",
+      change: parseFloat(stats.totalProfit) > 0 ? "+18.2%" : "0%",
       changeText: "vs last week"
     },
     {
@@ -46,7 +46,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       icon: Target,
       bgColor: "bg-yellow-500/20",
       iconColor: "text-yellow-500",
-      change: stats.winRate > 50 ? "+5.2%" : "0%",
+      change: parseFloat(stats.winRate) > 50 ? "+5.2%" : "0%",
       changeText: "improvement"
     },
     {

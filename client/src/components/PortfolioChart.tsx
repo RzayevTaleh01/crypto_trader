@@ -18,7 +18,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const { data: performanceData } = useQuery({
     queryKey: ['/api/portfolio/performance', userId, timeframe],
     enabled: !!userId,
-    refetchInterval: 30000,
+    refetchInterval: 5000, // Update every 5 seconds for real-time charts
   });
 
   useEffect(() => {

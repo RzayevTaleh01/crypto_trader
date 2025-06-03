@@ -21,6 +21,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   const { data: settings } = useQuery({
     queryKey: ['/api/bot-settings', userId],
     enabled: !!userId,
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time status
   });
 
   const [localSettings, setLocalSettings] = useState({

@@ -10,7 +10,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   const { data: stats } = useQuery({
     queryKey: ['/api/analytics/user', userId],
     enabled: !!userId,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
   });
 
   const statsCards = [

@@ -11,7 +11,7 @@ export default function RecentTrades({ userId }: RecentTradesProps) {
   const { data: trades = [] } = useQuery({
     queryKey: ['/api/trades/user', userId],
     enabled: !!userId,
-    refetchInterval: 30000,
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   });
 
   const getColorClasses = (symbol: string) => {

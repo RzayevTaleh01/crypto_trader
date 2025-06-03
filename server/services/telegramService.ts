@@ -233,25 +233,7 @@ ${emoji} *Yeni Treyd!*
     this.bot.sendMessage(this.chatId, message, { parse_mode: 'Markdown' });
   }
 
-  // Send price alerts
-  async sendPriceAlert(symbol: string, price: number, change: number) {
-    if (!this.bot || !this.chatId) return;
-
-    const emoji = change >= 0 ? '📈' : '📉';
-    const changeEmoji = change >= 5 ? '🚀' : change <= -5 ? '💥' : '📊';
-    
-    const message = `
-${changeEmoji} *Qiymət Xəbərdarlığı*
-
-💎 *${symbol}*
-💰 Cari Qiymət: $${price.toFixed(2)}
-${emoji} 24s Dəyişiklik: ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
-
-📅 ${new Date().toLocaleString('az-AZ')}
-    `;
-
-    this.bot.sendMessage(this.chatId, message, { parse_mode: 'Markdown' });
-  }
+  // Price alerts disabled per user request
 
   // Send daily report
   async sendDailyReport() {

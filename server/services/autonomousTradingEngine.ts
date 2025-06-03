@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { InsertTrade } from '@shared/schema';
+import { telegramService } from './telegramService';
 
 export class AutonomousTradingEngine {
   private activeBots = new Map<number, NodeJS.Timeout>();
@@ -284,7 +285,12 @@ export class AutonomousTradingEngine {
       });
     }
 
-    // No notifications - focus on trading execution only
+    // Send Telegram notification for buy trade
+    try {
+      await telegramService.sendTradeNotification(tradeData, crypto);
+    } catch (error) {
+      console.log('Telegram notification error:', error);
+    }
   }
 
   private async updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {

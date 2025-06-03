@@ -103,18 +103,45 @@ export class RSITradingStrategy {
 
           console.log(`🔴 RSI SELL: ${sellAmount.toFixed(6)} ${crypto.symbol} - RSI: ${rsi.toFixed(1)} (Overbought)`);
 
-          const tradeData: InsertTrade = {
-            userId,
-            cryptoId: position.cryptoId,
-            type: 'sell',
-            amount: sellAmount.toString(),
-            price: currentPrice.toString(),
-            total: totalValue.toString(),
-            isBot: true
-          };
-
-          await storage.createTrade(tradeData);
-          await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+          // Execute real Binance testnet trade
+          const { binanceService } = await import('./binanceService');
+          
+          try {
+            const result = await binanceService.executeRealTrade(crypto.symbol, 'SELL', sellAmount, userId);
+            
+            if (result.success) {
+              console.log(`🎯 BINANCE SELL EXECUTED: ${sellAmount.toFixed(6)} ${crypto.symbol} at $${currentPrice}`);
+              await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+            } else {
+              console.log(`❌ Binance trade failed: ${result.message}`);
+              // Fallback to database-only trade
+              const tradeData: InsertTrade = {
+                userId,
+                cryptoId: position.cryptoId,
+                type: 'sell',
+                amount: sellAmount.toString(),
+                price: currentPrice.toString(),
+                total: totalValue.toString(),
+                isBot: true
+              };
+              await storage.createTrade(tradeData);
+              await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+            }
+          } catch (error) {
+            console.log(`❌ Binance API error, using database trade:`, error);
+            // Fallback to database-only trade
+            const tradeData: InsertTrade = {
+              userId,
+              cryptoId: position.cryptoId,
+              type: 'sell',
+              amount: sellAmount.toString(),
+              price: currentPrice.toString(),
+              total: totalValue.toString(),
+              isBot: true
+            };
+            await storage.createTrade(tradeData);
+            await this.updatePortfolioAfterSell(userId, position.cryptoId, sellAmount);
+          }
 
           // Update balance
           const user = await storage.getUser(userId);
@@ -176,7 +203,9 @@ export class RSITradingStrategy {
       const volatility = Math.abs(priceChange);
       
       if (currentPrice > 0.001) { // Filter out very low value coins
-        const priceHistory = this.generatePriceHistory(currentPrice, volatility);
+        const priceHistory = await this.getRealPriceHistory(crypto.symbol);
+        if (priceHistory.length === 0) continue;
+        
         const rsi = this.calculateRSI(priceHistory);
 
         console.log(`📊 ${crypto.symbol}: Price $${currentPrice.toFixed(6)}, RSI: ${rsi?.toFixed(1) || 'N/A'}, Change: ${priceChange}%`);
@@ -208,18 +237,45 @@ export class RSITradingStrategy {
 
       console.log(`🟢 RSI BUY: ${quantity.toFixed(6)} ${best.crypto.symbol} - RSI: ${best.rsi.toFixed(1)} (Oversold)`);
 
-      const tradeData: InsertTrade = {
-        userId,
-        cryptoId: best.crypto.id,
-        type: 'buy',
-        amount: quantity.toString(),
-        price: best.price.toString(),
-        total: investAmount.toString(),
-        isBot: true
-      };
-
-      await storage.createTrade(tradeData);
-      await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+      // Execute real Binance testnet trade
+      const { binanceService } = await import('./binanceService');
+      
+      try {
+        const result = await binanceService.executeRealTrade(best.crypto.symbol, 'BUY', quantity, userId);
+        
+        if (result.success) {
+          console.log(`🎯 BINANCE BUY EXECUTED: ${quantity.toFixed(6)} ${best.crypto.symbol} at $${best.price}`);
+          await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+        } else {
+          console.log(`❌ Binance trade failed: ${result.message}`);
+          // Fallback to database-only trade
+          const tradeData: InsertTrade = {
+            userId,
+            cryptoId: best.crypto.id,
+            type: 'buy',
+            amount: quantity.toString(),
+            price: best.price.toString(),
+            total: investAmount.toString(),
+            isBot: true
+          };
+          await storage.createTrade(tradeData);
+          await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+        }
+      } catch (error) {
+        console.log(`❌ Binance API error, using database trade:`, error);
+        // Fallback to database-only trade
+        const tradeData: InsertTrade = {
+          userId,
+          cryptoId: best.crypto.id,
+          type: 'buy',
+          amount: quantity.toString(),
+          price: best.price.toString(),
+          total: investAmount.toString(),
+          isBot: true
+        };
+        await storage.createTrade(tradeData);
+        await this.updatePortfolioAfterBuy(userId, best.crypto.id, quantity, best.price);
+      }
 
       // Update balance
       const newBalance = balance - investAmount;

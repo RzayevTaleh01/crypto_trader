@@ -8,17 +8,31 @@ class BinanceService {
   private isTestnet: boolean = true; // Using testnet for real trading practice
 
   initialize() {
+    const apiKey = process.env.BINANCE_TESTNET_API_KEY;
+    const apiSecret = process.env.BINANCE_TESTNET_SECRET_KEY;
+
     try {
       const Binance = require('binance-api-node').default;
       
-      // Initialize with public endpoints only for real market data
-      this.client = Binance({
-        httpBase: 'https://api.binance.com',
-        wsBase: 'wss://stream.binance.com:9443/ws'
-      });
-
-      console.log(`✅ Binance API initialized for real market data`);
-      console.log(`🎯 Using authentic market prices and real RSI calculations`);
+      if (apiKey && apiSecret) {
+        // Initialize with testnet credentials for real trading
+        this.client = Binance({
+          apiKey,
+          apiSecret,
+          httpBase: 'https://testnet.binance.vision',
+          wsBase: 'wss://testnet.binance.vision/ws'
+        });
+        console.log(`✅ Binance Testnet API initialized with credentials for real trading`);
+        this.testConnection();
+      } else {
+        // Initialize without credentials for market data only
+        this.client = Binance({
+          httpBase: 'https://api.binance.com',
+          wsBase: 'wss://stream.binance.com:9443/ws'
+        });
+        console.log(`✅ Binance API initialized for market data only (no trading credentials)`);
+      }
+      
       this.monitorPrices();
     } catch (error) {
       console.error('❌ Failed to initialize Binance API:', error);

@@ -165,46 +165,28 @@ export class RSITradingStrategy {
   private async buyHighMomentumCoins(userId: number, cryptos: any[], balance: number) {
     if (balance < 1) return;
 
-    console.log(`🔍 SHORT-TERM STRATEGY: Finding highest-gaining coins for quick profits with $${balance.toFixed(2)}...`);
+    console.log(`🎯 OPTIMIZED STRATEGY: Selecting best 1-2 opportunities from $${balance.toFixed(2)}...`);
 
-    // Get available trading pairs from Binance testnet
-    const { binanceService } = await import('./binanceService');
-    const availablePairs = await binanceService.getTradingPairs();
+    // Focus only on major reliable cryptocurrencies for Binance testnet
+    const majorCoins = ['BTC', 'ETH', 'BNB', 'ADA', 'SOL', 'DOT', 'LINK', 'UNI'];
     
-    if (!availablePairs || availablePairs.length === 0) {
-      console.log(`⚠️ No trading pairs available from Binance testnet`);
-      return;
-    }
-
-    // Analyze ALL cryptocurrencies and select most profitable ones
-    const profitableCoins = [];
-    
-    for (const crypto of cryptos) {
-      const price = parseFloat(crypto.currentPrice);
-      const change24h = parseFloat(crypto.priceChange24h);
-      const volume = parseFloat(crypto.volume24h) || 0;
-      
-      // Skip invalid data
-      if (price <= 0 || isNaN(price)) continue;
-      
-      // Calculate profitability score
-      const profitScore = this.calculateProfitabilityScore(crypto, price, change24h, volume);
-      
-      if (profitScore > 0) {
-        profitableCoins.push({
-          ...crypto,
-          price,
-          change24h,
-          volume,
-          profitScore
-        });
-      }
-    }
-    
-    // Sort by profitability score and select top candidates
-    const highGainCryptos = profitableCoins
+    // Filter and analyze only major coins
+    const profitableCoins = cryptos
+      .filter(crypto => {
+        const price = parseFloat(crypto.currentPrice);
+        const change24h = parseFloat(crypto.priceChange24h);
+        return majorCoins.includes(crypto.symbol) && price > 0 && change24h > -10;
+      })
+      .map(crypto => ({
+        ...crypto,
+        price: parseFloat(crypto.currentPrice),
+        change24h: parseFloat(crypto.priceChange24h),
+        profitScore: this.calculateSimpleScore(crypto)
+      }))
       .sort((a, b) => b.profitScore - a.profitScore)
-      .slice(0, 8); // Top 8 most profitable
+      .slice(0, 2); // Only top 2 best opportunities
+
+    const highGainCryptos = profitableCoins;
 
     if (highGainCryptos.length === 0) {
       console.log(`⚠️ No high-momentum coins found`);

@@ -70,9 +70,13 @@ export class AutonomousTradingEngine {
       const amount = parseFloat(position.amount);
       const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
 
-      // Sell if profitable (minimum 1% profit)
-      if (profitPercentage > 1) {
-        const sellAmount = amount * 0.6; // Sell 60% of profitable position
+      // Enhanced profit taking: dynamic sell ratios based on profit level
+      if (profitPercentage > 0.5) {
+        let sellRatio = 0.4; // Base sell ratio
+        if (profitPercentage > 2) sellRatio = 0.6; // Higher profits, sell more
+        if (profitPercentage > 5) sellRatio = 0.8; // Very high profits, sell most
+        
+        const sellAmount = amount * sellRatio;
         const totalValue = sellAmount * currentPrice;
         const profit = (currentPrice - avgPrice) * sellAmount;
 
@@ -113,6 +117,22 @@ export class AutonomousTradingEngine {
             }
           });
         }
+
+        // Send Telegram notification
+        try {
+          const { telegramService } = await import('./telegramService');
+          await telegramService.sendTradeNotification({
+            type: 'sell',
+            amount: sellAmount.toString(),
+            price: currentPrice.toString(),
+            total: totalValue.toString(),
+            symbol: crypto.symbol,
+            profit: profit.toFixed(2),
+            strategy: `Profit: +${profitPercentage.toFixed(2)}%`
+          }, crypto);
+        } catch (error) {
+          console.log('Telegram notification failed:', error);
+        }
       }
     }
   }
@@ -121,60 +141,88 @@ export class AutonomousTradingEngine {
     const strategy = botSettings.strategy;
     const riskLevel = botSettings.riskLevel;
 
-    switch (strategy) {
-      case 'scalping':
-        await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
-        break;
-      case 'momentum':
-        await this.executeMomentumStrategy(userId, cryptos, balance, riskLevel);
-        break;
-      case 'mean-reversion':
-        await this.executeMeanReversionStrategy(userId, cryptos, balance, riskLevel);
-        break;
-      case 'grid':
-        await this.executeGridStrategy(userId, cryptos, balance, riskLevel);
-        break;
-      default:
-        await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
+    // Dynamic strategy execution based on market conditions
+    const marketVolatility = this.calculateMarketVolatility(cryptos);
+    console.log(`📊 Market volatility: ${marketVolatility.toFixed(2)}% - Strategy: ${strategy}`);
+
+    // Execute multiple strategies for maximum profit potential
+    if (strategy === 'grid' || marketVolatility > 5) {
+      // High volatility: execute all strategies
+      await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
+      await this.executeMomentumStrategy(userId, cryptos, balance, riskLevel);
+      await this.executeMeanReversionStrategy(userId, cryptos, balance, riskLevel);
+    } else {
+      // Normal volatility: execute selected strategy
+      switch (strategy) {
+        case 'scalping':
+          await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
+          break;
+        case 'momentum':
+          await this.executeMomentumStrategy(userId, cryptos, balance, riskLevel);
+          break;
+        case 'mean-reversion':
+          await this.executeMeanReversionStrategy(userId, cryptos, balance, riskLevel);
+          break;
+        default:
+          await this.executeScalpingStrategy(userId, cryptos, balance, riskLevel);
+      }
     }
   }
 
+  private calculateMarketVolatility(cryptos: any[]): number {
+    const changes = cryptos.map(crypto => Math.abs(parseFloat(crypto.priceChange24h)));
+    const avgVolatility = changes.reduce((sum, change) => sum + change, 0) / changes.length;
+    return avgVolatility;
+  }
+
   private async executeScalpingStrategy(userId: number, cryptos: any[], balance: number, riskLevel: number) {
-    // Look for high-volume, quick price movements
+    // Enhanced scalping: target high volatility with quick entry/exit
     const candidates = cryptos
       .filter(crypto => {
         const priceChange = parseFloat(crypto.priceChange24h);
-        return Math.abs(priceChange) > 2; // At least 2% movement
+        const price = parseFloat(crypto.currentPrice);
+        return Math.abs(priceChange) > 3 && price > 0.01; // Higher volatility threshold
       })
       .sort((a, b) => Math.abs(parseFloat(b.priceChange24h)) - Math.abs(parseFloat(a.priceChange24h)))
-      .slice(0, 3);
+      .slice(0, 2); // Focus on top 2 most volatile
 
     for (const crypto of candidates) {
-      await this.executeBuy(userId, crypto, balance * 0.05, 'Scalping opportunity');
+      const investAmount = Math.min(balance * 0.15, 2); // Increase investment per trade
+      await this.executeBuy(userId, crypto, investAmount, 'High-volatility scalping');
     }
   }
 
   private async executeMomentumStrategy(userId: number, cryptos: any[], balance: number, riskLevel: number) {
-    // Buy cryptocurrencies with strong upward momentum
+    // Enhanced momentum: focus on strong upward trends with volume confirmation
     const candidates = cryptos
-      .filter(crypto => parseFloat(crypto.priceChange24h) > 3)
+      .filter(crypto => {
+        const priceChange = parseFloat(crypto.priceChange24h);
+        const price = parseFloat(crypto.currentPrice);
+        return priceChange > 5 && price > 0.001; // Strong upward momentum
+      })
       .sort((a, b) => parseFloat(b.priceChange24h) - parseFloat(a.priceChange24h))
-      .slice(0, 2);
+      .slice(0, 3);
 
     for (const crypto of candidates) {
-      await this.executeBuy(userId, crypto, balance * 0.08, 'Momentum trading');
+      const investAmount = Math.min(balance * 0.2, 2.5); // Aggressive momentum investing
+      await this.executeBuy(userId, crypto, investAmount, `Strong momentum: +${parseFloat(crypto.priceChange24h).toFixed(1)}%`);
     }
   }
 
   private async executeMeanReversionStrategy(userId: number, cryptos: any[], balance: number, riskLevel: number) {
-    // Buy cryptocurrencies that have dropped significantly (value buying)
+    // Enhanced mean reversion: target oversold conditions with strong fundamentals
     const candidates = cryptos
-      .filter(crypto => parseFloat(crypto.priceChange24h) < -3)
+      .filter(crypto => {
+        const priceChange = parseFloat(crypto.priceChange24h);
+        const price = parseFloat(crypto.currentPrice);
+        return priceChange < -2 && price > 0.001; // Oversold but not trash coins
+      })
       .sort((a, b) => parseFloat(a.priceChange24h) - parseFloat(b.priceChange24h))
-      .slice(0, 2);
+      .slice(0, 3);
 
     for (const crypto of candidates) {
-      await this.executeBuy(userId, crypto, balance * 0.06, 'Mean reversion');
+      const investAmount = Math.min(balance * 0.18, 2); // Aggressive value buying
+      await this.executeBuy(userId, crypto, investAmount, `Value buy: ${parseFloat(crypto.priceChange24h).toFixed(1)}% dip`);
     }
   }
 
@@ -233,6 +281,21 @@ export class AutonomousTradingEngine {
           profit: '0.00'
         }
       });
+    }
+
+    // Send Telegram notification
+    try {
+      const { telegramService } = await import('./telegramService');
+      await telegramService.sendTradeNotification({
+        type: 'buy',
+        amount: quantity.toString(),
+        price: currentPrice.toString(),
+        total: investAmount.toString(),
+        symbol: crypto.symbol,
+        strategy: reason
+      }, crypto);
+    } catch (error) {
+      console.log('Telegram notification failed:', error);
     }
   }
 

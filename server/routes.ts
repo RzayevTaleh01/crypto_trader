@@ -2,10 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { db } from "./db";
 import { cryptoService } from "./services/cryptoService";
 import { portfolioService } from "./services/portfolioService";
-import { insertUserSchema, insertTradeSchema, insertBotSettingsSchema } from "@shared/schema";
+import { insertUserSchema, insertTradeSchema, insertBotSettingsSchema, trades as tradesTable, cryptocurrencies as cryptocurrenciesTable } from "@shared/schema";
 import { z } from "zod";
+import { eq, desc } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -121,6 +123,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stats route
+  app.get("/api/stats/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const user = await storage.getUser(userId);
+      const stats = await storage.getUserStats(userId);
+      const portfolio = await storage.getUserPortfolio(userId);
+      
+      res.json({
+        totalProfit: stats.totalProfit || '0.00',
+        activeTrades: portfolio.length || 0,
+        winRate: stats.winRate || '0',
+        uptime: '99.7',
+        currentBalance: user?.balance || '10.00'
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch stats", error: error.message });
+    }
+  });
+
+  app.get("/api/stats", async (req, res) => {
+    try {
+      const userId = 1; // Default user for demo
+      const user = await storage.getUser(userId);
+      const stats = await storage.getUserStats(userId);
+      const portfolio = await storage.getUserPortfolio(userId);
+      
+      res.json({
+        totalProfit: stats.totalProfit || '0.00',
+        activeTrades: portfolio.length || 0,
+        winRate: stats.winRate || '0',
+        uptime: '99.7',
+        currentBalance: user?.balance || '10.00'
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch stats", error: error.message });
+    }
+  });
+
   // Cryptocurrency routes
   app.get("/api/cryptocurrencies", async (req, res) => {
     try {
@@ -171,6 +212,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(trades);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch trades", error: error.message });
+    }
+  });
+
+  app.get("/api/trades/recent/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const trades = await storage.getUserTrades(userId, 10);
+      
+      // Get crypto details for each trade
+      const activities = await Promise.all(trades.map(async (trade) => {
+        const crypto = await storage.getCryptocurrency(trade.cryptoId);
+        return {
+          timestamp: trade.createdAt.toISOString(),
+          action: trade.type,
+          symbol: crypto?.symbol || 'Unknown',
+          amount: trade.amount,
+          price: trade.price,
+          total: trade.total,
+          type: trade.type,
+          strategy: 'EMA-RSI'
+        };
+      }));
+      
+      res.json(activities);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch recent trades", error: error.message });
+    }
+  });
+
+  app.get("/api/trades/recent", async (req, res) => {
+    try {
+      const userId = 1; // Default user for demo
+      const trades = await storage.getUserTrades(userId, 10);
+      
+      // Get crypto details for each trade
+      const activities = await Promise.all(trades.map(async (trade) => {
+        const crypto = await storage.getCryptocurrency(trade.cryptoId);
+        return {
+          timestamp: trade.createdAt.toISOString(),
+          action: trade.type,
+          symbol: crypto?.symbol || 'Unknown',
+          amount: trade.amount,
+          price: trade.price,
+          total: trade.total,
+          type: trade.type,
+          strategy: 'EMA-RSI'
+        };
+      }));
+      
+      res.json(activities);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch recent trades", error: error.message });
     }
   });
 

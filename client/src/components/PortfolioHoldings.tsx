@@ -41,6 +41,44 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     enabled: !!userId,
   });
 
+  // Mutation for selling profitable coins
+  const sellProfitableCoinsMutation = useMutation({
+    mutationFn: async () => {
+      const profitableCoins = holdings.filter(holding => parseFloat(holding.pnl || '0') > 0.05);
+      
+      if (profitableCoins.length === 0) {
+        throw new Error('Kar 0.05-dən çox olan koin yoxdur');
+      }
+
+      const sellPromises = profitableCoins.map(holding => 
+        apiRequest('POST', `/api/trades/sell`, {
+          userId,
+          cryptoId: holding.cryptoId,
+          amount: holding.amount,
+          reason: 'Manual kar realizasiyası'
+        })
+      );
+
+      return Promise.all(sellPromises);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Satış uğurlu oldu",
+        description: `${data.length} karlı koin satıldı`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Satış xətası",
+        description: error.message || "Satış zamanı xəta baş verdi",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Initialize holdings from API data
   useEffect(() => {
     if (apiHoldings && apiHoldings.length > 0) {
@@ -54,12 +92,12 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
 
     const handlePortfolioUpdate = (event: MessageEvent) => {
       try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'portfolioUpdate' && message.data) {
-          setHoldings(message.data);
+        const data = JSON.parse(event.data);
+        if (data.type === 'portfolio_update' && data.data) {
+          setHoldings(data.data);
         }
       } catch (error) {
-        console.log('Error parsing WebSocket portfolio message:', error);
+        console.error('Error parsing portfolio update:', error);
       }
     };
 
@@ -116,44 +154,6 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   const totalPnl = totalValue - totalInvested;
   const totalPnlPercentage = totalInvested > 0 ? ((totalPnl / totalInvested) * 100) : 0;
 
-  // Mutation for selling profitable coins
-  const sellProfitableCoinsMutation = useMutation({
-    mutationFn: async () => {
-      const profitableCoins = holdings.filter(holding => parseFloat(holding.pnl || '0') > 0.05);
-      
-      if (profitableCoins.length === 0) {
-        throw new Error('Kar 0.05-dən çox olan koin yoxdur');
-      }
-
-      const sellPromises = profitableCoins.map(holding => 
-        apiRequest('POST', `/api/trades/sell`, {
-          userId,
-          cryptoId: holding.cryptoId,
-          amount: holding.amount,
-          reason: 'Manual kar realizasiyası'
-        })
-      );
-
-      return Promise.all(sellPromises);
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Satış uğurlu oldu",
-        description: `${data.length} karlı koin satıldı`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user', userId] });
-      queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Satış xətası",
-        description: error.message || "Satış zamanı xəta baş verdi",
-        variant: "destructive",
-      });
-    },
-  });
-
   const profitableCoinsCount = holdings.filter(holding => parseFloat(holding.pnl || '0') > 0.05).length;
 
   return (
@@ -197,39 +197,74 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
             const priceChange24h = parseFloat(holding.cryptocurrency?.priceChange24h || '0');
 
             return (
-              <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    priceChange24h >= 0 
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                      : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                  }`}>
-                    {holding.cryptocurrency?.symbol?.slice(0, 2).toUpperCase() || 'CR'}
+              <div
+                key={holding.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-sm font-medium text-muted-foreground">
+                    {holding.cryptocurrency?.symbol || 'N/A'}
                   </div>
                   <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">{holding.cryptocurrency?.symbol || 'Unknown'}</span>
-                      <Badge variant={priceChange24h >= 0 ? 'default' : 'destructive'} className="text-xs">
-                        24h: {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
-                      </Badge>
+                    <div className="font-semibold">
+                      {parseFloat(holding.amount || '0').toFixed(6)}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {parseFloat(holding.amount).toFixed(6)} @ ${parseFloat(holding.averagePrice || '0').toFixed(6)}
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      @ ${parseFloat(holding.averagePrice || '0').toFixed(6)}
+                    </div>
                   </div>
                 </div>
+
                 <div className="text-right">
-                  <p className="font-medium">${parseFloat(holding.currentValue || '0').toFixed(2)}</p>
-                  <p className={`text-sm flex items-center gap-1 ${
+                  <div className="font-semibold">
+                    ${parseFloat(holding.currentValue || '0').toFixed(2)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    ${parseFloat(holding.cryptocurrency?.currentPrice || '0').toFixed(6)}
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div className={`font-semibold flex items-center gap-1 ${
                     pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`}>
                     {pnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                    ${Math.abs(pnl).toFixed(2)} ({pnlPercentage.toFixed(2)}%)
-                  </p>
+                    ${Math.abs(pnl).toFixed(2)}
+                  </div>
+                  <div className={`text-sm ${
+                    pnlPercentage >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {pnlPercentage >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <Badge variant={priceChange24h >= 0 ? "default" : "destructive"} className="text-xs">
+                    {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
+                  </Badge>
                 </div>
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-muted-foreground">Total Invested:</span>
+            <span className="font-medium">${totalInvested.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-1">
+            <span className="text-muted-foreground">Current Value:</span>
+            <span className="font-medium">${totalValue.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-1">
+            <span className="text-muted-foreground">Total P&L:</span>
+            <span className={`font-medium ${
+              totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            }`}>
+              ${Math.abs(totalPnl).toFixed(2)} ({totalPnlPercentage.toFixed(2)}%)
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>

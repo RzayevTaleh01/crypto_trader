@@ -503,7 +503,7 @@ export class EmaRsiStrategy {
       const tradeData: InsertTrade = {
         userId,
         cryptoId: crypto.id,
-        type: 'buy',
+        type: 'BUY',
         amount: quantity.toString(),
         price: price.toString(),
         total: amount.toString(),
@@ -593,7 +593,7 @@ export class EmaRsiStrategy {
       const tradeData: InsertTrade = {
         userId,
         cryptoId: crypto.id,
-        type: 'sell',
+        type: 'SELL',
         amount: quantity.toString(),
         price: price.toString(),
         total: total.toString(),

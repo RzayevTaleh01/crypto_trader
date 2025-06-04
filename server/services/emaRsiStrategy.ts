@@ -62,9 +62,8 @@ export class EmaRsiStrategy {
     const { binanceService } = await import('./binanceService');
     console.log('📡 Fetching real market data from Binance...');
     
-    try {
-      await binanceService.getRealMarketData();
-    } catch (error) {
+    const marketData = await binanceService.getRealMarketData();
+    if (!marketData) {
       console.log('🚨 Binance API unavailable - stopping bot to prevent trading without real data');
       
       // Stop the bot automatically when Binance API fails
@@ -82,13 +81,26 @@ export class EmaRsiStrategy {
       console.log('🛑 Bot automatically stopped due to API failure');
       return;
     }
+    
+    console.log(`📊 Using real market data for ${marketData.length} cryptocurrencies`);
 
-    // Check sell signals first
-    await this.checkSellSignals(userId, portfolio, cryptos);
+    // Only use real-time market data, never database fallback
+    const realTimeCryptos = marketData.map(coin => ({
+      id: 0, // Temporary ID for real-time data
+      symbol: coin.symbol,
+      name: coin.name,
+      currentPrice: coin.currentPrice.toString(),
+      priceChange24h: coin.priceChange24h.toString(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }));
 
-    // Check buy signals if we have balance
+    // Check sell signals first with real-time data only
+    await this.checkSellSignals(userId, portfolio, realTimeCryptos);
+
+    // Check buy signals if we have balance with real-time data only
     if (balance > 0.5) {
-      await this.checkBuySignals(userId, cryptos, balance);
+      await this.checkBuySignals(userId, realTimeCryptos, balance);
     }
   }
 

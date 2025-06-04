@@ -8,10 +8,19 @@ class PortfolioService {
       // Portfolio data already includes cryptocurrency details from the join
       const currentPrice = parseFloat(item.cryptocurrency?.currentPrice || "0");
       const amount = parseFloat(item.amount);
-      const currentValue = amount * currentPrice;
+      const averagePrice = parseFloat(item.averagePrice);
       const totalInvested = parseFloat(item.totalInvested);
+      
+      // Calculate current value based on amount and current price
+      const currentValue = amount * currentPrice;
+      
+      // Calculate P&L: difference between current value and total invested
       const pnl = currentValue - totalInvested;
+      
+      // Calculate P&L percentage: (current value - total invested) / total invested * 100
       const pnlPercentage = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
+
+      console.log(`💰 Profit calc: ${item.cryptocurrency?.symbol} - Current: $${currentPrice}, Amount: ${amount}, Total Invested: $${totalInvested}, Current Value: $${currentValue.toFixed(4)}, P&L: ${pnlPercentage.toFixed(2)}%`);
 
       return {
         ...item,

@@ -53,20 +53,28 @@ class BinanceService {
 
     try {
       const tickers = await this.client.dailyStats();
+      console.log(`📊 Binance returned ${tickers.length} total tickers`);
       
-      return tickers
+      const usdtPairs = tickers.filter((ticker: any) => ticker.symbol.endsWith('USDT'));
+      console.log(`💰 Found ${usdtPairs.length} USDT pairs`);
+      
+      // Use more lenient filtering for testnet
+      const filtered = tickers
         .filter((ticker: any) => 
           ticker.symbol.endsWith('USDT') && 
-          parseFloat(ticker.volume) > 1000000 &&
-          parseFloat(ticker.count) > 1000
+          parseFloat(ticker.volume) > 10000 &&  // Lower volume requirement for testnet
+          parseFloat(ticker.count) > 100        // Lower count requirement for testnet
         )
-        .slice(0, 100)
-        .map((ticker: any) => ({
-          symbol: ticker.symbol.replace('USDT', ''),
-          name: this.getFullName(ticker.symbol.replace('USDT', '')),
-          currentPrice: parseFloat(ticker.lastPrice),
-          priceChange24h: parseFloat(ticker.priceChangePercent)
-        }));
+        .slice(0, 50); // Top 50 most active pairs
+      
+      console.log(`🎯 After filtering: ${filtered.length} active pairs selected`);
+      
+      return filtered.map((ticker: any) => ({
+        symbol: ticker.symbol.replace('USDT', ''),
+        name: this.getFullName(ticker.symbol.replace('USDT', '')),
+        currentPrice: parseFloat(ticker.lastPrice),
+        priceChange24h: parseFloat(ticker.priceChangePercent)
+      }));
     } catch (error) {
       console.log('Failed to fetch market data from Binance:', error);
       return null;

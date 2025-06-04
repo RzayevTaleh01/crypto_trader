@@ -55,8 +55,8 @@ export default function LiveTradingActivity() {
 
   // Initial load of trading data
   useEffect(() => {
-    if (wsData?.data?.trades && Array.isArray(wsData.data.trades)) {
-      const latestTrades = wsData.data.trades
+    if (wsData?.trades?.data && Array.isArray(wsData.trades.data)) {
+      const latestTrades = wsData.trades.data
         .filter((trade: any) => trade.isBot)
         .slice(0, 10)
         .map((trade: any) => ({
@@ -72,9 +72,9 @@ export default function LiveTradingActivity() {
       
       setActivities(latestTrades);
     }
-  }, [wsData?.data?.trades]);
+  }, [wsData?.trades?.data]);
 
-  const isActive = wsData?.data?.botStatus?.isActive || false;
+  const isActive = wsData?.botSettings?.data?.isActive || false;
   const currentStrategy = 'EMA-RSI';
 
   const getStrategyName = (strategy: string) => {
@@ -90,7 +90,7 @@ export default function LiveTradingActivity() {
     return isActive ? "default" : "secondary";
   };
 
-  if (!wsData?.data?.trades || wsData.data.trades.length === 0) {
+  if (!wsData?.trades?.data || wsData.trades.data.length === 0) {
     return (
       <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-orange-200 dark:border-orange-800">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

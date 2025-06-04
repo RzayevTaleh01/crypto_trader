@@ -306,6 +306,15 @@ export class EmaRsiStrategy {
       // Update portfolio
       await this.updatePortfolioAfterBuy(userId, crypto.id, quantity, price);
       
+      // Broadcast portfolio update to WebSocket
+      if (this.broadcastFn) {
+        const updatedPortfolio = await storage.getUserPortfolio(userId);
+        this.broadcastFn({
+          type: 'portfolioUpdate',
+          data: updatedPortfolio
+        });
+      }
+      
       console.log(`✅ BUY: ${crypto.symbol} - $${amount.toFixed(2)} at $${price.toFixed(6)}`);
       
       // Send Telegram notification
@@ -361,6 +370,15 @@ export class EmaRsiStrategy {
       
       // Update portfolio
       await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
+      
+      // Broadcast portfolio update to WebSocket
+      if (this.broadcastFn) {
+        const updatedPortfolio = await storage.getUserPortfolio(userId);
+        this.broadcastFn({
+          type: 'portfolioUpdate',
+          data: updatedPortfolio
+        });
+      }
       
       console.log(`✅ SELL: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
       

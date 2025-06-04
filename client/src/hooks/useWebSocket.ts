@@ -87,6 +87,13 @@ export function useWebSocket() {
               }));
               break;
               
+            case 'newTrade':
+              setWsData(prev => ({
+                ...prev,
+                trades: [data.data, ...prev.trades.slice(0, 49)]
+              }));
+              break;
+              
             case 'portfolioUpdate':
               setWsData(prev => ({
                 ...prev,

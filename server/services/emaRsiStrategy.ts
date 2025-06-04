@@ -65,7 +65,22 @@ export class EmaRsiStrategy {
     try {
       await binanceService.getRealMarketData();
     } catch (error) {
-      console.log('⚠️ Binance API unavailable, proceeding with database analysis...');
+      console.log('🚨 Binance API unavailable - stopping bot to prevent trading without real data');
+      
+      // Stop the bot automatically when Binance API fails
+      await storage.updateBotSettings(userId, { isActive: false });
+      this.stopContinuousTrading();
+      
+      // Broadcast bot status update
+      if (this.broadcastFn) {
+        this.broadcastFn({
+          type: 'botStatus',
+          data: { userId, isActive: false, reason: 'Binance API unavailable' }
+        });
+      }
+      
+      console.log('🛑 Bot automatically stopped due to API failure');
+      return;
     }
 
     // Check sell signals first

@@ -11,10 +11,18 @@ class CryptoService {
 
   private async fetchCryptoPrices() {
     const { binanceService } = await import("./binanceService");
-    let marketData = await binanceService.getRealMarketData();
     
-    if (!marketData) {
-      console.log('⏳ Binance Testnet temporarily unavailable - waiting for service restoration');
+    let marketData;
+    try {
+      marketData = await binanceService.getRealMarketData();
+      
+      if (!marketData) {
+        console.log('⏳ Binance Testnet temporarily unavailable - waiting for service restoration');
+        return;
+      }
+    } catch (error) {
+      console.log('🚨 Binance API failed - stopping price updates');
+      this.stopPriceUpdates();
       return;
     }
 

@@ -75,7 +75,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
   const updateMutation = useMutation({
     mutationFn: async (newConfig: Partial<BotConfig>) => {
       const response = await fetch(`/api/bot-settings/${userId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)
       });

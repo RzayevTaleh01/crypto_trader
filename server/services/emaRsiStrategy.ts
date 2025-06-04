@@ -168,22 +168,22 @@ export class EmaRsiStrategy {
       if (signal) {
         console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
-        // More aggressive sell conditions for active trading
+        // Conservative sell conditions to prevent losses
         const profitDollar = currentPrice * parseFloat(position.amount) - parseFloat(position.totalInvested);
         
-        if (signal.signal === 'SELL') {
-          shouldSell = true;
-          sellReason = `Advanced sell signal triggered`;
-        } else if (profitPercentage >= 3) {  // 3% profit target
+        // Only sell when profitable - no stop losses that create losses
+        if (profitPercentage >= 5) {  // Higher profit target - 5%
           shouldSell = true;
           sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
-        } else if (profitDollar >= 0.10) {  // $0.10 profit target
+        } else if (profitDollar >= 0.15) {  // Higher dollar profit target - $0.15
           shouldSell = true;
           sellReason = `Dollar profit target reached - $${profitDollar.toFixed(3)} gain`;
-        } else if (profitPercentage <= -1.5) {  // 1.5% stop loss
+        } else if (signal.signal === 'SELL' && profitPercentage > 0) {  // Only sell on signal if profitable
           shouldSell = true;
-          sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
+          sellReason = `Profitable sell signal - ${profitPercentage.toFixed(2)}% gain`;
         }
+        
+        // No stop-loss selling - only hold until profitable
         
         if (shouldSell) {
           const sellAmount = parseFloat(position.amount) * 0.8; // Sell 80% of position
@@ -248,13 +248,13 @@ export class EmaRsiStrategy {
     // Sort by priority and take top 5 for more aggressive trading
     opportunities.sort((a, b) => b.priority - a.priority);
     
-    const maxTrades = Math.min(5, opportunities.length);
+    const maxTrades = Math.min(3, opportunities.length); // Reduce to max 3 trades
     console.log(`🎯 Executing ${maxTrades} buy orders from ${opportunities.length} opportunities`);
     
     for (let i = 0; i < maxTrades; i++) {
       const opp = opportunities[i];
-      const maxUsableBalance = balance * 0.95; // Use only 95% of balance to prevent negative balance
-      const investAmount = Math.min(maxUsableBalance * 0.2, 1.0); // Max 20% of usable balance or $1 per trade
+      const maxUsableBalance = balance * 0.80; // Use only 80% of balance for more conservative approach
+      const investAmount = Math.min(maxUsableBalance * 0.15, 0.75); // Max 15% of usable balance or $0.75 per trade
       
       if (investAmount >= 0.1 && maxUsableBalance >= 0.15) { // Minimum $0.10 investment if usable balance allows
         console.log(`🟢 BUY Signal: ${opp.crypto.symbol} - RSI: ${opp.signal.rsi}, Volume: ${opp.signal.vol_ratio}x`);

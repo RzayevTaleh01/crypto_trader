@@ -71,7 +71,7 @@ class BinanceService {
           const bChange = Math.abs(parseFloat(b.priceChangePercent));
           return bChange - aChange;
         })
-        .slice(0, 100); // Top 100 most volatile pairs
+        .slice(0, 200); // Top 200 most volatile pairs
       
       console.log(`🎯 After filtering: ${filtered.length} active pairs selected`);
       

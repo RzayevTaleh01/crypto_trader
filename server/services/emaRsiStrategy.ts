@@ -183,22 +183,24 @@ export class EmaRsiStrategy {
       const currentPrice = parseFloat(crypto.currentPrice);
       const priceChange24h = parseFloat(crypto.priceChange24h || '0');
       
-      // Enhanced RSI estimation based on price movement
-      let estimatedRSI = 50; // Neutral
-      if (priceChange24h > 8) estimatedRSI = 75; // Strong overbought
-      else if (priceChange24h < -8) estimatedRSI = 25; // Strong oversold
-      else if (priceChange24h > 3) estimatedRSI = 65; // Overbought
-      else if (priceChange24h < -3) estimatedRSI = 35; // Oversold
-      else estimatedRSI = 50 + (priceChange24h * 3); // Scaled neutral
+      // Enhanced RSI estimation with more sensitive thresholds for active trading
+      let estimatedRSI = 50; // Neutral baseline
+      if (priceChange24h > 5) estimatedRSI = 75; // Overbought (lowered from 8%)
+      else if (priceChange24h < -5) estimatedRSI = 25; // Oversold (lowered from -8%)
+      else if (priceChange24h > 1) estimatedRSI = 65; // Moderate overbought (lowered from 3%)
+      else if (priceChange24h < -1) estimatedRSI = 35; // Moderate oversold (lowered from -3%)
+      else if (priceChange24h > 0) estimatedRSI = 55; // Slight positive = slightly overbought
+      else if (priceChange24h < 0) estimatedRSI = 45; // Slight negative = slightly oversold
+      else estimatedRSI = 50; // Exactly neutral
       
       const volume24h = parseFloat(crypto.volume24h || '0');
       const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
       
-      // Generate trading signals based on more sensitive RSI levels
+      // Generate trading signals based on very sensitive RSI levels for active trading
       let signal = 'HOLD';
-      if (estimatedRSI <= 45) {  // More sensitive buy threshold
+      if (estimatedRSI <= 50) {  // Very sensitive buy threshold - below market average
         signal = 'BUY';
-      } else if (estimatedRSI >= 60) {  // More sensitive sell threshold
+      } else if (estimatedRSI >= 52) {  // Very sensitive sell threshold - above market average
         signal = 'SELL';
       }
       

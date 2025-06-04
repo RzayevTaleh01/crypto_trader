@@ -11,14 +11,20 @@ class CryptoService {
 
   private async fetchCryptoPrices() {
     const { binanceService } = await import("./binanceService");
-    const marketData = await binanceService.getRealMarketData();
+    let marketData = await binanceService.getRealMarketData();
     
+    // Fallback to CoinCap API if Binance is unavailable
     if (!marketData) {
-      console.log('Failed to fetch real market data');
-      return;
+      console.log('Binance unavailable, using CoinCap API fallback');
+      marketData = await this.fetchFromCoinCap();
+      
+      if (!marketData) {
+        console.log('Failed to fetch market data from all sources');
+        return;
+      }
     }
 
-    console.log(`📊 Processing ${marketData.length} real cryptocurrencies from Binance testnet`);
+    console.log(`📊 Processing ${marketData.length} real cryptocurrencies from market data`);
 
     for (const coinData of marketData) {
       try {
@@ -80,6 +86,28 @@ class CryptoService {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
       console.log('Crypto price updates stopped');
+    }
+  }
+
+  private async fetchFromCoinCap() {
+    try {
+      const response = await fetch('https://api.coincap.io/v2/assets?limit=100');
+      const data = await response.json();
+      
+      if (!data.data) {
+        console.log('No data received from CoinCap API');
+        return null;
+      }
+
+      return data.data.map((coin: any) => ({
+        symbol: coin.symbol,
+        name: coin.name,
+        currentPrice: parseFloat(coin.priceUsd),
+        priceChange24h: parseFloat(coin.changePercent24Hr || '0')
+      }));
+    } catch (error) {
+      console.log('Error fetching from CoinCap API:', error);
+      return null;
     }
   }
 

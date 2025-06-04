@@ -151,7 +151,7 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">{holding.cryptocurrency?.symbol || 'Unknown'}</span>
                       <Badge variant={priceChange24h >= 0 ? 'default' : 'destructive'} className="text-xs">
-                        {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
+                        24h: {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">

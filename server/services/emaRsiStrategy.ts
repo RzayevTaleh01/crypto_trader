@@ -1,5 +1,6 @@
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
+import { binanceService } from './binanceService';
 import type { InsertTrade } from '@shared/schema';
 
 export class EmaRsiStrategy {
@@ -147,19 +148,16 @@ export class EmaRsiStrategy {
       if (signal) {
         console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
-        // Multiple sell conditions for more active trading
+        // Advanced sell conditions with multiple criteria
         if (signal.signal === 'SELL') {
           shouldSell = true;
-          sellReason = `RSI overbought signal - RSI: ${signal.rsi}`;
-        } else if (profitPercentage >= 3) {
+          sellReason = `Advanced sell signal triggered`;
+        } else if (profitPercentage >= 6) {
           shouldSell = true;
           sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
-        } else if (profitPercentage <= -2) {
+        } else if (profitPercentage <= -2.25) {
           shouldSell = true;
           sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
-        } else if (signal.rsi >= 55) {
-          shouldSell = true;
-          sellReason = `Moderate overbought - RSI: ${signal.rsi}`;
         }
         
         if (shouldSell) {
@@ -239,44 +237,90 @@ export class EmaRsiStrategy {
 
   private async analyzeSymbol(crypto: any): Promise<any> {
     try {
-      // Use 24h price change for immediate RSI estimation
       const currentPrice = parseFloat(crypto.currentPrice);
       const priceChange24h = parseFloat(crypto.priceChange24h || '0');
-      
-      // Balanced RSI estimation for more realistic trading conditions
-      let estimatedRSI = 50; // Neutral baseline
-      if (priceChange24h > 8) estimatedRSI = 80; // Strong overbought
-      else if (priceChange24h < -8) estimatedRSI = 20; // Strong oversold
-      else if (priceChange24h > 4) estimatedRSI = 70; // Moderate overbought
-      else if (priceChange24h < -4) estimatedRSI = 30; // Moderate oversold
-      else if (priceChange24h > 2) estimatedRSI = 60; // Slight overbought
-      else if (priceChange24h < -2) estimatedRSI = 40; // Slight oversold
-      else if (priceChange24h > 0) estimatedRSI = 55; // Slight positive
-      else if (priceChange24h < 0) estimatedRSI = 45; // Slight negative
-      else estimatedRSI = 50; // Exactly neutral
-      
       const volume24h = parseFloat(crypto.volume24h || '0');
+      
+      // Enhanced RSI calculation based on price action
+      let rsi = 50;
+      if (priceChange24h > 8) rsi = 85;
+      else if (priceChange24h < -8) rsi = 15;
+      else if (priceChange24h > 4) rsi = 75;
+      else if (priceChange24h < -4) rsi = 25;
+      else if (priceChange24h > 2) rsi = 65;
+      else if (priceChange24h < -2) rsi = 35;
+      else if (priceChange24h > 0) rsi = 55;
+      else if (priceChange24h < 0) rsi = 45;
+      
+      // Simulate EMA crossover based on recent price trends
+      const ema20 = currentPrice * (1 + priceChange24h * 0.01);
+      const ema50 = currentPrice * (1 + priceChange24h * 0.005);
+      
+      // Simulate MACD signals based on momentum
+      const macdPositive = priceChange24h > 1;
+      
+      // Bollinger Band simulation
+      const volatility = Math.abs(priceChange24h);
+      const upperBand = currentPrice * (1 + volatility * 0.02);
+      const lowerBand = currentPrice * (1 - volatility * 0.02);
+      
+      // Volume analysis
       const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
       
-      // Balanced trading signals with traditional RSI levels
+      // ADX simulation based on price volatility
+      const adx = Math.min(100, volatility * 5 + 20);
+      
+      // Advanced Buy Conditions - at least 4 out of 6 must be true
+      const buyConditions = {
+        rsi: rsi < 35,
+        macd: macdPositive,
+        ema: ema20 > ema50,
+        bollinger: currentPrice <= lowerBand && priceChange24h > -2,
+        volume: volumeRatio > 1.2,
+        adx: adx > 20
+      };
+      
+      const buyCount = Object.values(buyConditions).filter(Boolean).length;
+      
+      // Advanced Sell Conditions - any 2 conditions trigger sell
+      const sellConditions = {
+        rsi: rsi > 70,
+        macd: !macdPositive && priceChange24h < -1,
+        bollinger: currentPrice >= upperBand,
+        volumeDrop: volumeRatio < 0.8
+      };
+      
+      const sellCount = Object.values(sellConditions).filter(Boolean).length;
+      
+      // Signal generation with confidence scoring
       let signal = 'HOLD';
-      if (estimatedRSI <= 35) {  // Traditional oversold - strong buy signal
+      let confidence = 0;
+      
+      if (buyCount >= 4) {
         signal = 'BUY';
-      } else if (estimatedRSI >= 65) {  // Traditional overbought - strong sell signal
+        confidence = buyCount / 6;
+      } else if (sellCount >= 2) {
         signal = 'SELL';
-      } else if (estimatedRSI <= 40) {  // Moderate oversold - weak buy signal
-        signal = 'BUY';
-      } else if (estimatedRSI >= 60) {  // Moderate overbought - weak sell signal
-        signal = 'SELL';
+        confidence = sellCount / 4;
       }
       
       return {
         signal,
-        rsi: estimatedRSI,
+        confidence,
+        rsi,
+        ema20,
+        ema50,
+        macd: macdPositive ? 1 : -1,
+        macdSignal: 0,
+        bollingerUpper: upperBand,
+        bollingerLower: lowerBand,
+        adx,
         vol_ratio: volumeRatio,
         price_change: priceChange24h,
-        ema20: currentPrice, // Use current price as EMA reference
-        ema50: currentPrice
+        buyConditions,
+        sellConditions,
+        buyScore: buyCount,
+        sellScore: sellCount
       };
     } catch (error) {
       console.log(`❌ Error analyzing ${crypto.symbol}:`, error);
@@ -295,6 +339,68 @@ export class EmaRsiStrategy {
     }
     
     return ema;
+  }
+
+  private calculateMACD(prices: number[]): any | null {
+    if (prices.length < 26) return null;
+    
+    const ema12 = this.calculateEMA(prices, 12);
+    const ema26 = this.calculateEMA(prices, 26);
+    if (!ema12 || !ema26) return null;
+    
+    const macdLine = ema12[ema12.length - 1] - ema26[ema26.length - 1];
+    
+    // Calculate MACD signal line (9-period EMA of MACD line)
+    const macdHistory = [];
+    for (let i = 26; i < prices.length; i++) {
+      if (ema12[i - 26] && ema26[i - 26]) {
+        macdHistory.push(ema12[i - 26] - ema26[i - 26]);
+      }
+    }
+    
+    const signalArray = this.calculateEMA(macdHistory, 9);
+    const signal = signalArray ? signalArray[signalArray.length - 1] : macdLine;
+    
+    return {
+      macd: macdLine,
+      signal: signal,
+      histogram: macdLine - signal
+    };
+  }
+
+  private calculateBollingerBands(prices: number[], period: number = 20, multiplier: number = 2): any | null {
+    if (prices.length < period) return null;
+    
+    const sma = prices.slice(-period).reduce((sum, price) => sum + price, 0) / period;
+    
+    const variance = prices.slice(-period).reduce((sum, price) => {
+      return sum + Math.pow(price - sma, 2);
+    }, 0) / period;
+    
+    const stdDev = Math.sqrt(variance);
+    
+    return {
+      upper: sma + (stdDev * multiplier),
+      middle: sma,
+      lower: sma - (stdDev * multiplier)
+    };
+  }
+
+  private calculateADX(prices: number[], period: number = 14): number {
+    if (prices.length < period * 2) return 25; // Default moderate trend strength
+    
+    // Simplified ADX calculation based on price volatility
+    const priceChanges = [];
+    for (let i = 1; i < prices.length; i++) {
+      priceChanges.push(Math.abs(prices[i] - prices[i - 1]));
+    }
+    
+    const avgChange = priceChanges.slice(-period).reduce((sum, change) => sum + change, 0) / period;
+    const maxChange = Math.max(...priceChanges.slice(-period));
+    
+    // Convert to ADX-like scale (0-100)
+    const adx = Math.min(100, (avgChange / maxChange) * 100);
+    return isNaN(adx) ? 25 : adx;
   }
 
   private calculateRSI(prices: number[], period: number = 14): number | null {

@@ -1,5 +1,5 @@
-import { storage } from "../storage";
-import type { InsertCryptocurrency } from "@shared/schema";
+import { storage } from '../storage';
+import { InsertCryptocurrency } from '@shared/schema';
 
 class CryptoService {
   private updateInterval: NodeJS.Timeout | null = null;
@@ -13,7 +13,6 @@ class CryptoService {
     const { binanceService } = await import("./binanceService");
     let marketData = await binanceService.getRealMarketData();
     
-    // If Binance is unavailable, wait for it to come back online
     if (!marketData) {
       console.log('⏳ Binance Testnet temporarily unavailable - waiting for service restoration');
       return;
@@ -23,7 +22,6 @@ class CryptoService {
 
     for (const coinData of marketData) {
       try {
-        // Check if cryptocurrency exists, if not create it
         let crypto = await storage.getCryptocurrencyBySymbol(coinData.symbol);
         
         if (!crypto) {
@@ -35,7 +33,6 @@ class CryptoService {
           };
           crypto = await storage.createCryptocurrency(newCrypto);
         } else {
-          // Update existing cryptocurrency with real prices
           await storage.updateCryptocurrencyPrice(
             crypto.id,
             coinData.currentPrice.toString(),
@@ -43,32 +40,29 @@ class CryptoService {
           );
         }
 
-        // Broadcast real price updates
-        if (this.broadcastFunction) {
-          this.broadcastFunction({
-            type: 'priceUpdate',
-            data: {
-              id: crypto.id,
-              symbol: coinData.symbol,
-              name: coinData.name,
-              currentPrice: coinData.currentPrice,
-              priceChange24h: coinData.priceChange24h
-            }
-          });
-        }
+        await storage.createPriceHistory({
+          cryptoId: crypto.id,
+          price: coinData.currentPrice.toString()
+        });
+
       } catch (error) {
         console.error(`Error processing ${coinData.symbol}:`, error);
       }
+    }
+
+    if (this.broadcastFunction) {
+      this.broadcastFunction({
+        type: 'cryptoUpdate',
+        data: marketData
+      });
     }
   }
 
   async startPriceUpdates() {
     console.log('🚀 Starting real price updates with CoinCap API...');
     
-    // Initial price fetch
     await this.fetchCryptoPrices();
     
-    // Set interval for regular updates (every 30 seconds)
     this.updateInterval = setInterval(async () => {
       await this.fetchCryptoPrices();
     }, 30000);
@@ -83,8 +77,6 @@ class CryptoService {
       console.log('Crypto price updates stopped');
     }
   }
-
-
 
   async getTopPerformingCoins(limit = 10) {
     return await storage.getAllCryptocurrencies();

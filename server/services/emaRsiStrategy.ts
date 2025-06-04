@@ -203,7 +203,6 @@ export class EmaRsiStrategy {
         amount: quantity.toString(),
         price: price.toString(),
         total: amount.toString(),
-        reason,
         isBot: true
       };
       
@@ -257,7 +256,6 @@ export class EmaRsiStrategy {
         amount: quantity.toString(),
         price: price.toString(),
         total: total.toString(),
-        reason,
         isBot: true
       };
       

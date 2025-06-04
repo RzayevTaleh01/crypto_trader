@@ -106,7 +106,8 @@ ${emoji} *Yeni Treyd!*
 💰 Ümumi Satış Dəyəri: $${totalSellValue.toFixed(2)}
 📊 Hazırki Qiymət: $${currentPrice.toFixed(6)}`;
       
-      if (trade.profit) {
+      if (trade.pnl) {
+        const profit = parseFloat(trade.pnl);
         message += `
 💰 *KAR: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}*`;
       }

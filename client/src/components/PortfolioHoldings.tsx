@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface PortfolioHolding {
   id: number;
@@ -25,10 +27,37 @@ interface PortfolioHoldingsProps {
 }
 
 export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
-  const { data: holdings = [], isLoading } = useQuery<PortfolioHolding[]>({
-    queryKey: ['/api/portfolio/user', userId],
-    enabled: !!userId,
-  });
+  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
+  const wsData = useWebSocketData();
+  const { socket } = useWebSocket();
+
+  // Listen for real-time portfolio updates via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePortfolioUpdate = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'portfolioUpdate') {
+          setHoldings(message.data || []);
+        }
+      } catch (error) {
+        console.log('Error parsing WebSocket portfolio message:', error);
+      }
+    };
+
+    socket.addEventListener('message', handlePortfolioUpdate);
+    return () => socket.removeEventListener('message', handlePortfolioUpdate);
+  }, [socket]);
+
+  // Initial load of portfolio data from WebSocket
+  useEffect(() => {
+    if (wsData?.portfolio?.data && Array.isArray(wsData.portfolio.data)) {
+      setHoldings(wsData.portfolio.data);
+    }
+  }, [wsData?.portfolio?.data]);
+
+  const isLoading = wsData?.portfolio?.isLoading || false;
 
   if (isLoading) {
     return (
@@ -48,7 +77,7 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     );
   }
 
-  if (!holdings.length) {
+  if (!holdings || holdings.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -58,8 +87,10 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
-            No active positions
+          <div className="text-center py-8">
+            <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No holdings yet</p>
+            <p className="text-sm text-muted-foreground">Start trading to build your portfolio</p>
           </div>
         </CardContent>
       </Card>
@@ -71,114 +102,73 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   );
 
   const totalInvested = holdings.reduce((sum: number, holding: PortfolioHolding) => 
-    sum + parseFloat(holding.totalInvested), 0
+    sum + parseFloat(holding.totalInvested || '0'), 0
   );
 
-  const totalPnL = totalValue - totalInvested;
-  const totalPnLPercentage = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+  const totalPnl = totalValue - totalInvested;
+  const totalPnlPercentage = totalInvested > 0 ? ((totalPnl / totalInvested) * 100) : 0;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Wallet className="h-5 w-5" />
-          Portfolio Holdings
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Portfolio Holdings
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold">${totalValue.toFixed(2)}</div>
+            <div className={`text-sm flex items-center gap-1 ${
+              totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            }`}>
+              {totalPnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              ${Math.abs(totalPnl).toFixed(2)} ({totalPnlPercentage.toFixed(2)}%)
+            </div>
+          </div>
         </CardTitle>
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <DollarSign className="h-4 w-4" />
-            Total Value: ${totalValue.toFixed(2)}
-          </div>
-          <div className="flex items-center gap-1">
-            {totalPnL >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            )}
-            <span className={totalPnL >= 0 ? "text-green-600" : "text-red-600"}>
-              ${totalPnL.toFixed(2)} ({totalPnLPercentage >= 0 ? '+' : ''}{totalPnLPercentage.toFixed(2)}%)
-            </span>
-          </div>
-        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Header Row */}
-        <div className="grid grid-cols-5 gap-4 p-3 bg-muted/30 rounded-lg text-sm font-medium text-muted-foreground">
-          <div>Coin</div>
-          <div className="text-center">Alış Qiyməti</div>
-          <div className="text-center">Hazırki Qiymət</div>
-          <div className="text-center">Məbləğ</div>
-          <div className="text-center">Kar/Zərər</div>
-        </div>
+      <CardContent>
+        <div className="space-y-3">
+          {holdings.map((holding: PortfolioHolding) => {
+            const pnl = parseFloat(holding.pnl || '0');
+            const pnlPercentage = parseFloat(holding.pnlPercentage || '0');
+            const priceChange24h = parseFloat(holding.cryptocurrency?.priceChange24h || '0');
 
-        {holdings.map((holding: PortfolioHolding) => {
-          const currentValue = parseFloat(holding.currentValue || '0');
-          const pnl = parseFloat(holding.pnl || '0');
-          const pnlPercentage = parseFloat(holding.pnlPercentage || '0');
-          const amount = parseFloat(holding.amount);
-          const avgPrice = parseFloat(holding.averagePrice);
-          const currentPrice = parseFloat(holding.cryptocurrency?.currentPrice || '0');
-          const priceChange24h = parseFloat(holding.cryptocurrency?.priceChange24h || '0');
-          
-          return (
-            <div key={holding.id} className="grid grid-cols-5 gap-4 p-3 bg-muted/50 rounded-lg items-center">
-              {/* Coin Info */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-primary">
-                    {holding.cryptocurrency?.symbol?.slice(0, 2) || 'UK'}
-                  </span>
-                </div>
-                <div>
-                  <div className="font-medium">{holding.cryptocurrency?.symbol || 'Unknown'}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {holding.cryptocurrency?.name || 'Unknown'}
+            return (
+              <div key={holding.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    priceChange24h >= 0 
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                      : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                  }`}>
+                    {holding.cryptocurrency?.symbol?.slice(0, 2).toUpperCase() || 'N/A'}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">{holding.cryptocurrency?.symbol || 'N/A'}</span>
+                      <Badge variant={priceChange24h >= 0 ? 'default' : 'destructive'} className="text-xs">
+                        {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {parseFloat(holding.amount).toFixed(6)} @ ${parseFloat(holding.averagePrice || '0').toFixed(6)}
+                    </p>
                   </div>
                 </div>
-              </div>
-              
-              {/* Buy Price */}
-              <div className="text-center">
-                <div className="font-medium text-blue-600">
-                  ${avgPrice.toFixed(6)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Ortalama
-                </div>
-              </div>
-              
-              {/* Current Price */}
-              <div className="text-center">
-                <div className="font-medium">
-                  ${currentPrice.toFixed(6)}
-                </div>
-                <div className={`text-xs ${priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}% 24s
+                <div className="text-right">
+                  <p className="font-medium">${parseFloat(holding.currentValue || '0').toFixed(2)}</p>
+                  <p className={`text-sm flex items-center gap-1 ${
+                    pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {pnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    ${Math.abs(pnl).toFixed(2)} ({pnlPercentage.toFixed(2)}%)
+                  </p>
                 </div>
               </div>
-              
-              {/* Amount & Value */}
-              <div className="text-center">
-                <div className="font-medium">
-                  {amount.toFixed(6)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  ${currentValue.toFixed(2)} dəyər
-                </div>
-              </div>
-              
-              {/* P&L */}
-              <div className="text-center">
-                <Badge variant={pnl >= 0 ? "default" : "destructive"} className="mb-1">
-                  {pnl >= 0 ? '+' : ''}${pnl.toFixed(3)}
-                </Badge>
-                <div className={`text-sm font-medium ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {pnlPercentage >= 0 ? '+' : ''}{pnlPercentage.toFixed(2)}%
-                </div>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

@@ -38,10 +38,9 @@ class TelegramService {
 
   private async sendTestMessage() {
     try {
-      await this.bot?.sendMessage(this.chatId, '🚀 Trading bot bağlandı! Mənfəət bildirişləri aktiv.', { parse_mode: 'Markdown' });
-      console.log('✅ Test message sent successfully');
+      console.log('✅ Telegram bot ready for notifications');
     } catch (error) {
-      console.log('❌ Test message failed:', error);
+      console.log('❌ Telegram bot initialization failed:', error);
     }
   }
 

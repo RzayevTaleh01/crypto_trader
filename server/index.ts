@@ -54,17 +54,8 @@ app.use((req, res, next) => {
 
   console.log('✅ Authentic trading system activated - using real market data');
 
-  // Start autonomous trading engine for user 1 with EMA-RSI strategy
-  setTimeout(async () => {
-    const { autonomousTradingEngine } = await import("./services/autonomousTradingEngine");
-    const { storage } = await import("./storage");
-    
-    const botSettings = await storage.getBotSettings(1);
-    if (botSettings && botSettings.isActive) {
-      console.log(`🤖 Auto-starting autonomous trading bot for user 1 with ${botSettings.strategy} strategy`);
-      autonomousTradingEngine.startBot(1);
-    }
-  }, 5000);
+  // Auto-start disabled - bot will only start when manually activated from dashboard
+  // User can activate the bot from the BotSettings component
 
   // Set up daily report scheduler (24 hours)
   setInterval(async () => {

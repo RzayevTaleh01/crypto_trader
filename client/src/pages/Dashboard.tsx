@@ -48,7 +48,7 @@ export default function Dashboard() {
       <Sidebar 
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
-        botStatus={(botSettings || {}).isActive ? 'Active' : 'Inactive'}
+        botStatus={botSettings.data?.isActive ? 'Active' : 'Inactive'}
       />
 
       {/* Main content */}
@@ -105,7 +105,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <BotSettings userId={userId} />
             <LiveTradingActivity />
-            <BalanceManager userId={userId} currentBalance={user?.balance || '0.00'} />
+            <BalanceManager userId={userId} currentBalance={user.data?.user?.balance || '0.00'} />
           </div>
 
           {/* Telegram commands */}

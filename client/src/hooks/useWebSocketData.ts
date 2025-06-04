@@ -62,7 +62,17 @@ export function useWebSocketData() {
             timeframe: "1-4 hours"
           }
         ]
-      }
+      },
+      strategies: [
+        {
+          id: "ema_rsi",
+          name: "EMA + RSI Strategy",
+          description: "Uses EMA crossovers and RSI indicators for entry/exit signals",
+          riskLevel: "Medium",
+          expectedReturn: "8-15%",
+          timeframe: "1-4 hours"
+        }
+      ]
     },
     
     isConnected

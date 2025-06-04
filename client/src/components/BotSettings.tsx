@@ -50,27 +50,27 @@ export default function BotSettings({ userId }: BotSettingsProps) {
 
   // Load server settings only once with type safety
   useEffect(() => {
-    if (serverSettings && !hasLoaded) {
+    if (serverSettings.data && !hasLoaded) {
       setConfig({
-        strategy: serverSettings.strategy || 'rsi',
-        riskLevel: serverSettings.riskLevel || 5,
-        maxDailyLoss: serverSettings.maxDailyLoss || '50',
-        targetProfit: serverSettings.targetProfit || '100',
-        isActive: Boolean(serverSettings.isActive)
+        strategy: serverSettings.data.strategy || 'rsi',
+        riskLevel: serverSettings.data.riskLevel || 5,
+        maxDailyLoss: serverSettings.data.maxDailyLoss || '50',
+        targetProfit: serverSettings.data.targetProfit || '100',
+        isActive: Boolean(serverSettings.data.isActive)
       });
       setHasLoaded(true);
     }
-  }, [serverSettings, hasLoaded]);
+  }, [serverSettings.data, hasLoaded]);
 
   // Update only bot status from server
   useEffect(() => {
-    if (serverSettings && hasLoaded) {
+    if (serverSettings.data && hasLoaded) {
       setConfig(prev => ({
         ...prev,
-        isActive: Boolean(serverSettings.isActive)
+        isActive: Boolean(serverSettings.data.isActive)
       }));
     }
-  }, [serverSettings?.isActive, hasLoaded]);
+  }, [serverSettings.data?.isActive, hasLoaded]);
 
   const updateMutation = useMutation({
     mutationFn: async (newConfig: Partial<BotConfig>) => {
@@ -157,7 +157,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
           <div className="space-y-4">
             <Label className="text-sm font-medium mb-3 block">Mövcud Ticarət Strategiyaları</Label>
             
-            {availableStrategies?.strategies?.map((strategy: TradingStrategy) => (
+            {availableStrategies.data.strategies.map((strategy: TradingStrategy) => (
               <div 
                 key={strategy.id}
                 className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
@@ -285,7 +285,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Seçilmiş Strategiya:</span>
               <span className="font-medium text-crypto-blue">
-                {availableStrategies?.strategies?.find((s: TradingStrategy) => s.id === config.strategy)?.name || config.strategy}
+                {availableStrategies.data.strategies.find((s: TradingStrategy) => s.id === config.strategy)?.name || config.strategy}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">

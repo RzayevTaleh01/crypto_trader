@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Activity, Bot, DollarSign } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface TradingActivity {
   timestamp: string;
@@ -19,13 +19,7 @@ interface TradingActivity {
 export default function LiveTradingActivity() {
   const [activities, setActivities] = useState<TradingActivity[]>([]);
 
-  const { data: botSettings } = useQuery({
-    queryKey: ['/api/bot-settings'],
-  });
-
-  const { data: recentTrades } = useQuery({
-    queryKey: ['/api/trades/user/1'],
-  });
+  const { botSettings, trades: recentTrades } = useWebSocketData();
 
   // WebSocket for real-time updates
   const { socket } = useWebSocket();

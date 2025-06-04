@@ -84,21 +84,39 @@ export class EmaRsiStrategy {
     
     console.log(`📊 Using real market data for ${marketData.length} cryptocurrencies`);
 
-    // Only use real-time market data, never database fallback
-    const realTimeCryptos = marketData.map(coin => ({
-      id: 0, // Temporary ID for real-time data
-      symbol: coin.symbol,
-      name: coin.name,
-      currentPrice: coin.currentPrice.toString(),
-      priceChange24h: coin.priceChange24h.toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
+    // Store real-time data in database and get valid IDs
+    const realTimeCryptos = [];
+    for (const coin of marketData) {
+      let crypto = await storage.getCryptocurrencyBySymbol(coin.symbol);
+      
+      if (!crypto) {
+        // Create new cryptocurrency record
+        crypto = await storage.createCryptocurrency({
+          symbol: coin.symbol,
+          name: coin.name,
+          currentPrice: coin.currentPrice.toString(),
+          priceChange24h: coin.priceChange24h.toString()
+        });
+      } else {
+        // Update existing cryptocurrency with latest price
+        await storage.updateCryptocurrencyPrice(
+          crypto.id,
+          coin.currentPrice.toString(),
+          coin.priceChange24h.toString()
+        );
+        crypto.currentPrice = coin.currentPrice.toString();
+        crypto.priceChange24h = coin.priceChange24h.toString();
+      }
+      
+      realTimeCryptos.push(crypto);
+    }
 
-    // Check sell signals first with real-time data only
+    console.log(`💾 Stored ${realTimeCryptos.length} cryptocurrencies in database with valid IDs`);
+
+    // Check sell signals first with real database records
     await this.checkSellSignals(userId, portfolio, realTimeCryptos);
 
-    // Check buy signals if we have balance with real-time data only
+    // Check buy signals if we have balance with real database records
     if (balance > 0.5) {
       await this.checkBuySignals(userId, realTimeCryptos, balance);
     }

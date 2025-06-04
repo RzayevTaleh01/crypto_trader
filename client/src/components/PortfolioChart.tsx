@@ -15,10 +15,17 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const chartInstance = useRef<Chart | null>(null);
   const [timeframe, setTimeframe] = useState('1D');
 
+  const hoursMap = {
+    '1D': 24,
+    '1W': 168,
+    '1M': 720
+  };
+
   const { data: performanceData } = useQuery({
     queryKey: ['/api/portfolio/performance', userId, timeframe],
+    queryFn: () => fetch(`/api/portfolio/performance/${userId}?hours=${hoursMap[timeframe as keyof typeof hoursMap]}`).then(res => res.json()),
     enabled: !!userId,
- // Update every 5 seconds for real-time charts
+    refetchInterval: 30000, // Update every 30 seconds
   });
 
   useEffect(() => {
@@ -122,11 +129,33 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     { label: '1M', value: '1M' }
   ];
 
+  // Calculate current portfolio value and performance
+  const safePerformanceData = Array.isArray(performanceData) ? performanceData : [];
+  const currentValue = safePerformanceData.length > 0 ? safePerformanceData[safePerformanceData.length - 1]?.value : 0;
+  const startValue = safePerformanceData.length > 0 ? safePerformanceData[0]?.value : 0;
+  const valueChange = currentValue - startValue;
+  const percentageChange = startValue > 0 ? ((valueChange / startValue) * 100) : 0;
+
   return (
     <Card className="bg-card border-border">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold">Portfolio Performance</h3>
+          <div>
+            <h3 className="text-xl font-bold">Portfolio Performance</h3>
+            {safePerformanceData.length > 0 && (
+              <div className="mt-2">
+                <div className="text-2xl font-bold text-foreground">
+                  ${parseFloat(currentValue).toFixed(2)}
+                </div>
+                <div className={`text-sm flex items-center gap-1 ${
+                  valueChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {valueChange >= 0 ? '+' : ''}${Math.abs(valueChange).toFixed(2)} 
+                  ({percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(2)}%)
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center space-x-2">
             {timeframes.map((tf) => (
               <Button
@@ -141,7 +170,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
             ))}
           </div>
         </div>
-        <div className="chart-container">
+        <div className="chart-container h-64">
           <canvas ref={chartRef} className="w-full h-full" />
         </div>
       </CardContent>

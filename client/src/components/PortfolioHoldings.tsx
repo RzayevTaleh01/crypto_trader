@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, Wallet, DollarSign, TrendingDown as SellIcon } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface PortfolioHolding {
   id: number;
@@ -29,6 +32,8 @@ interface PortfolioHoldingsProps {
 export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const { socket } = useWebSocket();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Primary data source: API query for initial load and fallback
   const { data: apiHoldings = [], isLoading } = useQuery<PortfolioHolding[]>({
@@ -111,6 +116,46 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   const totalPnl = totalValue - totalInvested;
   const totalPnlPercentage = totalInvested > 0 ? ((totalPnl / totalInvested) * 100) : 0;
 
+  // Mutation for selling profitable coins
+  const sellProfitableCoinsMutation = useMutation({
+    mutationFn: async () => {
+      const profitableCoins = holdings.filter(holding => parseFloat(holding.pnl || '0') > 0.05);
+      
+      if (profitableCoins.length === 0) {
+        throw new Error('Kar 0.05-dən çox olan koin yoxdur');
+      }
+
+      const sellPromises = profitableCoins.map(holding => 
+        apiRequest('POST', `/api/trades/sell`, {
+          userId,
+          cryptoId: holding.cryptoId,
+          amount: holding.amount,
+          reason: 'Manual kar realizasiyası'
+        })
+      );
+
+      return Promise.all(sellPromises);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Satış uğurlu oldu",
+        description: `${data.length} karlı koin satıldı`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Satış xətası",
+        description: error.message || "Satış zamanı xəta baş verdi",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const profitableCoinsCount = holdings.filter(holding => parseFloat(holding.pnl || '0') > 0.05).length;
+
   return (
     <Card>
       <CardHeader>
@@ -119,13 +164,27 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
             <Wallet className="h-5 w-5" />
             Portfolio Holdings
           </div>
-          <div className="text-right">
-            <div className="text-lg font-bold">${totalValue.toFixed(2)}</div>
-            <div className={`text-sm flex items-center gap-1 ${
-              totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-            }`}>
-              {totalPnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              ${Math.abs(totalPnl).toFixed(2)} ({totalPnlPercentage.toFixed(2)}%)
+          <div className="flex items-center gap-3">
+            {profitableCoinsCount > 0 && (
+              <Button
+                onClick={() => sellProfitableCoinsMutation.mutate()}
+                disabled={sellProfitableCoinsMutation.isPending}
+                variant="destructive"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <SellIcon className="h-3 w-3" />
+                Karlı Sat ({profitableCoinsCount})
+              </Button>
+            )}
+            <div className="text-right">
+              <div className="text-lg font-bold">${totalValue.toFixed(2)}</div>
+              <div className={`text-sm flex items-center gap-1 ${
+                totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+              }`}>
+                {totalPnl >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                ${Math.abs(totalPnl).toFixed(2)} ({totalPnlPercentage.toFixed(2)}%)
+              </div>
             </div>
           </div>
         </CardTitle>

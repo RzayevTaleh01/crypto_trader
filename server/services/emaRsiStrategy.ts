@@ -489,8 +489,24 @@ export class EmaRsiStrategy {
       // Send Telegram notification
       await telegramService.sendTradeNotification(trade, crypto);
       
-      // Broadcast to WebSocket with newTrade type
+      // Broadcast trading activity for live feed
       if (this.broadcastFn) {
+        const tradeActivity = {
+          timestamp: new Date().toISOString(),
+          action: 'BUY',
+          symbol: crypto.symbol,
+          amount: quantity.toString(),
+          price: price.toString(),
+          total: amount.toString(),
+          type: 'automated',
+          strategy: 'EMA-RSI'
+        };
+        
+        this.broadcastFn({
+          type: 'tradeUpdate',
+          data: tradeActivity
+        });
+        
         this.broadcastFn({
           type: 'newTrade',
           data: {
@@ -555,8 +571,24 @@ export class EmaRsiStrategy {
       // Send Telegram notification
       await telegramService.sendTradeNotification(trade, crypto);
       
-      // Broadcast to WebSocket with newTrade type
+      // Broadcast trading activity for live feed
       if (this.broadcastFn) {
+        const tradeActivity = {
+          timestamp: new Date().toISOString(),
+          action: 'SELL',
+          symbol: crypto.symbol,
+          amount: quantity.toString(),
+          price: price.toString(),
+          total: total.toString(),
+          type: 'automated',
+          strategy: 'EMA-RSI'
+        };
+        
+        this.broadcastFn({
+          type: 'tradeUpdate',
+          data: tradeActivity
+        });
+        
         this.broadcastFn({
           type: 'newTrade',
           data: {

@@ -108,6 +108,20 @@ export function useWebSocket() {
               }));
               break;
               
+            case 'cryptoUpdate':
+              setWsData(prev => ({
+                ...prev,
+                cryptocurrencies: data.data
+              }));
+              break;
+              
+            case 'tradeUpdate':
+              setWsData(prev => ({
+                ...prev,
+                trades: [data.data, ...prev.trades.slice(0, 49)]
+              }));
+              break;
+              
             default:
               console.log('Unknown WebSocket message type:', data.type);
           }

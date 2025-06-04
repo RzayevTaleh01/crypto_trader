@@ -547,36 +547,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const strategies = [
         {
-          id: 'optimized_scalping',
-          name: 'Ultra Scalping MAX',
-          description: 'Maksimum qazanc üçün ultra-sürətli mikro-treydler (0.1% hər mərhələdə)',
+          id: 'ema_rsi',
+          name: 'EMA-RSI Strategy',
+          description: 'Python əsaslı EMA20/EMA50 crossover və RSI sinyalları ilə treyd',
           riskLevel: 'Optimal',
-          expectedReturn: '20-50%',
-          timeframe: '1-5 dəqiqə'
-        },
-        {
-          id: 'rsi',
-          name: 'RSI Oversold Strategy',
-          description: 'Buys oversold cryptocurrencies based on RSI indicators',
-          riskLevel: 'Medium',
-          expectedReturn: '5-15%',
-          timeframe: '1-24 hours'
-        },
-        {
-          id: 'momentum',
-          name: 'Momentum Trading',
-          description: 'Multi-indicator momentum analysis with MACD, Bollinger Bands, and trend analysis',
-          riskLevel: 'Medium-High',
-          expectedReturn: '8-25%',
-          timeframe: '30 minutes - 4 hours'
-        },
-        {
-          id: 'arbitrage',
-          name: 'Arbitrage & Scalping',
-          description: 'High-frequency trading exploiting price inefficiencies and volatility',
-          riskLevel: 'High',
-          expectedReturn: '3-12%',
-          timeframe: '1-30 minutes'
+          expectedReturn: '15-35%',
+          timeframe: '5-30 dəqiqə'
         }
       ];
       

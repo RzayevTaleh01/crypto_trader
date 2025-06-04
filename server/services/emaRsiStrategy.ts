@@ -21,12 +21,16 @@ export class EmaRsiStrategy {
       const cryptos = await storage.getAllCryptocurrencies();
       const portfolio = await storage.getUserPortfolio(userId);
 
+      console.log(`📊 Analyzing ${cryptos.length} cryptocurrencies, ${portfolio.length} positions`);
+
       // Check sell signals for existing positions
       await this.checkSellSignals(userId, portfolio, cryptos);
 
       // Check buy signals for new positions
       if (balance > 0.5) {
         await this.checkBuySignals(userId, cryptos, balance);
+      } else {
+        console.log(`❌ Balance too low for trading: $${balance.toFixed(2)}`);
       }
 
     } catch (error) {
@@ -55,17 +59,32 @@ export class EmaRsiStrategy {
 
   private async checkBuySignals(userId: number, cryptos: any[], balance: number): Promise<void> {
     const opportunities = [];
+    let analyzed = 0;
+    let validSignals = 0;
 
-    for (const crypto of cryptos) {
+    console.log(`🔍 Analyzing ${cryptos.length} cryptocurrencies for buy signals`);
+
+    for (const crypto of cryptos.slice(0, 50)) { // Limit to first 50 for performance
+      analyzed++;
       const signal = await this.analyzeSymbol(crypto);
       
-      if (signal?.signal === 'BUY') {
-        opportunities.push({
-          crypto,
-          signal,
-          priority: signal.vol_ratio * (100 - signal.rsi) // Higher volume and lower RSI = higher priority
-        });
+      if (signal) {
+        validSignals++;
+        if (signal.signal === 'BUY') {
+          opportunities.push({
+            crypto,
+            signal,
+            priority: signal.vol_ratio * (100 - signal.rsi) // Higher volume and lower RSI = higher priority
+          });
+          console.log(`🟢 BUY opportunity found: ${crypto.symbol} - RSI: ${signal.rsi}, Volume: ${signal.vol_ratio}x`);
+        }
       }
+    }
+
+    console.log(`📊 Analyzed ${analyzed} cryptos, ${validSignals} valid signals, ${opportunities.length} buy opportunities`);
+    
+    if (opportunities.length === 0) {
+      console.log(`❌ No buy opportunities found in current market conditions`);
     }
 
     // Sort by priority and take top 3
@@ -86,17 +105,43 @@ export class EmaRsiStrategy {
     try {
       // Get price history for calculations
       const priceHistory = await storage.getPriceHistory(crypto.id, 50);
-      if (priceHistory.length < 50) return null;
+      
+      // Debug logging
+      if (crypto.symbol === 'BTC') {
+        console.log(`📊 ${crypto.symbol} price history: ${priceHistory.length} records`);
+      }
+      
+      if (priceHistory.length < 20) {
+        // Use simple price and RSI calculation with current data
+        const currentPrice = parseFloat(crypto.currentPrice);
+        const priceChange24h = parseFloat(crypto.priceChange24h || '0');
+        
+        // Simple RSI estimation based on 24h price change
+        let simpleRSI = 50; // Neutral
+        if (priceChange24h > 5) simpleRSI = 75; // Overbought
+        else if (priceChange24h < -5) simpleRSI = 25; // Oversold
+        else simpleRSI = 50 + (priceChange24h * 2);
+        
+        const volume24h = parseFloat(crypto.volume24h || '0');
+        const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
+        
+        return {
+          signal: simpleRSI < 35 && priceChange24h < -3 ? 'BUY' : 
+                  simpleRSI > 65 && priceChange24h > 3 ? 'SELL' : 'HOLD',
+          rsi: simpleRSI,
+          vol_ratio: volumeRatio,
+          price_change: priceChange24h
+        };
+      }
 
       const prices = priceHistory.map(p => parseFloat(p.price));
-      const volumes = priceHistory.map(p => parseFloat(crypto.volume24h || '0'));
 
       // Calculate EMA20 and EMA50
-      const ema20 = this.calculateEMA(prices, 20);
-      const ema50 = this.calculateEMA(prices, 50);
+      const ema20 = this.calculateEMA(prices, Math.min(20, prices.length));
+      const ema50 = this.calculateEMA(prices, Math.min(50, prices.length));
       
       // Calculate RSI
-      const rsi = this.calculateRSI(prices, 14);
+      const rsi = this.calculateRSI(prices, Math.min(14, prices.length));
 
       if (!ema20 || !ema50 || !rsi) return null;
 

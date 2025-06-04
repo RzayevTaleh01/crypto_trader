@@ -25,7 +25,7 @@ interface PortfolioHoldingsProps {
 }
 
 export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
-  const { data: holdings = [], isLoading } = useQuery({
+  const { data: holdings = [], isLoading } = useQuery<PortfolioHolding[]>({
     queryKey: ['/api/portfolio/user', userId],
     enabled: !!userId,
   });
@@ -117,8 +117,8 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
           const pnlPercentage = parseFloat(holding.pnlPercentage || '0');
           const amount = parseFloat(holding.amount);
           const avgPrice = parseFloat(holding.averagePrice);
-          const currentPrice = parseFloat(holding.cryptocurrency.currentPrice);
-          const priceChange24h = parseFloat(holding.cryptocurrency.priceChange24h);
+          const currentPrice = parseFloat(holding.cryptocurrency?.currentPrice || '0');
+          const priceChange24h = parseFloat(holding.cryptocurrency?.priceChange24h || '0');
           
           return (
             <div key={holding.id} className="grid grid-cols-5 gap-4 p-3 bg-muted/50 rounded-lg items-center">
@@ -126,13 +126,13 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                   <span className="text-xs font-medium text-primary">
-                    {holding.cryptocurrency.symbol.slice(0, 2)}
+                    {holding.cryptocurrency?.symbol?.slice(0, 2) || 'UK'}
                   </span>
                 </div>
                 <div>
-                  <div className="font-medium">{holding.cryptocurrency.symbol}</div>
+                  <div className="font-medium">{holding.cryptocurrency?.symbol || 'Unknown'}</div>
                   <div className="text-xs text-muted-foreground">
-                    {holding.cryptocurrency.name}
+                    {holding.cryptocurrency?.name || 'Unknown'}
                   </div>
                 </div>
               </div>

@@ -27,7 +27,7 @@ export default function SoldCoins({ userId }: SoldCoinsProps) {
 
   // Primary data source: API query for initial load
   const { data: apiSoldCoins, isLoading } = useQuery<SoldCoin[]>({
-    queryKey: ['/api/trades/sold', userId],
+    queryKey: [`/api/trades/sold/${userId}`],
     enabled: !!userId,
   });
 

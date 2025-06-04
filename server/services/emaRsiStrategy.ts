@@ -88,28 +88,48 @@ export class EmaRsiStrategy {
     // Store real-time data in database and get valid IDs
     const realTimeCryptos = [];
     for (const coin of marketData) {
-      let crypto = await storage.getCryptocurrencyBySymbol(coin.symbol);
-      
-      if (!crypto) {
-        // Create new cryptocurrency record
-        crypto = await storage.createCryptocurrency({
-          symbol: coin.symbol,
-          name: coin.name,
-          currentPrice: coin.currentPrice.toString(),
-          priceChange24h: coin.priceChange24h.toString()
-        });
-      } else {
-        // Update existing cryptocurrency with latest price
-        await storage.updateCryptocurrencyPrice(
-          crypto.id,
-          coin.currentPrice.toString(),
-          coin.priceChange24h.toString()
-        );
-        crypto.currentPrice = coin.currentPrice.toString();
-        crypto.priceChange24h = coin.priceChange24h.toString();
+      try {
+        let crypto = await storage.getCryptocurrencyBySymbol(coin.symbol);
+        
+        if (!crypto) {
+          // Create new cryptocurrency record
+          crypto = await storage.createCryptocurrency({
+            symbol: coin.symbol,
+            name: coin.name,
+            currentPrice: coin.currentPrice.toString(),
+            priceChange24h: coin.priceChange24h.toString()
+          });
+        } else {
+          // Update existing cryptocurrency with latest price
+          await storage.updateCryptocurrencyPrice(
+            crypto.id,
+            coin.currentPrice.toString(),
+            coin.priceChange24h.toString()
+          );
+          crypto.currentPrice = coin.currentPrice.toString();
+          crypto.priceChange24h = coin.priceChange24h.toString();
+        }
+        
+        realTimeCryptos.push(crypto);
+      } catch (error: any) {
+        // Handle duplicate key constraint or other database errors
+        if (error.code === '23505') {
+          // Duplicate key error - try to get the existing record
+          const existingCrypto = await storage.getCryptocurrencyBySymbol(coin.symbol);
+          if (existingCrypto) {
+            await storage.updateCryptocurrencyPrice(
+              existingCrypto.id,
+              coin.currentPrice.toString(),
+              coin.priceChange24h.toString()
+            );
+            existingCrypto.currentPrice = coin.currentPrice.toString();
+            existingCrypto.priceChange24h = coin.priceChange24h.toString();
+            realTimeCryptos.push(existingCrypto);
+          }
+        } else {
+          console.log(`❌ Error processing crypto ${coin.symbol}:`, error.message);
+        }
       }
-      
-      realTimeCryptos.push(crypto);
     }
 
     console.log(`💾 Stored ${realTimeCryptos.length} cryptocurrencies in database with valid IDs`);

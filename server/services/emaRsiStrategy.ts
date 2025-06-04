@@ -200,11 +200,17 @@ export class EmaRsiStrategy {
             signal,
             priority: signal.vol_ratio * (100 - signal.rsi) // Higher volume and lower RSI = higher priority
           });
-          console.log(`🟢 BUY opportunity: ${crypto.symbol} - RSI: ${signal.rsi}, Price: $${crypto.currentPrice}`);
+          console.log(`🟢 BUY opportunity: ${crypto.symbol} - RSI: ${signal.rsi}, Confidence: ${(signal.confidence * 100).toFixed(0)}%, Score: ${signal.buyScore}/6`);
         } else if (signal.signal === 'SELL') {
           console.log(`🔴 SELL signal: ${crypto.symbol} - RSI: ${signal.rsi}, Price: $${crypto.currentPrice}`);
         }
-        // Skip HOLD logging to reduce noise
+        
+        // Log detailed analysis for first 10 cryptos to debug
+        if (analyzed <= 10) {
+          console.log(`🔍 Debug ${crypto.symbol}: RSI=${signal.rsi}, BuyScore=${signal.buyScore}/6, SellScore=${signal.sellScore}/4, Signal=${signal.signal}`);
+          console.log(`   Conditions: RSI(${signal.buyConditions.rsi}) MACD(${signal.buyConditions.macd}) EMA(${signal.buyConditions.ema}) BB(${signal.buyConditions.bollinger}) VOL(${signal.buyConditions.volume}) ADX(${signal.buyConditions.adx})`);
+          console.log(`   Values: RSI=${signal.rsi} PriceChange=${signal.price_change}% Volume=${signal.vol_ratio} ADX=${signal.adx}`);
+        }
       }
     }
 
@@ -241,16 +247,18 @@ export class EmaRsiStrategy {
       const priceChange24h = parseFloat(crypto.priceChange24h || '0');
       const volume24h = parseFloat(crypto.volume24h || '0');
       
-      // Enhanced RSI calculation based on price action
+      // More dynamic RSI calculation for active trading
       let rsi = 50;
-      if (priceChange24h > 8) rsi = 85;
-      else if (priceChange24h < -8) rsi = 15;
-      else if (priceChange24h > 4) rsi = 75;
-      else if (priceChange24h < -4) rsi = 25;
-      else if (priceChange24h > 2) rsi = 65;
-      else if (priceChange24h < -2) rsi = 35;
-      else if (priceChange24h > 0) rsi = 55;
-      else if (priceChange24h < 0) rsi = 45;
+      if (priceChange24h > 6) rsi = 80;
+      else if (priceChange24h < -6) rsi = 20;
+      else if (priceChange24h > 3) rsi = 70;
+      else if (priceChange24h < -3) rsi = 30;
+      else if (priceChange24h > 1) rsi = 60;
+      else if (priceChange24h < -1) rsi = 40;
+      else if (priceChange24h > 0.5) rsi = 55;
+      else if (priceChange24h < -0.5) rsi = 45;
+      else if (priceChange24h > 0) rsi = 52;
+      else if (priceChange24h < 0) rsi = 48;
       
       // Simulate EMA crossover based on recent price trends
       const ema20 = currentPrice * (1 + priceChange24h * 0.01);
@@ -270,38 +278,44 @@ export class EmaRsiStrategy {
       // ADX simulation based on price volatility
       const adx = Math.min(100, volatility * 5 + 20);
       
-      // Advanced Buy Conditions - at least 4 out of 6 must be true
+      // Balanced Buy Conditions - at least 3 out of 6 must be true for more active trading
       const buyConditions = {
-        rsi: rsi < 35,
+        rsi: rsi < 40,  // More lenient RSI
         macd: macdPositive,
         ema: ema20 > ema50,
-        bollinger: currentPrice <= lowerBand && priceChange24h > -2,
-        volume: volumeRatio > 1.2,
-        adx: adx > 20
+        bollinger: currentPrice <= lowerBand * 1.05 && priceChange24h > -5, // More flexible Bollinger
+        volume: volumeRatio > 0.8,  // Lower volume requirement
+        adx: adx > 15  // Lower ADX threshold
       };
       
       const buyCount = Object.values(buyConditions).filter(Boolean).length;
       
       // Advanced Sell Conditions - any 2 conditions trigger sell
       const sellConditions = {
-        rsi: rsi > 70,
-        macd: !macdPositive && priceChange24h < -1,
-        bollinger: currentPrice >= upperBand,
-        volumeDrop: volumeRatio < 0.8
+        rsi: rsi > 65,  // Lower sell RSI
+        macd: !macdPositive && priceChange24h < -2,
+        bollinger: currentPrice >= upperBand * 0.95,  // More flexible upper band
+        volumeDrop: volumeRatio < 0.6
       };
       
       const sellCount = Object.values(sellConditions).filter(Boolean).length;
       
-      // Signal generation with confidence scoring
+      // Even more aggressive signal generation for active trading
       let signal = 'HOLD';
       let confidence = 0;
       
-      if (buyCount >= 4) {
+      if (buyCount >= 2) {  // Reduced from 3 to 2 for more trades
         signal = 'BUY';
         confidence = buyCount / 6;
       } else if (sellCount >= 2) {
         signal = 'SELL';
         confidence = sellCount / 4;
+      } else if (rsi < 30) {  // Strong RSI oversold signal alone
+        signal = 'BUY';
+        confidence = 0.7;
+      } else if (rsi > 70) {  // Strong RSI overbought signal alone
+        signal = 'SELL';
+        confidence = 0.7;
       }
       
       return {

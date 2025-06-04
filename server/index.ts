@@ -47,8 +47,10 @@ app.use((req, res, next) => {
   console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
-  // Ensure bot starts in inactive mode
+  // Check bot state and resume trading if previously active
   const { storage } = await import("./storage");
+  const { emaRsiStrategy } = await import("./services/emaRsiStrategy");
+  
   const botSettings = await storage.getBotSettings(1);
   if (!botSettings) {
     await storage.createBotSettings({
@@ -59,12 +61,15 @@ app.use((req, res, next) => {
       targetProfit: '100.00',
       isActive: false
     });
+    console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
   } else if (botSettings.isActive) {
-    await storage.updateBotSettings(1, { isActive: false });
-    console.log('🛑 Bot automatically set to inactive mode on startup');
+    // Resume trading automatically if bot was previously active
+    console.log('🔄 Bot was previously active - resuming trading');
+    emaRsiStrategy.startContinuousTrading(1);
+    console.log('✅ Trading system ready - bot is active and trading');
+  } else {
+    console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
   }
-  
-  console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -54,9 +54,9 @@ export default function Dashboard() {
       {/* Main content */}
       <main className="lg:ml-64 min-h-screen">
         {/* Header */}
-        <header className="bg-card border-b border-border px-6 py-4">
+        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <Button
                 variant="ghost"
                 size="icon"
@@ -66,21 +66,21 @@ export default function Dashboard() {
                 <Menu className="h-6 w-6" />
               </Button>
               <div>
-                <h2 className="text-2xl font-bold">Trading Dashboard</h2>
-                <p className="text-muted-foreground">Real-time crypto trading analysis</p>
+                <h2 className="text-xl sm:text-2xl font-bold">Trading Dashboard</h2>
+                <p className="text-muted-foreground text-sm hidden sm:block">Real-time crypto trading analysis</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-background rounded-lg px-3 py-2">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="flex items-center space-x-1 sm:space-x-2 bg-background rounded-lg px-2 sm:px-3 py-2">
                 <Wallet className="h-4 w-4 text-crypto-blue" />
-                <span className="text-sm font-medium">Balance:</span>
-                <span className="text-crypto-green font-bold">
+                <span className="text-xs sm:text-sm font-medium hidden sm:inline">Balance:</span>
+                <span className="text-crypto-green font-bold text-sm sm:text-base">
                   ${user.data?.user?.balance || '0.00'}
                 </span>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 hidden sm:flex">
                 <div className="w-8 h-8 bg-gradient-to-r from-crypto-green to-crypto-blue rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-white" />
                 </div>
@@ -91,18 +91,18 @@ export default function Dashboard() {
         </header>
 
         {/* Dashboard content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Stats grid */}
           <StatsGrid userId={userId} />
 
           {/* Portfolio Chart and Holdings */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <PortfolioChart userId={userId} />
             <PortfolioHoldings userId={userId} />
           </div>
 
           {/* Bot settings and Live Trading Activity */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
             <BotSettings userId={userId} />
             <LiveTradingActivity />
             <BalanceManager userId={userId} currentBalance={user.data?.user?.balance || '0.00'} />

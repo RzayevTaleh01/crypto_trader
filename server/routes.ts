@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/portfolio/user", async (req, res) => {
     try {
       const userId = 1; // Default user for demo
-      const portfolio = await storage.getUserPortfolio(userId);
+      const portfolio = await portfolioService.getUserPortfolioWithDetails(userId);
       res.json(portfolio);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch portfolio", error: error.message });
@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/portfolio/user/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const portfolio = await storage.getUserPortfolio(userId);
+      const portfolio = await portfolioService.getUserPortfolioWithDetails(userId);
       res.json(portfolio);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch portfolio", error: error.message });

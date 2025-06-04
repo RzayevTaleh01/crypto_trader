@@ -306,9 +306,10 @@ export class EmaRsiStrategy {
       // Update portfolio
       await this.updatePortfolioAfterBuy(userId, crypto.id, quantity, price);
       
-      // Broadcast portfolio update to WebSocket
+      // Broadcast portfolio update to WebSocket with proper calculations
       if (this.broadcastFn) {
-        const updatedPortfolio = await storage.getUserPortfolio(userId);
+        const { portfolioService } = await import('../services/portfolioService');
+        const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
         this.broadcastFn({
           type: 'portfolioUpdate',
           data: updatedPortfolio
@@ -371,9 +372,10 @@ export class EmaRsiStrategy {
       // Update portfolio
       await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
       
-      // Broadcast portfolio update to WebSocket
+      // Broadcast portfolio update to WebSocket with proper calculations
       if (this.broadcastFn) {
-        const updatedPortfolio = await storage.getUserPortfolio(userId);
+        const { portfolioService } = await import('../services/portfolioService');
+        const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
         this.broadcastFn({
           type: 'portfolioUpdate',
           data: updatedPortfolio

@@ -1,20 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, ArrowUpDown, Target, Bot, ArrowUp } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface StatsGridProps {
   userId: number;
 }
 
 export default function StatsGrid({ userId }: StatsGridProps) {
-  const { data: statsResponse } = useQuery({
-    queryKey: ['/api/analytics/user', userId],
-    enabled: !!userId,
- // Refetch every 5 seconds for real-time updates
-  });
+  const { analytics: statsResponse } = useWebSocketData();
 
   // Handle the response properly with type safety
-  const stats = statsResponse || {
+  const stats = statsResponse.data || {
     totalProfit: '0.00',
     activeTrades: 0,
     winRate: '0',

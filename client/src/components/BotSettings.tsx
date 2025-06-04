@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Square, Bot, Settings, TrendingUp, Zap, Target } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface BotSettingsProps {
   userId: number;
@@ -45,13 +46,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
 
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const { data: serverSettings } = useQuery({
-    queryKey: ['/api/bot-settings'],
-  });
-
-  const { data: availableStrategies } = useQuery({
-    queryKey: ['/api/strategies/available'],
-  });
+  const { botSettings: serverSettings, availableStrategies } = useWebSocketData();
 
   // Load server settings only once with type safety
   useEffect(() => {

@@ -645,6 +645,47 @@ export class EmaRsiStrategy {
             cryptocurrency: crypto
           }
         });
+
+        // Broadcast sold coins update for the UI
+        const trades = await storage.getUserTrades(userId, 100);
+        const sellTrades = trades.filter(t => t.type === 'SELL');
+        const soldCoins = await Promise.all(sellTrades.map(async (t) => {
+          const cryptoData = await storage.getCryptocurrency(t.cryptoId);
+          
+          // Find corresponding buy trade
+          const buyTrades = trades.filter(bt => 
+            bt.cryptoId === t.cryptoId && 
+            bt.type === 'BUY' && 
+            bt.createdAt < t.createdAt
+          ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          
+          const lastBuyTrade = buyTrades[0];
+          const buyPrice = lastBuyTrade ? parseFloat(lastBuyTrade.price) : 0;
+          const sellPrice = parseFloat(t.price);
+          const quantity = parseFloat(t.amount);
+          const sellValue = parseFloat(t.total);
+          const buyValue = buyPrice * quantity;
+          const profit = sellValue - buyValue;
+          const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
+          
+          return {
+            id: t.id,
+            symbol: cryptoData?.symbol || 'Unknown',
+            name: cryptoData?.name || 'Unknown',
+            soldQuantity: t.amount,
+            sellPrice: t.price,
+            buyPrice: buyPrice.toString(),
+            sellValue: t.total,
+            profit: profit.toString(),
+            profitPercentage: profitPercentage.toString(),
+            soldAt: t.createdAt.toISOString()
+          };
+        }));
+
+        this.broadcastFn({
+          type: 'soldCoinsUpdate',
+          data: soldCoins
+        });
       }
     } catch (error) {
       console.log(`❌ Failed to execute sell order for ${crypto.symbol}:`, error);

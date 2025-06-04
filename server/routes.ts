@@ -241,6 +241,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sold coins endpoint
+  app.get("/api/trades/sold/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const trades = await storage.getUserTrades(userId, 100); // Get more trades to find sells
+      
+      // Filter only sell trades and get crypto details
+      const sellTrades = trades.filter(trade => trade.type === 'SELL');
+      const soldCoins = await Promise.all(sellTrades.map(async (trade) => {
+        const crypto = await storage.getCryptocurrency(trade.cryptoId);
+        
+        // Find the corresponding buy trade to calculate profit
+        const buyTrades = trades.filter(t => 
+          t.cryptoId === trade.cryptoId && 
+          t.type === 'BUY' && 
+          t.createdAt < trade.createdAt
+        ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        
+        const lastBuyTrade = buyTrades[0];
+        const buyPrice = lastBuyTrade ? parseFloat(lastBuyTrade.price) : 0;
+        const sellPrice = parseFloat(trade.price);
+        const quantity = parseFloat(trade.amount);
+        const sellValue = parseFloat(trade.total);
+        const buyValue = buyPrice * quantity;
+        const profit = sellValue - buyValue;
+        const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
+        
+        return {
+          id: trade.id,
+          symbol: crypto?.symbol || 'Unknown',
+          name: crypto?.name || 'Unknown',
+          soldQuantity: trade.amount,
+          sellPrice: trade.price,
+          buyPrice: buyPrice.toString(),
+          sellValue: trade.total,
+          profit: profit.toString(),
+          profitPercentage: profitPercentage.toString(),
+          soldAt: trade.createdAt.toISOString()
+        };
+      }));
+      
+      res.json(soldCoins);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch sold coins", error: error.message });
+    }
+  });
+
   app.get("/api/trades/recent", async (req, res) => {
     try {
       const userId = 1; // Default user for demo

@@ -58,14 +58,20 @@ class BinanceService {
       const usdtPairs = tickers.filter((ticker: any) => ticker.symbol.endsWith('USDT'));
       console.log(`💰 Found ${usdtPairs.length} USDT pairs`);
       
-      // Use more lenient filtering for testnet
+      // Use more lenient filtering and prioritize high volatility pairs
       const filtered = tickers
         .filter((ticker: any) => 
           ticker.symbol.endsWith('USDT') && 
-          parseFloat(ticker.volume) > 10000 &&  // Lower volume requirement for testnet
-          parseFloat(ticker.count) > 100        // Lower count requirement for testnet
+          parseFloat(ticker.volume) > 1000 &&   // Very low volume requirement
+          parseFloat(ticker.count) > 10         // Very low count requirement
         )
-        .slice(0, 50); // Top 50 most active pairs
+        .sort((a: any, b: any) => {
+          // Sort by absolute price change percentage (highest volatility first)
+          const aChange = Math.abs(parseFloat(a.priceChangePercent));
+          const bChange = Math.abs(parseFloat(b.priceChangePercent));
+          return bChange - aChange;
+        })
+        .slice(0, 100); // Top 100 most volatile pairs
       
       console.log(`🎯 After filtering: ${filtered.length} active pairs selected`);
       

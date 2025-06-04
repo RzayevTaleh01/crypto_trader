@@ -194,11 +194,11 @@ export class EmaRsiStrategy {
       const volume24h = parseFloat(crypto.volume24h || '0');
       const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
       
-      // Generate trading signals based on RSI levels
+      // Generate trading signals based on more sensitive RSI levels
       let signal = 'HOLD';
-      if (estimatedRSI <= 35) {
+      if (estimatedRSI <= 45) {  // More sensitive buy threshold
         signal = 'BUY';
-      } else if (estimatedRSI >= 70) {
+      } else if (estimatedRSI >= 60) {  // More sensitive sell threshold
         signal = 'SELL';
       }
       

@@ -70,7 +70,9 @@ export class AutonomousTradingEngine {
     if (botSettings.strategy === 'ema_rsi') {
       console.log(`🎯 EMA-RSI STRATEGY - Balance: $${balance.toFixed(2)}`);
       const { emaRsiStrategy } = await import('./emaRsiStrategy');
-      emaRsiStrategy.setBroadcastFunction(this.broadcastFn);
+      if (this.broadcastFn) {
+        emaRsiStrategy.setBroadcastFunction(this.broadcastFn);
+      }
       await emaRsiStrategy.executeEmaRsiStrategy(userId);
       return;
     } else if (botSettings.strategy === 'optimized_scalping' || botSettings.strategy === 'ultra_scalping_max') {

@@ -5,7 +5,7 @@ import { InsertTrade } from '@shared/schema';
 export class EmaRsiStrategy {
   private broadcastFn: ((data: any) => void) | null = null;
 
-  setBroadcastFunction(fn: (data: any) => void) {
+  setBroadcastFunction(fn: ((data: any) => void) | null) {
     this.broadcastFn = fn;
   }
 

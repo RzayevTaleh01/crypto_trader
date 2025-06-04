@@ -13,15 +13,10 @@ class CryptoService {
     const { binanceService } = await import("./binanceService");
     let marketData = await binanceService.getRealMarketData();
     
-    // Fallback to CoinCap API if Binance is unavailable
+    // If Binance is unavailable, wait for it to come back online
     if (!marketData) {
-      console.log('Binance unavailable, using CoinCap API fallback');
-      marketData = await this.fetchFromCoinCap();
-      
-      if (!marketData) {
-        console.log('Failed to fetch market data from all sources');
-        return;
-      }
+      console.log('⏳ Binance Testnet temporarily unavailable - waiting for service restoration');
+      return;
     }
 
     console.log(`📊 Processing ${marketData.length} real cryptocurrencies from market data`);
@@ -89,27 +84,7 @@ class CryptoService {
     }
   }
 
-  private async fetchFromCoinCap() {
-    try {
-      const response = await fetch('https://api.coincap.io/v2/assets?limit=100');
-      const data = await response.json();
-      
-      if (!data.data) {
-        console.log('No data received from CoinCap API');
-        return null;
-      }
 
-      return data.data.map((coin: any) => ({
-        symbol: coin.symbol,
-        name: coin.name,
-        currentPrice: parseFloat(coin.priceUsd),
-        priceChange24h: parseFloat(coin.changePercent24Hr || '0')
-      }));
-    } catch (error) {
-      console.log('Error fetching from CoinCap API:', error);
-      return null;
-    }
-  }
 
   async getTopPerformingCoins(limit = 10) {
     return await storage.getAllCryptocurrencies();

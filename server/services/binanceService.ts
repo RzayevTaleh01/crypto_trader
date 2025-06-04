@@ -5,11 +5,11 @@ import { telegramService } from './telegramService';
 
 class BinanceService {
   private client: any = null;
-  private isTestnet: boolean = true;
+  private isTestnet: boolean = false;
 
   initialize() {
-    const apiKey = process.env.BINANCE_TESTNET_API_KEY;
-    const apiSecret = process.env.BINANCE_TESTNET_SECRET_KEY;
+    const apiKey = process.env.BINANCE_API_KEY;
+    const apiSecret = process.env.BINANCE_API_SECRET;
 
     try {
       const Binance = require('binance-api-node').default;
@@ -18,10 +18,10 @@ class BinanceService {
         this.client = Binance({
           apiKey,
           apiSecret,
-          httpBase: 'https://testnet.binance.vision',
-          wsBase: 'wss://testnet.binance.vision/ws'
+          httpBase: 'https://api.binance.com',
+          wsBase: 'wss://stream.binance.com:9443/ws'
         });
-        console.log('🔧 Initializing Binance testnet API...');
+        console.log('🔧 Initializing Binance LIVE API for real trading...');
         this.testConnection();
       } else {
         this.client = Binance({
@@ -42,7 +42,7 @@ class BinanceService {
 
     try {
       const accountInfo = await this.client.accountInfo();
-      console.log('✅ Binance Testnet API initialized with credentials for real trading');
+      console.log('✅ Binance LIVE API initialized with credentials for real trading');
     } catch (error) {
       console.error('Binance API connection failed:', error);
     }

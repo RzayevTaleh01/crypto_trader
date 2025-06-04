@@ -10,48 +10,14 @@ import LiveTradingActivity from "@/components/LiveTradingActivity";
 
 import { Button } from "@/components/ui/button";
 import { Menu, Wallet, User } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useWebSocket } from "@/hooks/useWebSocket";
+import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const userId = 1; // Mock user ID for demo
 
-  // Initialize WebSocket connection
-  useWebSocket();
-
-  // Fetch user data
-  const { data: user } = useQuery({
-    queryKey: ['/api/user/1'],
-    queryFn: async () => {
-      const response = await fetch('/api/user/1');
-      if (!response.ok) {
-        // Create demo user if not exists
-        const createResponse = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: 'demo_user',
-            email: 'demo@cryptobot.com',
-            balance: '1000.00'
-          })
-        });
-        if (createResponse.ok) {
-          const { user } = await createResponse.json();
-          return user;
-        }
-        throw new Error('Failed to create user');
-      }
-      const { user } = await response.json();
-      return user;
-    }
-  });
-
-  // Fetch bot settings
-  const { data: botSettings } = useQuery({
-    queryKey: ['/api/bot-settings', userId],
-    enabled: !!userId
-  });
+  // Get all data from WebSocket - no API calls
+  const { user, botSettings, isConnected } = useWebSocketData();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -110,7 +76,7 @@ export default function Dashboard() {
                 <Wallet className="h-4 w-4 text-crypto-blue" />
                 <span className="text-sm font-medium">Balance:</span>
                 <span className="text-crypto-green font-bold">
-                  ${user?.balance || '0.00'}
+                  ${user.data?.user?.balance || '0.00'}
                 </span>
               </div>
               
@@ -118,7 +84,7 @@ export default function Dashboard() {
                 <div className="w-8 h-8 bg-gradient-to-r from-crypto-green to-crypto-blue rounded-full flex items-center justify-center">
                   <User className="h-4 w-4 text-white" />
                 </div>
-                <span className="text-sm font-medium">{user?.username || 'User'}</span>
+                <span className="text-sm font-medium">{user.data?.user?.username || 'User'}</span>
               </div>
             </div>
           </div>

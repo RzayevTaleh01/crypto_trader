@@ -35,7 +35,7 @@ export class EmaRsiStrategy {
       } catch (error) {
         console.error('Trading interval error:', error);
       }
-    }, 30000); // 30 seconds
+    }, 90000); // 90 seconds to prevent duplicate trades
   }
 
   stopContinuousTrading(): void {

@@ -253,14 +253,15 @@ export class EmaRsiStrategy {
     
     for (let i = 0; i < maxTrades; i++) {
       const opp = opportunities[i];
-      const investAmount = Math.min(balance * 0.2, 1.0); // Max 20% of balance or $1 per trade
+      const maxUsableBalance = balance * 0.95; // Use only 95% of balance to prevent negative balance
+      const investAmount = Math.min(maxUsableBalance * 0.2, 1.0); // Max 20% of usable balance or $1 per trade
       
-      if (investAmount >= 0.1 && balance >= 0.15) { // Minimum $0.10 investment if balance allows
+      if (investAmount >= 0.1 && maxUsableBalance >= 0.15) { // Minimum $0.10 investment if usable balance allows
         console.log(`🟢 BUY Signal: ${opp.crypto.symbol} - RSI: ${opp.signal.rsi}, Volume: ${opp.signal.vol_ratio}x`);
         await this.executeBuyOrder(userId, opp.crypto, investAmount, `EMA-RSI buy signal - RSI: ${opp.signal.rsi}`);
         balance -= investAmount; // Update balance for next calculation
       } else {
-        console.log(`💰 Insufficient balance for ${opp.crypto.symbol}: Need $0.15, have $${balance.toFixed(2)}`);
+        console.log(`💰 Insufficient usable balance for ${opp.crypto.symbol}: Need $0.15, have $${maxUsableBalance.toFixed(2)} (95% of $${balance.toFixed(2)})`);
         break; // Stop if balance is too low
       }
     }
@@ -468,11 +469,26 @@ export class EmaRsiStrategy {
       const price = parseFloat(crypto.currentPrice);
       const quantity = amount / price;
       
-      // Update user balance
+      // Get current user balance and check if purchase is possible
       const user = await storage.getUser(userId);
       if (!user) return;
       
-      const newBalance = parseFloat(user.balance) - amount;
+      const currentBalance = parseFloat(user.balance);
+      
+      // Prevent negative balance - ensure we have enough funds
+      if (currentBalance < amount) {
+        console.log(`❌ Insufficient balance: Need $${amount.toFixed(2)}, have $${currentBalance.toFixed(2)}`);
+        return;
+      }
+      
+      const newBalance = currentBalance - amount;
+      
+      // Double-check that balance won't go negative
+      if (newBalance < 0) {
+        console.log(`❌ Transaction would create negative balance: $${newBalance.toFixed(2)}`);
+        return;
+      }
+      
       await storage.updateUserBalance(userId, newBalance.toString());
       
       // Broadcast balance update to WebSocket clients
@@ -550,11 +566,19 @@ export class EmaRsiStrategy {
       const price = parseFloat(crypto.currentPrice);
       const total = quantity * price;
       
-      // Update user balance
+      // Get current user balance
       const user = await storage.getUser(userId);
       if (!user) return;
       
-      const newBalance = parseFloat(user.balance) + total;
+      const currentBalance = parseFloat(user.balance);
+      const newBalance = currentBalance + total;
+      
+      // Ensure balance calculation is correct (adding money from sale)
+      if (newBalance < 0) {
+        console.log(`❌ Sell order calculation error: Current: $${currentBalance.toFixed(2)}, Adding: $${total.toFixed(2)}, Result: $${newBalance.toFixed(2)}`);
+        return;
+      }
+      
       await storage.updateUserBalance(userId, newBalance.toString());
       
       // Broadcast balance update to WebSocket clients

@@ -87,6 +87,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserBalance(userId: number, balance: string): Promise<void> {
+    const balanceNumber = parseFloat(balance);
+    
+    // Prevent negative balance updates
+    if (balanceNumber < 0) {
+      console.log(`❌ Attempted to set negative balance: $${balanceNumber.toFixed(2)} for user ${userId}`);
+      return;
+    }
+    
     await db
       .update(users)
       .set({ balance })

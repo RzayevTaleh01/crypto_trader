@@ -1,5 +1,8 @@
-import { Bot, TrendingUp, ArrowUpDown, Wallet, History, Settings, MessageSquare, BarChart3 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Bot, TrendingUp, ArrowUpDown, Wallet, History, Settings, MessageSquare, BarChart3, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -7,7 +10,65 @@ interface SidebarProps {
   botStatus: string;
 }
 
+interface UserStats {
+  totalProfit: string;
+  currentBalance: string;
+  todayProfit: string;
+  todayProfitPercentage: string;
+}
+
 export default function Sidebar({ isOpen, onClose, botStatus }: SidebarProps) {
+  const [stats, setStats] = useState<UserStats>({
+    totalProfit: '0.00',
+    currentBalance: '10.00',
+    todayProfit: '0.00',
+    todayProfitPercentage: '0.00'
+  });
+  const { socket } = useWebSocket();
+
+  // Primary data source: API query for initial load and fallback
+  const { data: apiStats } = useQuery<UserStats>({
+    queryKey: ['/api/stats', 1],
+  });
+
+  // Initialize stats from API data
+  useEffect(() => {
+    if (apiStats) {
+      setStats({
+        totalProfit: apiStats.totalProfit || '0.00',
+        currentBalance: apiStats.currentBalance || '10.00',
+        todayProfit: apiStats.totalProfit || '0.00', // Use total profit as today's profit
+        todayProfitPercentage: apiStats.totalProfit ? 
+          ((parseFloat(apiStats.totalProfit) / 10) * 100).toFixed(1) : '0.0'
+      });
+    }
+  }, [apiStats]);
+
+  // Listen for real-time stats updates via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatsUpdate = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'statsUpdate' && message.data) {
+          setStats({
+            totalProfit: message.data.totalProfit || '0.00',
+            currentBalance: message.data.currentBalance || '10.00',
+            todayProfit: message.data.totalProfit || '0.00',
+            todayProfitPercentage: message.data.totalProfit ? 
+              ((parseFloat(message.data.totalProfit) / 10) * 100).toFixed(1) : '0.0'
+          });
+        }
+      } catch (error) {
+        console.log('Error parsing WebSocket stats message:', error);
+      }
+    };
+
+    socket.addEventListener('message', handleStatsUpdate);
+    return () => socket.removeEventListener('message', handleStatsUpdate);
+  }, [socket]);
+
   const navigation = [
     { name: 'Dashboard', icon: BarChart3, href: '#', current: true },
     { name: 'Trading', icon: ArrowUpDown, href: '#', current: false },
@@ -79,13 +140,27 @@ export default function Sidebar({ isOpen, onClose, botStatus }: SidebarProps) {
 
         {/* Today's profit card */}
         <div className="mt-8 px-6">
-          <div className="bg-gradient-to-r from-crypto-green/20 to-crypto-blue/20 rounded-lg p-4 border border-crypto-green/30">
+          <div className={`bg-gradient-to-r rounded-lg p-4 border ${
+            parseFloat(stats.todayProfit) >= 0 
+              ? 'from-crypto-green/20 to-crypto-blue/20 border-crypto-green/30'
+              : 'from-red-500/20 to-red-600/20 border-red-500/30'
+          }`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Today's Profit</span>
-              <TrendingUp className="h-4 w-4 text-crypto-green" />
+              {parseFloat(stats.todayProfit) >= 0 ? (
+                <TrendingUp className="h-4 w-4 text-crypto-green" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              )}
             </div>
-            <div className="text-2xl font-bold text-crypto-green">+$24.56</div>
-            <div className="text-xs text-muted-foreground">+12.3% from yesterday</div>
+            <div className={`text-2xl font-bold ${
+              parseFloat(stats.todayProfit) >= 0 ? 'text-crypto-green' : 'text-red-500'
+            }`}>
+              {parseFloat(stats.todayProfit) >= 0 ? '+' : ''}${stats.todayProfit}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {parseFloat(stats.todayProfitPercentage) >= 0 ? '+' : ''}{stats.todayProfitPercentage}% from start
+            </div>
           </div>
         </div>
       </nav>

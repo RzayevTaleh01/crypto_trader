@@ -98,20 +98,20 @@ export default function Dashboard() {
 
           {/* Portfolio Chart and Holdings */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <BotSettings userId={userId} />
             <PortfolioChart userId={userId} />
             <PortfolioHoldings userId={userId} />
           </div>
 
           {/* Bot settings and Live Trading Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            <BotSettings userId={userId} />
             <LiveTradingActivity />
-            <BalanceManager userId={userId} currentBalance={user.data?.user?.balance || '0.00'} />
+            <SoldCoins userId={userId} />
           </div>
 
           {/* Sold Coins and Telegram Commands */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            <SoldCoins userId={userId} />
+             <BalanceManager userId={userId} currentBalance={user.data?.user?.balance || '0.00'} />
             <TelegramCommands />
           </div>
         </div>

@@ -60,11 +60,13 @@ ${botStatus}
     let message = '';
     
     if (trade.type === 'BUY') {
-      // Buy notification: coin, price, portfolio amount
+      // Buy notification: coin, price, total spent, portfolio amount
       const portfolioAmount = portfolioItem ? parseFloat(portfolioItem.amount) : parseFloat(trade.amount);
+      const totalSpent = parseFloat(trade.total);
       message = `🟢 ALIŞ
 
 💎 ${crypto.symbol} - $${parseFloat(trade.price).toFixed(6)}
+💰 Xərc: $${totalSpent.toFixed(2)}
 📊 Portfeydə: ${portfolioAmount.toFixed(6)} ${crypto.symbol}`;
       
     } else if (trade.type === 'SELL') {

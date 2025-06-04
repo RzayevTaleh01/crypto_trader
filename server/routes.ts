@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { cryptoService } from "./services/cryptoService";
-import { tradingEngine } from "./services/tradingEngine";
+
 import { portfolioService } from "./services/portfolioService";
 import { insertUserSchema, insertTradeSchema, insertBotSettingsSchema } from "@shared/schema";
 import { z } from "zod";
@@ -34,14 +34,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize crypto service with broadcast function
   cryptoService.setBroadcastFunction(broadcast);
   
-  // Initialize trading engine with broadcast function
-  tradingEngine.setBroadcastFunction(broadcast);
-  
-  // Initialize advanced trading engine with broadcast function
-  setTimeout(async () => {
-    const { advancedTradingEngine } = await import('./services/advancedTradingEngine');
-    advancedTradingEngine.setBroadcastFunction(broadcast);
-  }, 1000);
+  // Initialize services with broadcast function
 
   // User routes
   app.post("/api/auth/register", async (req, res) => {
@@ -497,35 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Execute Momentum Strategy
-  app.post('/api/strategies/momentum/execute', async (req, res) => {
-    try {
-      const userId = 1; // Default user
-      const { momentumTradingStrategy } = await import('./services/momentumTradingStrategy');
-      momentumTradingStrategy.setBroadcastFunction(broadcast);
-      
-      await momentumTradingStrategy.executeMomentumStrategy(userId);
-      res.json({ success: true, message: 'Momentum strategy executed' });
-    } catch (error) {
-      console.log('Momentum strategy error:', error);
-      res.status(500).json({ success: false, message: 'Strategy execution failed' });
-    }
-  });
 
-  // Execute Arbitrage Strategy
-  app.post('/api/strategies/arbitrage/execute', async (req, res) => {
-    try {
-      const userId = 1; // Default user
-      const { arbitrageTradingStrategy } = await import('./services/arbitrageTradingStrategy');
-      arbitrageTradingStrategy.setBroadcastFunction(broadcast);
-      
-      await arbitrageTradingStrategy.executeArbitrageStrategy(userId);
-      res.json({ success: true, message: 'Arbitrage strategy executed' });
-    } catch (error) {
-      console.log('Arbitrage strategy error:', error);
-      res.status(500).json({ success: false, message: 'Strategy execution failed' });
-    }
-  });
 
   // Execute Direct Scalping Strategy
   app.post('/api/strategies/direct-scalping/execute', async (req, res) => {

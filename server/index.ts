@@ -42,7 +42,6 @@ app.use((req, res, next) => {
   // Initialize Telegram bot and Binance API
   const { telegramService } = await import("./services/telegramService");
   const { binanceService } = await import("./services/binanceService");
-  const { profitSimulator } = await import("./services/profitSimulator");
   
   telegramService.initialize();
   console.log('🔧 Initializing Binance testnet API...');

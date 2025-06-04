@@ -75,29 +75,13 @@ export class AutonomousTradingEngine {
       }
       await emaRsiStrategy.executeEmaRsiStrategy(userId);
       return;
-    } else if (botSettings.strategy === 'optimized_scalping' || botSettings.strategy === 'ultra_scalping_max') {
-      console.log(`🔥 STARTING HYPER-AGGRESSIVE TRADING for user ${userId}`);
-      const { optimizedScalpingStrategy } = await import('./optimizedScalpingStrategy');
-      const { hyperAggressiveTrading } = await import('./hyperAggressiveTrading');
-      
-      // Execute both strategies for maximum trading activity
-      await optimizedScalpingStrategy.executeOptimizedScalping(userId);
-      await hyperAggressiveTrading.executeHyperAggressive(userId);
-      return;
-    } else if (botSettings.strategy === 'ultra_scalping_max') {
-      console.log(`🔥 EXECUTING FORCED TRADING for user ${userId}`);
-      const { forcedTradingExecution } = await import('./forcedTradingExecution');
-      
-      // Execute forced trading for immediate al sat al sat activity
-      await forcedTradingExecution.executeForcedTrades(userId);
-      return;
-    } else if (botSettings.strategy === 'rsi') {
-      const { rsiTradingStrategy } = await import('./rsiTradingStrategy');
-      await rsiTradingStrategy.executeRSIStrategy(userId);
-      return;
-    } else if (botSettings.strategy === 'arbitrage') {
-      const { arbitrageTradingStrategy } = await import('./arbitrageTradingStrategy');
-      await arbitrageTradingStrategy.executeArbitrageStrategy(userId);
+    } else {
+      console.log(`❌ Unknown strategy: ${botSettings.strategy}, defaulting to EMA-RSI`);
+      const { emaRsiStrategy } = await import('./emaRsiStrategy');
+      if (this.broadcastFn) {
+        emaRsiStrategy.setBroadcastFunction(this.broadcastFn);
+      }
+      await emaRsiStrategy.executeEmaRsiStrategy(userId);
       return;
     }
 

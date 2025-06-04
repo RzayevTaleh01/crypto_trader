@@ -91,11 +91,13 @@ export class EmaRsiStrategy {
     
     for (let i = 0; i < Math.min(3, opportunities.length); i++) {
       const opp = opportunities[i];
-      const investAmount = Math.min(balance * 0.3, 3.0); // Max 30% of balance or $3
+      const investAmount = Math.min(balance * 0.3, 1.0); // Max 30% of balance or $1
       
-      if (investAmount >= 0.5) {
+      if (investAmount >= 0.1 && balance >= 0.2) { // Minimum $0.10 investment if balance allows
         console.log(`🟢 BUY Signal: ${opp.crypto.symbol} - RSI: ${opp.signal.rsi}, Volume: ${opp.signal.vol_ratio}x`);
         await this.executeBuyOrder(userId, opp.crypto, investAmount, `EMA-RSI buy signal - RSI: ${opp.signal.rsi}`);
+      } else {
+        console.log(`💰 Insufficient balance for ${opp.crypto.symbol}: Need $0.20, have $${balance.toFixed(2)}`);
       }
     }
   }
@@ -117,9 +119,16 @@ export class EmaRsiStrategy {
       const volume24h = parseFloat(crypto.volume24h || '0');
       const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
       
+      // Generate trading signals based on RSI levels
+      let signal = 'HOLD';
+      if (estimatedRSI <= 35) {
+        signal = 'BUY';
+      } else if (estimatedRSI >= 70) {
+        signal = 'SELL';
+      }
+      
       return {
-        signal: estimatedRSI <= 25 ? 'BUY' : 
-                estimatedRSI >= 75 ? 'SELL' : 'HOLD',
+        signal,
         rsi: estimatedRSI,
         vol_ratio: volumeRatio,
         price_change: priceChange24h,

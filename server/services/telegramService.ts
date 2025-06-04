@@ -1,6 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { storage } from '../storage';
-import { tradingEngine } from './tradingEngine';
 
 class TelegramService {
   private bot: TelegramBot | null = null;
@@ -160,7 +159,8 @@ Salam! Mən sizin avtomatik kripto trading köməkçinizəm.
       const chatId = msg.chat.id.toString();
       try {
         await storage.updateBotSettings(1, { isActive: false });
-        tradingEngine.stopBot(1);
+        const { autonomousTradingEngine } = await import('./autonomousTradingEngine');
+        autonomousTradingEngine.stopBot(1);
         
         this.bot?.sendMessage(chatId, '🛑 *Trading Bot Dayandırıldı!*\n\nBot treydləri dayandırdı.', 
           { parse_mode: 'Markdown' });

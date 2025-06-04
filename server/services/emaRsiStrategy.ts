@@ -169,13 +169,18 @@ export class EmaRsiStrategy {
         console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
         // More aggressive sell conditions for active trading
+        const profitDollar = currentPrice * parseFloat(position.amount) - parseFloat(position.totalInvested);
+        
         if (signal.signal === 'SELL') {
           shouldSell = true;
           sellReason = `Advanced sell signal triggered`;
-        } else if (profitPercentage >= 3) {  // Reduced from 6% to 3% for quicker profits
+        } else if (profitPercentage >= 3) {  // 3% profit target
           shouldSell = true;
           sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
-        } else if (profitPercentage <= -1.5) {  // Reduced from -2.25% to -1.5% for tighter stop loss
+        } else if (profitDollar >= 0.10) {  // $0.10 profit target
+          shouldSell = true;
+          sellReason = `Dollar profit target reached - $${profitDollar.toFixed(3)} gain`;
+        } else if (profitPercentage <= -1.5) {  // 1.5% stop loss
           shouldSell = true;
           sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
         }

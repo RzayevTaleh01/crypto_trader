@@ -66,10 +66,14 @@ export class EmaRsiStrategy {
 
     for (const crypto of cryptos.slice(0, 50)) { // Limit to first 50 for performance
       analyzed++;
+      console.log(`🔍 Analyzing: ${crypto.symbol} - Price: $${crypto.currentPrice}`);
+      
       const signal = await this.analyzeSymbol(crypto);
       
       if (signal) {
         validSignals++;
+        console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, EMA20=${signal.ema20?.toFixed(6)}, EMA50=${signal.ema50?.toFixed(6)}, Signal=${signal.signal}`);
+        
         if (signal.signal === 'BUY') {
           opportunities.push({
             crypto,
@@ -77,7 +81,11 @@ export class EmaRsiStrategy {
             priority: signal.vol_ratio * (100 - signal.rsi) // Higher volume and lower RSI = higher priority
           });
           console.log(`🟢 BUY opportunity found: ${crypto.symbol} - RSI: ${signal.rsi}, Volume: ${signal.vol_ratio}x`);
+        } else if (signal.signal === 'HOLD') {
+          console.log(`⚪ HOLD: ${crypto.symbol} - RSI: ${signal.rsi}, no clear signal`);
         }
+      } else {
+        console.log(`❌ ${crypto.symbol}: No valid signal data`);
       }
     }
 

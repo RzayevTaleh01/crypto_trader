@@ -16,17 +16,145 @@ class TelegramService {
 
     this.chatId = chatId;
     this.bot = new TelegramBot(token, { 
-      polling: false,
-      request: {
-        agentOptions: {
-          keepAlive: true,
-          family: 4
-        }
+      polling: {
+        interval: 1000,
+        autoStart: true
       }
     });
 
     console.log('✅ Telegram bot initialized successfully');
+    this.setupCommands();
     this.sendStartupInfo();
+  }
+
+  private setupCommands() {
+    if (!this.bot) return;
+
+    // Listen for commands
+    this.bot.onText(/\/start/, (msg) => {
+      this.handleStartCommand(msg);
+    });
+
+    this.bot.onText(/\/stop/, (msg) => {
+      this.handleStopCommand(msg);
+    });
+
+    this.bot.onText(/\/status/, (msg) => {
+      this.handleStatusCommand(msg);
+    });
+
+    this.bot.onText(/\/balance/, (msg) => {
+      this.handleBalanceCommand(msg);
+    });
+
+    this.bot.onText(/\/help/, (msg) => {
+      this.handleHelpCommand(msg);
+    });
+  }
+
+  private async handleStartCommand(msg: any) {
+    if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
+
+    try {
+      await storage.updateBotSettings(1, { isActive: true });
+      
+      // Import and start the strategy
+      const { emaRsiStrategy } = await import('./emaRsiStrategy');
+      await emaRsiStrategy.startContinuousTrading(1);
+      
+      await this.bot.sendMessage(this.chatId, '🚀 Bot aktivləşdirildi və trading başladı!');
+    } catch (error) {
+      console.error('Error starting bot:', error);
+      await this.bot.sendMessage(this.chatId, '❌ Bot başladılarkən xəta baş verdi');
+    }
+  }
+
+  private async handleStopCommand(msg: any) {
+    if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
+
+    try {
+      await storage.updateBotSettings(1, { isActive: false });
+      
+      // Import and stop the strategy
+      const { emaRsiStrategy } = await import('./emaRsiStrategy');
+      emaRsiStrategy.stopContinuousTrading();
+      
+      await this.bot.sendMessage(this.chatId, '⏹️ Bot dayandırıldı və trading bitdi!');
+    } catch (error) {
+      console.error('Error stopping bot:', error);
+      await this.bot.sendMessage(this.chatId, '❌ Bot dayandırılarkən xəta baş verdi');
+    }
+  }
+
+  private async handleStatusCommand(msg: any) {
+    if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
+
+    try {
+      const settings = await storage.getBotSettings(1);
+      const portfolio = await storage.getUserPortfolio(1);
+      const user = await storage.getUser(1);
+      
+      const status = settings?.isActive ? '🟢 Aktiv' : '🔴 Deaktiv';
+      const activePositions = portfolio.length;
+      
+      const message = `📊 Bot Status
+
+${status}
+💰 Balans: $${user?.balance || '0.00'}
+📈 Aktiv pozisiyalar: ${activePositions}
+🎯 Strategy: EMA-RSI`;
+
+      await this.bot.sendMessage(this.chatId, message);
+    } catch (error) {
+      console.error('Error getting status:', error);
+      await this.bot.sendMessage(this.chatId, '❌ Status alınarkən xəta baş verdi');
+    }
+  }
+
+  private async handleBalanceCommand(msg: any) {
+    if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
+
+    try {
+      const user = await storage.getUser(1);
+      const portfolio = await storage.getUserPortfolio(1);
+      
+      let totalValue = parseFloat(user?.balance || '0');
+      
+      for (const item of portfolio) {
+        const crypto = await storage.getCryptocurrency(item.cryptoId);
+        if (crypto) {
+          const currentValue = parseFloat(item.amount) * parseFloat(crypto.currentPrice);
+          totalValue += currentValue;
+        }
+      }
+      
+      const message = `💰 Balans məlumatı
+
+💵 Nəğd: $${user?.balance || '0.00'}
+📊 Portfolio: ${portfolio.length} pozisiya
+💎 Ümumi dəyər: $${totalValue.toFixed(2)}`;
+
+      await this.bot.sendMessage(this.chatId, message);
+    } catch (error) {
+      console.error('Error getting balance:', error);
+      await this.bot.sendMessage(this.chatId, '❌ Balans alınarkən xəta baş verdi');
+    }
+  }
+
+  private async handleHelpCommand(msg: any) {
+    if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
+
+    const message = `🤖 Bot komandları
+
+/start - Trading başlat
+/stop - Trading dayandır
+/status - Bot statusu
+/balance - Balans məlumatı
+/help - Bu yardım mesajı
+
+Bot həmçinin avtomatik trade bildirişləri göndərir.`;
+
+    await this.bot.sendMessage(this.chatId, message);
   }
 
   // Send startup information

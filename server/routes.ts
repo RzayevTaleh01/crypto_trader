@@ -287,9 +287,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (settingsData.isActive) {
           const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
           console.log('🤖 EMA-RSI bot activated for user:', userId);
-          emaRsiStrategy.executeEmaRsiStrategy(userId);
+          emaRsiStrategy.startContinuousTrading(userId);
         } else {
+          const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
           console.log('🛑 EMA-RSI bot deactivated for user:', userId);
+          emaRsiStrategy.stopContinuousTrading();
         }
       }
 

@@ -4,9 +4,47 @@ import type { InsertTrade } from '@shared/schema';
 
 export class EmaRsiStrategy {
   private broadcastFn: ((data: any) => void) | null = null;
+  private tradingInterval: NodeJS.Timeout | null = null;
+  private isRunning: boolean = false;
 
   setBroadcastFunction(fn: ((data: any) => void) | null) {
     this.broadcastFn = fn;
+  }
+
+  async startContinuousTrading(userId: number): Promise<void> {
+    if (this.isRunning) {
+      console.log('🔄 Trading strategy already running');
+      return;
+    }
+
+    this.isRunning = true;
+    console.log('🚀 Starting continuous EMA-RSI trading strategy');
+
+    // Execute immediately
+    await this.executeEmaRsiStrategy(userId);
+
+    // Set up continuous execution every 30 seconds
+    this.tradingInterval = setInterval(async () => {
+      try {
+        const botSettings = await storage.getBotSettings(userId);
+        if (botSettings?.isActive) {
+          await this.executeEmaRsiStrategy(userId);
+        } else {
+          this.stopContinuousTrading();
+        }
+      } catch (error) {
+        console.error('Trading interval error:', error);
+      }
+    }, 30000); // 30 seconds
+  }
+
+  stopContinuousTrading(): void {
+    if (this.tradingInterval) {
+      clearInterval(this.tradingInterval);
+      this.tradingInterval = null;
+    }
+    this.isRunning = false;
+    console.log('🛑 Stopped continuous trading strategy');
   }
 
   async executeEmaRsiStrategy(userId: number): Promise<void> {

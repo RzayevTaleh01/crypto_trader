@@ -185,15 +185,13 @@ export class EmaRsiStrategy {
 
     console.log(`🔍 Analyzing ${cryptos.length} cryptocurrencies for buy signals`);
 
-    for (const crypto of cryptos.slice(0, 50)) { // Limit to first 50 for performance
+    for (const crypto of cryptos) { // Analyze all available cryptocurrencies
       analyzed++;
-      console.log(`🔍 Analyzing: ${crypto.symbol} - Price: $${crypto.currentPrice}`);
       
       const signal = await this.analyzeSymbol(crypto);
       
       if (signal) {
         validSignals++;
-        console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, EMA20=${signal.ema20?.toFixed(6)}, EMA50=${signal.ema50?.toFixed(6)}, Signal=${signal.signal}`);
         
         if (signal.signal === 'BUY') {
           opportunities.push({
@@ -201,12 +199,11 @@ export class EmaRsiStrategy {
             signal,
             priority: signal.vol_ratio * (100 - signal.rsi) // Higher volume and lower RSI = higher priority
           });
-          console.log(`🟢 BUY opportunity found: ${crypto.symbol} - RSI: ${signal.rsi}, Volume: ${signal.vol_ratio}x`);
-        } else if (signal.signal === 'HOLD') {
-          console.log(`⚪ HOLD: ${crypto.symbol} - RSI: ${signal.rsi}, no clear signal`);
+          console.log(`🟢 BUY opportunity: ${crypto.symbol} - RSI: ${signal.rsi}, Price: $${crypto.currentPrice}`);
+        } else if (signal.signal === 'SELL') {
+          console.log(`🔴 SELL signal: ${crypto.symbol} - RSI: ${signal.rsi}, Price: $${crypto.currentPrice}`);
         }
-      } else {
-        console.log(`❌ ${crypto.symbol}: No valid signal data`);
+        // Skip HOLD logging to reduce noise
       }
     }
 
@@ -216,18 +213,23 @@ export class EmaRsiStrategy {
       console.log(`❌ No buy opportunities found in current market conditions`);
     }
 
-    // Sort by priority and take top 3
+    // Sort by priority and take top 5 for more aggressive trading
     opportunities.sort((a, b) => b.priority - a.priority);
     
-    for (let i = 0; i < Math.min(3, opportunities.length); i++) {
+    const maxTrades = Math.min(5, opportunities.length);
+    console.log(`🎯 Executing ${maxTrades} buy orders from ${opportunities.length} opportunities`);
+    
+    for (let i = 0; i < maxTrades; i++) {
       const opp = opportunities[i];
-      const investAmount = Math.min(balance * 0.3, 1.0); // Max 30% of balance or $1
+      const investAmount = Math.min(balance * 0.2, 1.0); // Max 20% of balance or $1 per trade
       
-      if (investAmount >= 0.1 && balance >= 0.2) { // Minimum $0.10 investment if balance allows
+      if (investAmount >= 0.1 && balance >= 0.15) { // Minimum $0.10 investment if balance allows
         console.log(`🟢 BUY Signal: ${opp.crypto.symbol} - RSI: ${opp.signal.rsi}, Volume: ${opp.signal.vol_ratio}x`);
         await this.executeBuyOrder(userId, opp.crypto, investAmount, `EMA-RSI buy signal - RSI: ${opp.signal.rsi}`);
+        balance -= investAmount; // Update balance for next calculation
       } else {
-        console.log(`💰 Insufficient balance for ${opp.crypto.symbol}: Need $0.20, have $${balance.toFixed(2)}`);
+        console.log(`💰 Insufficient balance for ${opp.crypto.symbol}: Need $0.15, have $${balance.toFixed(2)}`);
+        break; // Stop if balance is too low
       }
     }
   }

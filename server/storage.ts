@@ -153,8 +153,23 @@ export class DatabaseStorage implements IStorage {
   // Portfolio operations
   async getUserPortfolio(userId: number): Promise<Portfolio[]> {
     return await db
-      .select()
+      .select({
+        id: portfolio.id,
+        userId: portfolio.userId,
+        cryptoId: portfolio.cryptoId,
+        amount: portfolio.amount,
+        averagePrice: portfolio.averagePrice,
+        totalInvested: portfolio.totalInvested,
+        cryptocurrency: {
+          id: cryptocurrencies.id,
+          symbol: cryptocurrencies.symbol,
+          name: cryptocurrencies.name,
+          currentPrice: cryptocurrencies.currentPrice,
+          priceChange24h: cryptocurrencies.priceChange24h
+        }
+      })
       .from(portfolio)
+      .leftJoin(cryptocurrencies, eq(portfolio.cryptoId, cryptocurrencies.id))
       .where(eq(portfolio.userId, userId));
   }
 

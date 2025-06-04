@@ -4,23 +4,22 @@ class PortfolioService {
   async getUserPortfolioWithDetails(userId: number) {
     const portfolio = await storage.getUserPortfolio(userId);
     
-    const portfolioWithDetails = await Promise.all(
-      portfolio.map(async (item) => {
-        const crypto = await storage.getCryptocurrency(item.cryptoId);
-        const currentValue = parseFloat(item.amount) * parseFloat(crypto?.currentPrice || "0");
-        const totalInvested = parseFloat(item.totalInvested);
-        const pnl = currentValue - totalInvested;
-        const pnlPercentage = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
+    const portfolioWithDetails = portfolio.map((item: any) => {
+      // Portfolio data already includes cryptocurrency details from the join
+      const currentPrice = parseFloat(item.cryptocurrency?.currentPrice || "0");
+      const amount = parseFloat(item.amount);
+      const currentValue = amount * currentPrice;
+      const totalInvested = parseFloat(item.totalInvested);
+      const pnl = currentValue - totalInvested;
+      const pnlPercentage = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
 
-        return {
-          ...item,
-          cryptocurrency: crypto,
-          currentValue: currentValue.toString(),
-          pnl: pnl.toString(),
-          pnlPercentage: pnlPercentage.toString()
-        };
-      })
-    );
+      return {
+        ...item,
+        currentValue: currentValue.toString(),
+        pnl: pnl.toString(),
+        pnlPercentage: pnlPercentage.toString()
+      };
+    });
 
     return portfolioWithDetails;
   }

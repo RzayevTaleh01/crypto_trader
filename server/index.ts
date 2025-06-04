@@ -47,6 +47,23 @@ app.use((req, res, next) => {
   console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
+  // Ensure bot starts in inactive mode
+  const { storage } = await import("./storage");
+  const botSettings = await storage.getBotSettings(1);
+  if (!botSettings) {
+    await storage.createBotSettings({
+      userId: 1,
+      strategy: 'ema_rsi',
+      riskLevel: 5,
+      maxDailyLoss: '50.00',
+      targetProfit: '100.00',
+      isActive: false
+    });
+  } else if (botSettings.isActive) {
+    await storage.updateBotSettings(1, { isActive: false });
+    console.log('🛑 Bot automatically set to inactive mode on startup');
+  }
+  
   console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

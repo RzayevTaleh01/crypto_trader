@@ -58,6 +58,16 @@ export class EmaRsiStrategy {
     console.log(`🎯 EMA-RSI Strategy - Balance: $${balance.toFixed(2)}`);
     console.log(`📊 Analyzing ${cryptos.length} cryptocurrencies, ${portfolio.length} positions`);
 
+    // Force Binance API data fetch for trading analysis
+    const { binanceService } = await import('./binanceService');
+    console.log('📡 Fetching real market data from Binance...');
+    
+    try {
+      await binanceService.getRealMarketData();
+    } catch (error) {
+      console.log('⚠️ Binance API unavailable, proceeding with database analysis...');
+    }
+
     // Check sell signals first
     await this.checkSellSignals(userId, portfolio, cryptos);
 

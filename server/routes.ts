@@ -286,12 +286,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (settingsData.isActive !== undefined) {
         if (settingsData.isActive) {
           const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+          const { binanceService } = await import('./services/binanceService');
+          const { cryptoService } = await import('./services/cryptoService');
+          
           console.log('🤖 EMA-RSI bot activated for user:', userId);
+          
+          // Initialize Binance API connection immediately
+          binanceService.initialize();
+          
+          // Start cryptocurrency price monitoring
+          cryptoService.startPriceUpdates();
+          
+          // Start continuous trading strategy
           emaRsiStrategy.startContinuousTrading(userId);
+          
+          console.log('📊 Binance API calls initiated, trading strategy started');
         } else {
           const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+          const { cryptoService } = await import('./services/cryptoService');
+          
           console.log('🛑 EMA-RSI bot deactivated for user:', userId);
+          
+          // Stop all trading activities
           emaRsiStrategy.stopContinuousTrading();
+          cryptoService.stopPriceUpdates();
         }
       }
 

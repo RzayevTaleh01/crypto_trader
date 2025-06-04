@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface PortfolioHolding {
   id: number;
@@ -28,8 +28,20 @@ interface PortfolioHoldingsProps {
 
 export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
-  const wsData = useWebSocketData();
   const { socket } = useWebSocket();
+
+  // Primary data source: API query for initial load and fallback
+  const { data: apiHoldings = [], isLoading } = useQuery<PortfolioHolding[]>({
+    queryKey: ['/api/portfolio/user', userId],
+    enabled: !!userId,
+  });
+
+  // Initialize holdings from API data
+  useEffect(() => {
+    if (apiHoldings && apiHoldings.length > 0) {
+      setHoldings(apiHoldings);
+    }
+  }, [apiHoldings]);
 
   // Listen for real-time portfolio updates via WebSocket
   useEffect(() => {
@@ -38,8 +50,8 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     const handlePortfolioUpdate = (event: MessageEvent) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'portfolioUpdate') {
-          setHoldings(message.data || []);
+        if (message.type === 'portfolioUpdate' && message.data) {
+          setHoldings(message.data);
         }
       } catch (error) {
         console.log('Error parsing WebSocket portfolio message:', error);
@@ -49,15 +61,6 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     socket.addEventListener('message', handlePortfolioUpdate);
     return () => socket.removeEventListener('message', handlePortfolioUpdate);
   }, [socket]);
-
-  // Initial load of portfolio data from WebSocket
-  useEffect(() => {
-    if (wsData?.portfolio?.data && Array.isArray(wsData.portfolio.data)) {
-      setHoldings(wsData.portfolio.data);
-    }
-  }, [wsData?.portfolio?.data]);
-
-  const isLoading = wsData?.portfolio?.isLoading || false;
 
   if (isLoading) {
     return (
@@ -142,11 +145,11 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                       : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                   }`}>
-                    {holding.cryptocurrency?.symbol?.slice(0, 2).toUpperCase() || 'N/A'}
+                    {holding.cryptocurrency?.symbol?.slice(0, 2).toUpperCase() || 'CR'}
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium">{holding.cryptocurrency?.symbol || 'N/A'}</span>
+                      <span className="font-medium">{holding.cryptocurrency?.symbol || 'Unknown'}</span>
                       <Badge variant={priceChange24h >= 0 ? 'default' : 'destructive'} className="text-xs">
                         {priceChange24h >= 0 ? '+' : ''}{priceChange24h.toFixed(2)}%
                       </Badge>

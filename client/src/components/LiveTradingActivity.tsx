@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Activity, Bot, DollarSign } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Clock, DollarSign } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 interface TradingActivity {
   timestamp: string;
@@ -18,8 +18,19 @@ interface TradingActivity {
 
 export default function LiveTradingActivity() {
   const [activities, setActivities] = useState<TradingActivity[]>([]);
-  const wsData = useWebSocketData();
   const { socket } = useWebSocket();
+
+  // Primary data source: API query for initial load and fallback
+  const { data: apiActivities = [], isLoading } = useQuery<TradingActivity[]>({
+    queryKey: ['/api/trades/recent', 1],
+  });
+
+  // Initialize activities from API data
+  useEffect(() => {
+    if (apiActivities && apiActivities.length > 0) {
+      setActivities(apiActivities);
+    }
+  }, [apiActivities]);
 
   // Listen for real-time trading updates via WebSocket
   useEffect(() => {
@@ -28,24 +39,15 @@ export default function LiveTradingActivity() {
     const handleNewTrade = (event: MessageEvent) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'newTrade') {
-          const trade = message.data;
-          const newActivity = {
-            timestamp: new Date(trade.createdAt).toLocaleTimeString('az-AZ'),
-            action: 'EXECUTED',
-            symbol: trade.cryptocurrency?.symbol || 'N/A',
-            amount: parseFloat(trade.amount).toFixed(6),
-            price: `$${parseFloat(trade.price).toFixed(6)}`,
-            total: `$${parseFloat(trade.total).toFixed(2)}`,
-            type: trade.type.toUpperCase(),
-            strategy: 'EMA-RSI'
-          };
-
-          // Add new trade to the beginning and limit to 10
-          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        if (message.type === 'tradeUpdate' && message.data) {
+          // Add new trade to the beginning of the list
+          setActivities(prev => [message.data, ...prev.slice(0, 9)]); // Keep only 10 most recent
+        } else if (message.type === 'tradesUpdate' && message.data) {
+          // Update entire trades list
+          setActivities(message.data);
         }
       } catch (error) {
-        console.log('Error parsing WebSocket message:', error);
+        console.log('Error parsing WebSocket trade message:', error);
       }
     };
 
@@ -53,64 +55,38 @@ export default function LiveTradingActivity() {
     return () => socket.removeEventListener('message', handleNewTrade);
   }, [socket]);
 
-  // Initial load of trading data
-  useEffect(() => {
-    if (wsData?.trades?.data && Array.isArray(wsData.trades.data)) {
-      const latestTrades = wsData.trades.data
-        .filter((trade: any) => trade.isBot)
-        .slice(0, 10)
-        .map((trade: any) => ({
-          timestamp: new Date(trade.createdAt).toLocaleTimeString('az-AZ'),
-          action: 'EXECUTED',
-          symbol: trade.cryptocurrency?.symbol || 'N/A',
-          amount: parseFloat(trade.amount).toFixed(6),
-          price: `$${parseFloat(trade.price).toFixed(6)}`,
-          total: `$${parseFloat(trade.total).toFixed(2)}`,
-          type: trade.type.toUpperCase(),
-          strategy: 'EMA-RSI'
-        }));
-      
-      setActivities(latestTrades);
-    }
-  }, [wsData?.trades?.data]);
-
-  const isActive = wsData?.botSettings?.data?.isActive || false;
-  const currentStrategy = 'EMA-RSI';
-
-  const getStrategyName = (strategy: string) => {
-    switch (strategy) {
-      case 'EMA-RSI': return 'EMA-RSI';
-      case 'scalping': return 'Scalping';
-      case 'momentum': return 'Momentum';
-      default: return 'EMA-RSI';
-    }
-  };
-
-  const getStatusBadgeVariant = () => {
-    return isActive ? "default" : "secondary";
-  };
-
-  if (!wsData?.trades?.data || wsData.trades.data.length === 0) {
+  if (isLoading) {
     return (
-      <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-orange-200 dark:border-orange-800">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Canlı Ticarət Fəaliyyəti</CardTitle>
-          <Badge variant={getStatusBadgeVariant()} className="flex items-center gap-1">
-            <Bot className="h-3 w-3" />
-            {isActive ? 'Aktiv' : 'Dayandırılıb'} - {getStrategyName(currentStrategy)}
-          </Badge>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Live Trading Activity
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8 text-center">
-            <div className="space-y-2">
-              <Activity className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Hələ ki ticarət fəaliyyəti yoxdur
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Bot aktivləşdirilməyi gözləyir
-              </p>
-            </div>
+          <div className="text-center py-4 text-muted-foreground">
+            Loading activity...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!activities || activities.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Live Trading Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No trading activity yet</p>
+            <p className="text-sm text-muted-foreground">Activate the bot to start trading</p>
           </div>
         </CardContent>
       </Card>
@@ -118,55 +94,65 @@ export default function LiveTradingActivity() {
   }
 
   return (
-    <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-orange-200 dark:border-orange-800">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Canlı Ticarət Fəaliyyəti</CardTitle>
-        <Badge variant={getStatusBadgeVariant()} className="flex items-center gap-1">
-          <Bot className="h-3 w-3" />
-          {isActive ? 'Aktiv' : 'Dayandırılıb'} - {getStrategyName(currentStrategy)}
-        </Badge>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="h-5 w-5" />
+          Live Trading Activity
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {activities.length === 0 ? (
-            <div className="flex items-center justify-center py-4 text-center">
-              <div className="space-y-2">
-                <Activity className="h-6 w-6 text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">
-                  Real vaxt ticarət məlumatları yüklənir...
-                </p>
-              </div>
-            </div>
-          ) : (
-            activities.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-white/60 dark:bg-black/60 rounded-lg border border-orange-100 dark:border-orange-800">
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {activities.map((activity, index) => {
+            const isBuy = activity.action?.toLowerCase() === 'buy';
+            const timestamp = new Date(activity.timestamp);
+            const timeString = timestamp.toLocaleTimeString('en-US', { 
+              hour12: false, 
+              hour: '2-digit', 
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+
+            return (
+              <div key={`${activity.timestamp}-${index}`} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-full ${
-                    activity.type === 'BUY' 
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    isBuy 
                       ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                       : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                   }`}>
-                    {activity.type === 'BUY' ? <TrendingUp className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
+                    {isBuy ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium">{activity.symbol}</span>
-                      <Badge variant={activity.type === 'BUY' ? 'default' : 'destructive'} className="text-xs">
-                        {activity.type}
+                      <span className="font-medium">{activity.symbol || 'Unknown'}</span>
+                      <Badge variant={isBuy ? 'default' : 'destructive'} className="text-xs">
+                        {activity.action?.toUpperCase() || 'TRADE'}
                       </Badge>
+                      {activity.strategy && (
+                        <Badge variant="outline" className="text-xs">
+                          {activity.strategy}
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.amount} @ {activity.price}
-                    </p>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>{timeString}</span>
+                      <span>•</span>
+                      <span>{parseFloat(activity.amount || '0').toFixed(6)} coins</span>
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium">{activity.total}</p>
-                  <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                  <p className="font-medium">${parseFloat(activity.price || '0').toFixed(6)}</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    ${parseFloat(activity.total || '0').toFixed(2)}
+                  </p>
                 </div>
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

@@ -168,14 +168,14 @@ export class EmaRsiStrategy {
       if (signal) {
         console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
-        // Advanced sell conditions with multiple criteria
+        // More aggressive sell conditions for active trading
         if (signal.signal === 'SELL') {
           shouldSell = true;
           sellReason = `Advanced sell signal triggered`;
-        } else if (profitPercentage >= 6) {
+        } else if (profitPercentage >= 3) {  // Reduced from 6% to 3% for quicker profits
           shouldSell = true;
           sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
-        } else if (profitPercentage <= -2.25) {
+        } else if (profitPercentage <= -1.5) {  // Reduced from -2.25% to -1.5% for tighter stop loss
           shouldSell = true;
           sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
         }

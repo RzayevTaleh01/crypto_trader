@@ -311,11 +311,14 @@ export class EmaRsiStrategy {
       // Send Telegram notification
       await telegramService.sendTradeNotification(trade, crypto);
       
-      // Broadcast to WebSocket
+      // Broadcast to WebSocket with newTrade type
       if (this.broadcastFn) {
         this.broadcastFn({
-          type: 'trade',
-          data: { trade, crypto, action: 'buy' }
+          type: 'newTrade',
+          data: {
+            ...trade,
+            cryptocurrency: crypto
+          }
         });
       }
     } catch (error) {
@@ -364,11 +367,14 @@ export class EmaRsiStrategy {
       // Send Telegram notification
       await telegramService.sendTradeNotification(trade, crypto);
       
-      // Broadcast to WebSocket
+      // Broadcast to WebSocket with newTrade type
       if (this.broadcastFn) {
         this.broadcastFn({
-          type: 'trade',
-          data: { trade, crypto, action: 'sell' }
+          type: 'newTrade',
+          data: {
+            ...trade,
+            cryptocurrency: crypto
+          }
         });
       }
     } catch (error) {

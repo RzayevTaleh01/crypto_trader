@@ -47,7 +47,6 @@ export default function BotSettings({ userId }: BotSettingsProps) {
 
   const { data: serverSettings } = useQuery({
     queryKey: ['/api/bot-settings'],
-    refetchInterval: 3000,
   });
 
   const { data: availableStrategies } = useQuery({

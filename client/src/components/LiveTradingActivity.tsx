@@ -21,12 +21,10 @@ export default function LiveTradingActivity() {
 
   const { data: botSettings } = useQuery({
     queryKey: ['/api/bot-settings'],
-    refetchInterval: 5000, // Reduced frequency
   });
 
   const { data: recentTrades } = useQuery({
     queryKey: ['/api/trades/user/1'],
-    refetchInterval: 10000, // Reduced frequency since we use WebSocket for live updates
   });
 
   // WebSocket for real-time updates

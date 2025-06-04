@@ -72,11 +72,6 @@ export function useDirectDashboardData(userId: number) {
     };
 
     fetchDashboardData();
-    
-    // Update every 5 seconds
-    const interval = setInterval(fetchDashboardData, 5000);
-    
-    return () => clearInterval(interval);
   }, [userId]);
 
   return { data, isLoading };

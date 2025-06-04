@@ -10,7 +10,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   const { data: statsResponse } = useQuery({
     queryKey: ['/api/analytics/user', userId],
     enabled: !!userId,
-    refetchInterval: 5000, // Refetch every 5 seconds for real-time updates
+ // Refetch every 5 seconds for real-time updates
   });
 
   // Handle the response properly with type safety

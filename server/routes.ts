@@ -642,11 +642,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateBotSettings(userId, { strategy });
       
       // Restart bot with new strategy if it's active
-      const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
+      const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
       const botSettings = await storage.getBotSettings(userId);
       if (botSettings && botSettings.isActive) {
-        autonomousTradingEngine.stopBot(userId);
-        autonomousTradingEngine.startBot(userId);
+        emaRsiStrategy.stopContinuousTrading();
+        await emaRsiStrategy.startContinuousTrading(userId);
       }
       
       res.json({ success: true, message: 'Strategy updated successfully' });

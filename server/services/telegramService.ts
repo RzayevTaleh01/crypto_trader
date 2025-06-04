@@ -197,17 +197,29 @@ ${botStatus}
     } else if (trade.type === 'SELL') {
       // Sell notification: coin name, previous price - sell price, total previous - total sell, profit, sell reason
       const sellPrice = parseFloat(trade.price);
-      const buyPrice = portfolioItem ? parseFloat(portfolioItem.averagePrice) : sellPrice;
       const totalSell = parseFloat(trade.total);
-      const totalBuy = portfolioItem ? parseFloat(portfolioItem.totalInvested) : totalSell;
       const profit = parseFloat(trade.pnl || '0');
       const sellReason = trade.reason || 'Strateji siqnalı';
+      
+      // Calculate buy price from profit and sell data
+      let buyPrice = 0;
+      let totalBuy = 0;
+      
+      if (portfolioItem) {
+        buyPrice = parseFloat(portfolioItem.averagePrice);
+        totalBuy = parseFloat(portfolioItem.totalInvested);
+      } else {
+        // Calculate buy price from profit: totalBuy = totalSell - profit
+        totalBuy = totalSell - profit;
+        const sellAmount = parseFloat(trade.amount);
+        buyPrice = totalBuy / sellAmount;
+      }
       
       message = `🔴 SATIŞ
 
 💎 ${crypto.symbol}
-📊 ${buyPrice.toFixed(6)} - ${sellPrice.toFixed(6)}
-💰 $${totalBuy.toFixed(2)} - $${totalSell.toFixed(2)}
+📊 $${buyPrice.toFixed(6)} → $${sellPrice.toFixed(6)}
+💰 $${totalBuy.toFixed(2)} → $${totalSell.toFixed(2)}
 📈 Kar: $${profit.toFixed(2)}
 🎯 Səbəb: ${sellReason}`;
     }

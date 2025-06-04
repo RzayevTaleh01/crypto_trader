@@ -240,13 +240,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (settingsData.isActive !== undefined) {
         if (settingsData.isActive) {
-          const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
-          console.log('🤖 Starting autonomous trading bot for user:', userId);
-          autonomousTradingEngine.startBot(userId);
+          const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+          console.log('🤖 EMA-RSI bot activated for user:', userId);
+          emaRsiStrategy.executeEmaRsiStrategy(userId);
         } else {
-          const { autonomousTradingEngine } = await import('./services/autonomousTradingEngine');
-          console.log('🛑 Stopping autonomous trading bot for user:', userId);
-          autonomousTradingEngine.stopBot(userId);
+          console.log('🛑 EMA-RSI bot deactivated for user:', userId);
         }
       }
 

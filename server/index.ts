@@ -47,25 +47,7 @@ app.use((req, res, next) => {
   console.log('🔧 Initializing Binance testnet API...');
   binanceService.initialize();
   
-  // Enable real market data from CoinCap API (authentic data source)
-  console.log('🚀 Starting real market data updates with CoinCap API...');
-  const { cryptoService } = await import("./services/cryptoService");
-  cryptoService.startPriceUpdates();
-
-  console.log('✅ Authentic trading system activated - using real market data');
-
-  // Auto-start disabled - bot will only start when manually activated from dashboard
-  // User can activate the bot from the BotSettings component
-
-  // Set up daily report scheduler (24 hours)
-  setInterval(async () => {
-    await telegramService.sendDailyReport();
-  }, 24 * 60 * 60 * 1000);
-
-  // Set up price monitoring (every 5 minutes)
-  setInterval(async () => {
-    await binanceService.monitorPrices();
-  }, 5 * 60 * 1000);
+  console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

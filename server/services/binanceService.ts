@@ -31,7 +31,7 @@ class BinanceService {
         console.log('🔧 Binance API initialized for market data only');
       }
       
-      this.monitorPrices();
+      // Market monitoring will only start when bot is manually activated
     } catch (error) {
       console.error('Failed to initialize Binance API:', error);
     }

@@ -16,10 +16,7 @@ class TelegramService {
 
     this.chatId = chatId;
     this.bot = new TelegramBot(token, { 
-      polling: {
-        interval: 1000,
-        autoStart: true
-      }
+      polling: false
     });
 
     console.log('✅ Telegram bot initialized successfully');

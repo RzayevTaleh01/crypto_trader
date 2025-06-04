@@ -147,16 +147,19 @@ export class EmaRsiStrategy {
       if (signal) {
         console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
-        // Multiple sell conditions for active trading
+        // Multiple sell conditions for more active trading
         if (signal.signal === 'SELL') {
           shouldSell = true;
           sellReason = `RSI overbought signal - RSI: ${signal.rsi}`;
-        } else if (profitPercentage >= 15) {
+        } else if (profitPercentage >= 3) {
           shouldSell = true;
           sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
-        } else if (profitPercentage <= -10) {
+        } else if (profitPercentage <= -2) {
           shouldSell = true;
           sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
+        } else if (signal.rsi >= 55) {
+          shouldSell = true;
+          sellReason = `Moderate overbought - RSI: ${signal.rsi}`;
         }
         
         if (shouldSell) {

@@ -187,6 +187,14 @@ export class EmaRsiStrategy {
       const newBalance = parseFloat(user.balance) - amount;
       await storage.updateUserBalance(userId, newBalance.toString());
       
+      // Broadcast balance update to WebSocket clients
+      if (this.broadcastFn) {
+        this.broadcastFn({
+          type: 'balanceUpdate',
+          data: { userId, balance: newBalance }
+        });
+      }
+      
       // Create trade record
       const tradeData: InsertTrade = {
         userId,
@@ -232,6 +240,14 @@ export class EmaRsiStrategy {
       
       const newBalance = parseFloat(user.balance) + total;
       await storage.updateUserBalance(userId, newBalance.toString());
+      
+      // Broadcast balance update to WebSocket clients
+      if (this.broadcastFn) {
+        this.broadcastFn({
+          type: 'balanceUpdate',
+          data: { userId, balance: newBalance }
+        });
+      }
       
       // Create trade record
       const tradeData: InsertTrade = {

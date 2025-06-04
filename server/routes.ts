@@ -34,7 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize crypto service with broadcast function
   cryptoService.setBroadcastFunction(broadcast);
   
-  // Initialize services with broadcast function
+  // Initialize EMA-RSI strategy with broadcast function
+  const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+  emaRsiStrategy.setBroadcastFunction(broadcast);
 
   // User routes
   app.post("/api/auth/register", async (req, res) => {
@@ -270,6 +272,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.updateUserBalance(userId, balance);
+      
+      // Broadcast balance update to WebSocket clients
+      broadcast({
+        type: 'balanceUpdate',
+        data: { userId, balance: parseFloat(balance) }
+      });
+      
       res.json({ message: "Balance updated successfully", newBalance: balance });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update balance", error: error.message });

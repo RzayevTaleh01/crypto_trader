@@ -38,6 +38,12 @@ export function useWebSocket() {
               queryClient.invalidateQueries({ queryKey: ['/api/bot-settings'] });
               break;
               
+            case 'balanceUpdate':
+              // Invalidate user data to refresh balance
+              queryClient.invalidateQueries({ queryKey: ['/api/user/1'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/analytics/user'] });
+              break;
+              
             default:
               console.log('Unknown WebSocket message type:', data.type);
           }

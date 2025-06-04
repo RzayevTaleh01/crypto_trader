@@ -123,20 +123,57 @@ export class EmaRsiStrategy {
   }
 
   private async checkSellSignals(userId: number, portfolio: any[], cryptos: any[]): Promise<void> {
+    console.log(`🔍 Checking sell signals for ${portfolio.length} portfolio positions`);
+    
     for (const position of portfolio) {
       const crypto = cryptos.find(c => c.id === position.cryptoId);
-      if (!crypto) continue;
+      if (!crypto) {
+        console.log(`❌ No crypto data found for position ID: ${position.cryptoId}`);
+        continue;
+      }
 
+      console.log(`🔍 Analyzing position: ${crypto.symbol} - Amount: ${position.amount}`);
+      
+      const currentPrice = parseFloat(crypto.currentPrice);
+      const avgPrice = parseFloat(position.averagePrice);
+      const profitPercentage = ((currentPrice - avgPrice) / avgPrice) * 100;
+      
+      console.log(`💰 ${crypto.symbol}: Current: $${currentPrice}, Avg: $${avgPrice}, P&L: ${profitPercentage.toFixed(2)}%`);
+      
       const signal = await this.analyzeSymbol(crypto);
-      if (signal && signal.signal === 'SELL') {
-        const sellAmount = parseFloat(position.amount) * 0.5; // Sell 50%
+      let shouldSell = false;
+      let sellReason = '';
+      
+      if (signal) {
+        console.log(`📊 ${crypto.symbol}: RSI=${signal.rsi}, Signal=${signal.signal}`);
         
-        console.log(`🔴 SELL Signal: ${crypto.symbol} - RSI: ${signal.rsi}, Volume: ${signal.vol_ratio}x`);
+        // Multiple sell conditions for active trading
+        if (signal.signal === 'SELL') {
+          shouldSell = true;
+          sellReason = `RSI overbought signal - RSI: ${signal.rsi}`;
+        } else if (profitPercentage >= 15) {
+          shouldSell = true;
+          sellReason = `Profit target reached - ${profitPercentage.toFixed(2)}% gain`;
+        } else if (profitPercentage <= -10) {
+          shouldSell = true;
+          sellReason = `Stop loss triggered - ${profitPercentage.toFixed(2)}% loss`;
+        }
         
-        await this.executeSellOrder(userId, crypto, sellAmount, `EMA-RSI sell signal - RSI: ${signal.rsi}`);
-        
-        // Send Telegram notification
-        telegramService.sendProfitAlert(signal.profit || 0, crypto.symbol);
+        if (shouldSell) {
+          const sellAmount = parseFloat(position.amount) * 0.8; // Sell 80% of position
+          
+          console.log(`🔴 SELL Signal: ${crypto.symbol} - ${sellReason}`);
+          console.log(`💰 Selling ${sellAmount} of ${crypto.symbol}`);
+          
+          await this.executeSellOrder(userId, crypto, sellAmount, sellReason);
+          
+          // Send Telegram notification
+          telegramService.sendProfitAlert(profitPercentage, crypto.symbol);
+        } else {
+          console.log(`⚪ HOLD position: ${crypto.symbol} - RSI: ${signal.rsi}, P&L: ${profitPercentage.toFixed(2)}%`);
+        }
+      } else {
+        console.log(`❌ No signal data for ${crypto.symbol}`);
       }
     }
   }
@@ -201,24 +238,30 @@ export class EmaRsiStrategy {
       const currentPrice = parseFloat(crypto.currentPrice);
       const priceChange24h = parseFloat(crypto.priceChange24h || '0');
       
-      // Enhanced RSI estimation with more sensitive thresholds for active trading
+      // Balanced RSI estimation for more realistic trading conditions
       let estimatedRSI = 50; // Neutral baseline
-      if (priceChange24h > 5) estimatedRSI = 75; // Overbought (lowered from 8%)
-      else if (priceChange24h < -5) estimatedRSI = 25; // Oversold (lowered from -8%)
-      else if (priceChange24h > 1) estimatedRSI = 65; // Moderate overbought (lowered from 3%)
-      else if (priceChange24h < -1) estimatedRSI = 35; // Moderate oversold (lowered from -3%)
-      else if (priceChange24h > 0) estimatedRSI = 55; // Slight positive = slightly overbought
-      else if (priceChange24h < 0) estimatedRSI = 45; // Slight negative = slightly oversold
+      if (priceChange24h > 8) estimatedRSI = 80; // Strong overbought
+      else if (priceChange24h < -8) estimatedRSI = 20; // Strong oversold
+      else if (priceChange24h > 4) estimatedRSI = 70; // Moderate overbought
+      else if (priceChange24h < -4) estimatedRSI = 30; // Moderate oversold
+      else if (priceChange24h > 2) estimatedRSI = 60; // Slight overbought
+      else if (priceChange24h < -2) estimatedRSI = 40; // Slight oversold
+      else if (priceChange24h > 0) estimatedRSI = 55; // Slight positive
+      else if (priceChange24h < 0) estimatedRSI = 45; // Slight negative
       else estimatedRSI = 50; // Exactly neutral
       
       const volume24h = parseFloat(crypto.volume24h || '0');
       const volumeRatio = volume24h > 1000000 ? 2.0 : 1.0;
       
-      // Generate trading signals based on very sensitive RSI levels for active trading
+      // Balanced trading signals with traditional RSI levels
       let signal = 'HOLD';
-      if (estimatedRSI <= 50) {  // Very sensitive buy threshold - below market average
+      if (estimatedRSI <= 35) {  // Traditional oversold - strong buy signal
         signal = 'BUY';
-      } else if (estimatedRSI >= 52) {  // Very sensitive sell threshold - above market average
+      } else if (estimatedRSI >= 65) {  // Traditional overbought - strong sell signal
+        signal = 'SELL';
+      } else if (estimatedRSI <= 40) {  // Moderate oversold - weak buy signal
+        signal = 'BUY';
+      } else if (estimatedRSI >= 60) {  // Moderate overbought - weak sell signal
         signal = 'SELL';
       }
       

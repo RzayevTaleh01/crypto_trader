@@ -7,48 +7,52 @@ class TelegramService {
 
   initialize() {
     const token = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    this.chatId = process.env.TELEGRAM_CHAT_ID || '';
 
-    if (!token || !chatId) {
-      console.log('⚠️ Telegram credentials not found, skipping initialization');
+    if (!token) {
+      console.log('TELEGRAM_BOT_TOKEN not provided, Telegram bot disabled');
       return;
     }
 
-    this.chatId = chatId;
-    this.bot = new TelegramBot(token, { 
-      polling: false,
-      request: {
-        agentOptions: {
-          keepAlive: true,
-          family: 4
-        }
-      }
-    });
+    if (!this.chatId) {
+      console.log('TELEGRAM_CHAT_ID not provided, Telegram notifications disabled');
+      return;
+    }
 
-    console.log('✅ Telegram bot initialized successfully');
-    this.sendStartupInfo();
+    try {
+      this.bot = new TelegramBot(token, { polling: true });
+      this.setupCommands();
+      console.log('✅ Telegram bot initialized successfully');
+      
+      // Test connection
+      this.bot.getMe().then(() => {
+        console.log('✅ Telegram bot connection verified');
+        this.sendTestMessage();
+      }).catch((error) => {
+        console.log('❌ Telegram bot connection failed:', error.message);
+      });
+    } catch (error) {
+      console.log('❌ Telegram bot initialization failed:', error);
+    }
   }
 
-  // Send startup information
-  async sendStartupInfo() {
-    if (!this.bot || !this.chatId) return;
-    
+  private async sendTestMessage() {
     try {
-      const user = await storage.getUser(1);
-      const settings = await storage.getBotSettings(1);
-      const botStatus = settings?.isActive ? '🟢 Aktiv' : '🔴 Deaktiv';
-      
-      const message = `🤖 Bot Başladı
-
-💰 Balans: $${user?.balance || '0.00'}
-${botStatus}
-📊 Trading sistemi hazırdır`;
-
-      await this.bot.sendMessage(this.chatId, message);
-      console.log('✅ Startup info sent successfully');
+      console.log('✅ Telegram bot ready for notifications');
     } catch (error) {
-      console.log('❌ Failed to send startup info:', error);
+      console.log('❌ Telegram bot initialization failed:', error);
     }
+  }
+
+  private setupCommands() {
+    if (!this.bot) return;
+
+    // No commands - only trade notifications when trades happen
+  }
+
+  private async getBotStatus(): Promise<string> {
+    const settings = await storage.getBotSettings(1);
+    return settings?.isActive ? '🟢 Aktiv' : '🔴 Deaktiv';
   }
 
   // Send trading notifications
@@ -79,14 +83,39 @@ ${botStatus}
     }
 
     try {
-      await this.bot.sendMessage(this.chatId, message);
+      await this.bot.sendMessage(this.chatId, message, {
+        parse_mode: 'Markdown'
+      });
       console.log('✅ Trade notification sent successfully');
     } catch (error) {
       console.log('❌ Failed to send trade notification:', error);
     }
   }
 
-  // Send profit alert
+  // Send startup information
+  async sendStartupInfo() {
+    if (!this.bot || !this.chatId) return;
+    
+    try {
+      const user = await storage.getUser(1);
+      const botStatus = await this.getBotStatus();
+      
+      const message = `🤖 Bot Başladı
+
+💰 Balans: $${user?.balance || '0.00'}
+${botStatus}
+📊 Trading sistemi hazırdır`;
+
+      await this.bot.sendMessage(this.chatId, message, {
+        parse_mode: 'Markdown'
+      });
+      console.log('✅ Startup info sent successfully');
+    } catch (error) {
+      console.log('❌ Failed to send startup info:', error);
+    }
+  }
+
+  // Update profit alert to be simpler
   async sendProfitAlert(profit: number, symbol: string) {
     if (!this.bot || !this.chatId) return;
     
@@ -100,7 +129,7 @@ ${botStatus}
     }
   }
 
-  // Send daily report
+  // Daily report stays the same
   async sendDailyReport() {
     if (!this.bot || !this.chatId) return;
     

@@ -6,7 +6,6 @@ export function useCryptoData() {
 
   const { data: cryptocurrencies = [], isLoading } = useQuery({
     queryKey: ['/api/cryptocurrencies'],
-    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Update prices with real-time WebSocket data

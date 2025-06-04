@@ -17,6 +17,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws) => {
     console.log('Client connected to WebSocket');
     
+    ws.on('message', async (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        if (data.type === 'requestInitialData') {
+          const userId = data.userId || 1;
+          
+          // Fetch all initial data
+          const [
+            user,
+            cryptocurrencies,
+            portfolio,
+            trades,
+            analytics,
+            botSettings,
+            portfolioPerformance
+          ] = await Promise.all([
+            storage.getUser(userId),
+            storage.getAllCryptocurrencies(),
+            storage.getUserPortfolio(userId),
+            storage.getUserTrades(userId, 50),
+            storage.getUserStats(userId),
+            storage.getBotSettings(userId),
+            portfolioService.getPortfolioPerformance(userId, 24)
+          ]);
+          
+          // Send initial data
+          ws.send(JSON.stringify({
+            type: 'initialData',
+            data: {
+              user,
+              cryptocurrencies,
+              portfolio,
+              trades,
+              analytics,
+              botSettings,
+              portfolioPerformance
+            }
+          }));
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+    
     ws.on('close', () => {
       console.log('Client disconnected from WebSocket');
     });

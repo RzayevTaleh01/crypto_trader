@@ -1,9 +1,27 @@
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useRef } from 'react';
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
-  const queryClient = useQueryClient();
+  const [isConnected, setIsConnected] = useState(false);
+  
+  // WebSocket-only data states
+  const [wsData, setWsData] = useState<{
+    cryptocurrencies: any[];
+    portfolio: any[];
+    trades: any[];
+    analytics: any;
+    botSettings: any;
+    user: any;
+    portfolioPerformance: any[];
+  }>({
+    cryptocurrencies: [],
+    portfolio: [],
+    trades: [],
+    analytics: null,
+    botSettings: null,
+    user: null,
+    portfolioPerformance: []
+  });
 
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -14,6 +32,15 @@ export function useWebSocket() {
 
       wsRef.current.onopen = () => {
         console.log('WebSocket connected');
+        setIsConnected(true);
+        
+        // Request initial data when connected
+        if (wsRef.current) {
+          wsRef.current.send(JSON.stringify({ 
+            type: 'requestInitialData', 
+            userId: 1 
+          }));
+        }
       };
 
       wsRef.current.onmessage = (event) => {
@@ -21,27 +48,57 @@ export function useWebSocket() {
           const data = JSON.parse(event.data);
           
           switch (data.type) {
+            case 'initialData':
+              setWsData(data.data);
+              break;
+              
             case 'priceUpdate':
-              // Invalidate cryptocurrency queries to refresh prices
-              queryClient.invalidateQueries({ queryKey: ['/api/cryptocurrencies'] });
+              setWsData(prev => ({
+                ...prev,
+                cryptocurrencies: prev.cryptocurrencies.map((crypto: any) => 
+                  crypto.symbol === data.data.symbol 
+                    ? { ...crypto, currentPrice: data.data.price, priceChange24h: data.data.change24h }
+                    : crypto
+                )
+              }));
               break;
               
             case 'trade':
-              // Invalidate trade-related queries
-              queryClient.invalidateQueries({ queryKey: ['/api/trades/user'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/analytics/user'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user'] });
+              setWsData(prev => ({
+                ...prev,
+                trades: [data.data, ...prev.trades.slice(0, 49)],
+                analytics: data.analytics || prev.analytics,
+                portfolio: data.portfolio || prev.portfolio
+              }));
               break;
               
             case 'botStatus':
-              // Invalidate bot settings
-              queryClient.invalidateQueries({ queryKey: ['/api/bot-settings'] });
+              setWsData(prev => ({
+                ...prev,
+                botSettings: prev.botSettings ? { ...prev.botSettings, ...data.data } : data.data
+              }));
               break;
               
             case 'balanceUpdate':
-              // Invalidate user data to refresh balance
-              queryClient.invalidateQueries({ queryKey: ['/api/user/1'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/analytics/user'] });
+              setWsData(prev => ({
+                ...prev,
+                user: prev.user ? { ...prev.user, balance: data.data.balance } : { balance: data.data.balance },
+                analytics: data.analytics || prev.analytics
+              }));
+              break;
+              
+            case 'portfolioUpdate':
+              setWsData(prev => ({
+                ...prev,
+                portfolio: data.data
+              }));
+              break;
+              
+            case 'performanceUpdate':
+              setWsData(prev => ({
+                ...prev,
+                portfolioPerformance: data.data
+              }));
               break;
               
             default:
@@ -54,7 +111,8 @@ export function useWebSocket() {
 
       wsRef.current.onclose = () => {
         console.log('WebSocket disconnected, attempting to reconnect...');
-        setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
+        setIsConnected(false);
+        setTimeout(connectWebSocket, 3000);
       };
 
       wsRef.current.onerror = (error) => {
@@ -69,7 +127,11 @@ export function useWebSocket() {
         wsRef.current.close();
       }
     };
-  }, [queryClient]);
+  }, []);
 
-  return { socket: wsRef.current };
+  return { 
+    socket: wsRef.current, 
+    isConnected,
+    wsData
+  };
 }

@@ -62,9 +62,7 @@ export class EmaRsiStrategy {
     // Check target profit limit before trading
     const botSettings = await storage.getBotSettings(userId);
     if (botSettings && botSettings.targetProfit) {
-      const targetProfitAmount = parseFloat(botSettings.targetProfit);
-      const initialBalance = 100; // Starting balance
-      const totalCurrentValue = balance;
+      const targetMaxBalance = parseFloat(botSettings.targetProfit);
       
       // Calculate portfolio value
       let portfolioValue = 0;
@@ -75,13 +73,12 @@ export class EmaRsiStrategy {
         }
       }
       
-      const totalBalance = totalCurrentValue + portfolioValue;
-      const targetBalance = initialBalance + targetProfitAmount;
+      const totalBalance = balance + portfolioValue;
       
-      console.log(`💰 Current total value: $${totalBalance.toFixed(2)}, Target: $${targetBalance.toFixed(2)}`);
+      console.log(`💰 Current balance: $${balance.toFixed(2)}, Portfolio: $${portfolioValue.toFixed(2)}, Total: $${totalBalance.toFixed(2)}, Target: $${targetMaxBalance.toFixed(2)}`);
       
-      if (totalBalance >= targetBalance) {
-        console.log(`🎯 TARGET REACHED! Profit target of $${targetProfitAmount} achieved. Selling all and stopping bot.`);
+      if (totalBalance >= targetMaxBalance) {
+        console.log(`🎯 TARGET REACHED! Total balance $${totalBalance.toFixed(2)} reached target $${targetMaxBalance.toFixed(2)}. Selling all and stopping bot.`);
         
         // Sell all portfolio
         await this.sellAllPortfolio(userId);
@@ -92,7 +89,7 @@ export class EmaRsiStrategy {
         
         // Send Telegram notification
         const { telegramService } = await import('./telegramService');
-        await telegramService.sendTargetReachedNotification(targetProfitAmount, totalBalance);
+        await telegramService.sendTargetReachedNotification(targetMaxBalance, totalBalance);
         
         return;
       }

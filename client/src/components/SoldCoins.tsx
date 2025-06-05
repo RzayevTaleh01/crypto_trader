@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Clock, DollarSign } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -24,6 +24,7 @@ interface SoldCoinsProps {
 export default function SoldCoins({ userId }: SoldCoinsProps) {
   const [soldCoins, setSoldCoins] = useState<SoldCoin[]>([]);
   const { socket } = useWebSocket();
+  const queryClient = useQueryClient();
 
   // Primary data source: API query for initial load
   const { data: apiSoldCoins, isLoading } = useQuery<SoldCoin[]>({

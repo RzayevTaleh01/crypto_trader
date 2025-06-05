@@ -324,6 +324,38 @@ Təbriklər! Profit hədəfinizə çatdınız.`;
       console.error('❌ Failed to send target reached notification:', error);
     }
   }
+
+  // Send profitable sales notification
+  async sendProfitableSalesNotification(data: {
+    soldCount: number;
+    totalProfit: number;
+    coins: Array<{
+      symbol: string;
+      amount: number;
+      price: number;
+      profit: number;
+    }>;
+  }) {
+    if (!this.bot || !this.chatId) return;
+    
+    try {
+      let message = `💰 KARLI SATIŞLAR 📈\n\n`;
+      message += `🔢 Satılan koin sayı: ${data.soldCount}\n`;
+      message += `💵 Ümumi kar: +$${data.totalProfit.toFixed(2)}\n\n`;
+      
+      message += `📋 Satılan karlı koinlər:\n`;
+      for (const coin of data.coins) {
+        message += `✅ ${coin.symbol}: ${coin.amount.toFixed(4)} @ $${coin.price.toFixed(4)} (+$${coin.profit.toFixed(2)})\n`;
+      }
+      
+      message += `\n🎯 Manual karlı satış tamamlandı`;
+      
+      await this.bot.sendMessage(this.chatId, message);
+      console.log('✅ Profitable sales notification sent successfully');
+    } catch (error) {
+      console.error('❌ Failed to send profitable sales notification:', error);
+    }
+  }
 }
 
 export const telegramService = new TelegramService();

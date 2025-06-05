@@ -409,6 +409,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Send Telegram notification for profitable sales
+      if (sellResults.length > 0) {
+        const { telegramService } = await import('./services/telegramService');
+        const totalProfit = sellResults.reduce((sum, result) => sum + result.profit, 0);
+        await telegramService.sendProfitableSalesNotification({
+          soldCount: sellResults.length,
+          totalProfit: totalProfit,
+          coins: sellResults.map(r => ({
+            symbol: r.symbol,
+            amount: r.amount,
+            price: r.price,
+            profit: r.profit
+          }))
+        });
+      }
+
       // Broadcast portfolio update
       const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
       broadcast({

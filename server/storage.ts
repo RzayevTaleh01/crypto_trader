@@ -265,77 +265,59 @@ export class DatabaseStorage implements IStorage {
 
   // Analytics operations
   async getUserStats(userId: number): Promise<any> {
+    // Get user data and current portfolio value
+    const user = await this.getUser(userId);
+    const currentBalance = parseFloat(user?.balance || '0');
+    
+    // Calculate current portfolio value using SQL query
+    const portfolioValue = await db.execute(sql`
+      SELECT COALESCE(SUM(CAST(p.amount AS DECIMAL) * CAST(c.current_price AS DECIMAL)), 0) as portfolio_value
+      FROM portfolio p 
+      JOIN cryptocurrencies c ON p.crypto_id = c.id 
+      WHERE p.user_id = ${userId}
+    `);
+    
+    const currentPortfolioValue = parseFloat(portfolioValue[0]?.portfolio_value || '0');
+    const totalCurrentValue = currentBalance + currentPortfolioValue;
+    
+    // Calculate total profit from initial $100
+    const startingAmount = 100.00;
+    const totalProfit = totalCurrentValue - startingAmount;
+    const profitPercentage = (totalProfit / startingAmount) * 100;
+    
+    // Get trade statistics
     const userTrades = await this.getUserTrades(userId);
     const userPortfolio = await this.getUserPortfolio(userId);
-    
-    // Calculate real profit by comparing sell trades with average buy prices
-    let totalProfit = 0;
-    let winningTrades = 0;
-    
-    const sellTrades = userTrades.filter(trade => trade.type === 'sell');
-    
-    for (const sellTrade of sellTrades) {
-      // Get weighted average buy price for this crypto (considering amounts)
-      const buyTrades = userTrades.filter(trade => 
-        trade.type === 'buy' && 
-        trade.cryptoId === sellTrade.cryptoId &&
-        trade.createdAt < sellTrade.createdAt
-      );
-      
-      if (buyTrades.length > 0) {
-        // Calculate weighted average buy price
-        let totalBuyValue = 0;
-        let totalBuyAmount = 0;
-        
-        for (const buyTrade of buyTrades) {
-          const buyPrice = parseFloat(buyTrade.price);
-          const buyAmount = parseFloat(buyTrade.amount);
-          totalBuyValue += buyPrice * buyAmount;
-          totalBuyAmount += buyAmount;
-        }
-        
-        const weightedAvgBuyPrice = totalBuyAmount > 0 ? totalBuyValue / totalBuyAmount : 0;
-        const sellPrice = parseFloat(sellTrade.price);
-        const sellAmount = parseFloat(sellTrade.amount);
-        const profit = (sellPrice - weightedAvgBuyPrice) * sellAmount;
-        
-        totalProfit += profit;
-        if (profit > 0) winningTrades++;
-        
-        console.log(`💰 Profit calc: ${sellTrade.cryptoId} - Sell: $${sellPrice.toFixed(4)} vs Buy: $${weightedAvgBuyPrice.toFixed(4)} = $${profit.toFixed(4)}`);
-      }
-    }
-
-    // Count actual active positions (non-zero amounts)
     const activeTrades = userPortfolio.filter(item => parseFloat(item.amount) > 0).length;
     
+    // Calculate win rate from sell trades
+    const sellTrades = userTrades.filter(trade => trade.type === 'SELL');
+    let winningTrades = 0;
+    
+    for (const sellTrade of sellTrades) {
+      const pnl = parseFloat(sellTrade.pnl || '0');
+      if (pnl > 0) winningTrades++;
+    }
+    
     const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
-
+    
+    // Calculate today's profit from today's sell trades
+    const today = new Date();
     const todayTrades = sellTrades.filter(trade => {
-      const today = new Date();
       const tradeDate = new Date(trade.createdAt);
       return tradeDate.toDateString() === today.toDateString();
     });
-
-    let todayProfit = 0;
-    for (const sellTrade of todayTrades) {
-      const buyTrades = userTrades.filter(trade => 
-        trade.type === 'buy' && 
-        trade.cryptoId === sellTrade.cryptoId &&
-        trade.createdAt < sellTrade.createdAt
-      );
-      
-      if (buyTrades.length > 0) {
-        const avgBuyPrice = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.price), 0) / buyTrades.length;
-        const sellPrice = parseFloat(sellTrade.price);
-        const amount = parseFloat(sellTrade.amount);
-        const profit = (sellPrice - avgBuyPrice) * amount;
-        todayProfit += profit;
-      }
-    }
+    
+    const todayProfit = todayTrades.reduce((sum, trade) => {
+      return sum + parseFloat(trade.pnl || '0');
+    }, 0);
 
     return {
       totalProfit: totalProfit.toFixed(2),
+      totalProfitPercentage: profitPercentage.toFixed(2),
+      currentBalance: currentBalance.toFixed(2),
+      portfolioValue: currentPortfolioValue.toFixed(2),
+      totalValue: totalCurrentValue.toFixed(2),
       activeTrades,
       winRate: winRate.toFixed(1),
       todayProfit: todayProfit.toFixed(2),

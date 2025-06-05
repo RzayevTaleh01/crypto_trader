@@ -365,8 +365,8 @@ export class DatabaseStorage implements IStorage {
       unrealizedProfit += (currentValue - invested);
     }
     
-    // Total profit is the net gain from initial $100
-    const startingAmount = 100.00;
+    // Total profit is the net gain from initial $50
+    const startingAmount = 50.00;
     const totalProfit = totalCurrentValue - startingAmount;
     const profitPercentage = (totalProfit / startingAmount) * 100;
     

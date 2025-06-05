@@ -14,6 +14,10 @@ interface StatsData {
   winRate: string;
   uptime: string;
   currentBalance: string;
+  expectedStartingBalance?: string;
+  actualCurrentValue?: string;
+  profitFromExpectedStart?: string;
+  profitPercentageFromStart?: string;
 }
 
 export default function StatsGrid({ userId }: StatsGridProps) {
@@ -58,6 +62,9 @@ export default function StatsGrid({ userId }: StatsGridProps) {
     return () => socket.removeEventListener('message', handleStatsUpdate);
   }, [socket]);
 
+  const profitFromStart = parseFloat(stats.profitFromExpectedStart || '0');
+  const profitPercentageFromStart = parseFloat(stats.profitPercentageFromStart || '0');
+  
   const statsCards = [
     {
       title: "Total Profit",
@@ -67,6 +74,15 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       iconColor: "text-crypto-green",
       change: parseFloat(stats.totalProfit) > 0 ? "+18.2%" : "0%",
       changeText: "vs last week"
+    },
+    {
+      title: "Faktiki Dəyər vs Gözlənilən",
+      value: `$${stats.actualCurrentValue || '0.00'}`,
+      icon: ArrowUp,
+      bgColor: profitFromStart >= 0 ? "bg-crypto-green/20" : "bg-red-500/20",
+      iconColor: profitFromStart >= 0 ? "text-crypto-green" : "text-red-500",
+      change: `${profitFromStart >= 0 ? '+' : ''}$${profitFromStart.toFixed(2)}`,
+      changeText: `$50 başlanğıcdan ${profitPercentageFromStart >= 0 ? '+' : ''}${profitPercentageFromStart.toFixed(1)}%`
     },
     {
       title: "Active Trades",
@@ -85,15 +101,6 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       iconColor: "text-yellow-500",
       change: parseFloat(stats.winRate) > 50 ? "+5.2%" : "0%",
       changeText: "improvement"
-    },
-    {
-      title: "Bot Uptime",
-      value: `${stats.uptime || '99.7'}%`,
-      icon: Bot,
-      bgColor: "bg-purple-500/20",
-      iconColor: "text-purple-500",
-      change: "+0.3%",
-      changeText: "stability"
     }
   ];
 

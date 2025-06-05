@@ -388,6 +388,12 @@ export class DatabaseStorage implements IStorage {
     
     const todayProfitPercentage = baselineForPercentage > 0 ? (todayProfit / baselineForPercentage) * 100 : 0;
 
+    // Expected vs Actual balance comparison (assuming $50 starting balance)
+    const expectedStartingBalance = 50.00;
+    const actualCurrentValue = totalCurrentValue;
+    const profitFromExpectedStart = actualCurrentValue - expectedStartingBalance;
+    const profitPercentageFromStart = ((actualCurrentValue - expectedStartingBalance) / expectedStartingBalance) * 100;
+
     return {
       totalProfit: totalProfit.toFixed(2),
       realizedProfit: realizedProfit.toFixed(2),
@@ -402,7 +408,12 @@ export class DatabaseStorage implements IStorage {
       winningTrades: winningTrades,
       todayProfit: todayProfit.toFixed(2),
       todayProfitPercentage: todayProfitPercentage.toFixed(2),
-      uptime: "99.7"
+      uptime: "99.7",
+      // Expected balance comparison
+      expectedStartingBalance: expectedStartingBalance.toFixed(2),
+      actualCurrentValue: actualCurrentValue.toFixed(2),
+      profitFromExpectedStart: profitFromExpectedStart.toFixed(2),
+      profitPercentageFromStart: profitPercentageFromStart.toFixed(2)
     };
   }
 }

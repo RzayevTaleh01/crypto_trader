@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, ArrowUpDown, Target, Bot, ArrowUp } from "lucide-react";
+import { TrendingUp, ArrowUpDown, Target, Bot, ArrowUp, Wallet } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface StatsGridProps {
@@ -14,6 +14,8 @@ interface StatsData {
   winRate: string;
   uptime: string;
   currentBalance: string;
+  totalValue: string;
+  portfolioValue: string;
   expectedStartingBalance?: string;
   actualCurrentValue?: string;
   profitFromExpectedStart?: string;
@@ -26,7 +28,9 @@ export default function StatsGrid({ userId }: StatsGridProps) {
     activeTrades: 0,
     winRate: '0',
     uptime: '99.7',
-    currentBalance: '10.00'
+    currentBalance: '0.00',
+    totalValue: '0.00',
+    portfolioValue: '0.00'
   });
   const { socket } = useWebSocket();
 
@@ -67,29 +71,29 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   
   const statsCards = [
     {
-      title: "Total Profit",
-      value: `+$${stats.totalProfit || '0.00'}`,
+      title: "Ticarət Balansı",
+      value: `$${stats.currentBalance || '0.00'}`,
+      icon: Wallet,
+      bgColor: "bg-crypto-blue/20",
+      iconColor: "text-crypto-blue",
+      change: "",
+      changeText: "trade üçün mövcud"
+    },
+    {
+      title: "Ümumi Portfolio Dəyəri",
+      value: `$${stats.totalValue || '0.00'}`,
       icon: TrendingUp,
       bgColor: "bg-crypto-green/20",
       iconColor: "text-crypto-green",
-      change: parseFloat(stats.totalProfit) > 0 ? "+18.2%" : "0%",
-      changeText: "vs last week"
-    },
-    {
-      title: "Faktiki Dəyər vs Gözlənilən",
-      value: `$${stats.actualCurrentValue || '0.00'}`,
-      icon: ArrowUp,
-      bgColor: profitFromStart >= 0 ? "bg-crypto-green/20" : "bg-red-500/20",
-      iconColor: profitFromStart >= 0 ? "text-crypto-green" : "text-red-500",
-      change: `${profitFromStart >= 0 ? '+' : ''}$${profitFromStart.toFixed(2)}`,
-      changeText: `başlanğıcdan ${profitPercentageFromStart >= 0 ? '+' : ''}${profitPercentageFromStart.toFixed(1)}%`
+      change: `+$${stats.totalProfit || '0.00'}`,
+      changeText: "ümumi qazanc"
     },
     {
       title: "Active Trades",
       value: stats.activeTrades || '0',
       icon: ArrowUpDown,
-      bgColor: "bg-crypto-blue/20",
-      iconColor: "text-crypto-blue",
+      bgColor: "bg-purple-500/20",
+      iconColor: "text-purple-500",
       change: "",
       changeText: `${stats.activeTrades || 0} positions`
     },

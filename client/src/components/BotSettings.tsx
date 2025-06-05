@@ -219,19 +219,6 @@ export default function BotSettings({ userId }: BotSettingsProps) {
             </div>
           </div>
 
-          {/* Max Daily Loss */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Maksimum Gündəlik Zərər ($)</Label>
-            <Input
-              type="number"
-              value={config.maxDailyLoss}
-              onChange={(e) => handleConfigChange('maxDailyLoss', e.target.value)}
-              className="bg-background border-border"
-              placeholder="50"
-              disabled={isRunning || isUpdating}
-            />
-          </div>
-
           {/* Target Profit */}
           <div>
             <Label className="text-sm font-medium mb-2 block">Maksimum Balans Hədəfi ($)</Label>

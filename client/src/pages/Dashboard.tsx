@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import Sidebar from "@/components/Sidebar";
 import StatsGrid from "@/components/StatsGrid";
 import PortfolioChart from "@/components/PortfolioChart";
@@ -15,10 +16,15 @@ import { useWebSocketData } from "@/hooks/useWebSocketData";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const userId = 1; // Mock user ID for demo
 
   // Get all data from WebSocket - no API calls
   const { user, botSettings, isConnected } = useWebSocketData();
+
+  const handleCoinClick = (symbol: string) => {
+    setLocation(`/coin/${symbol}`);
+  };
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -100,7 +106,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <BotSettings userId={userId} />
             <PortfolioChart userId={userId} />
-            <PortfolioHoldings userId={userId} />
+            <PortfolioHoldings userId={userId} onCoinClick={handleCoinClick} />
           </div>
 
           {/* Bot settings and Live Trading Activity */}

@@ -27,9 +27,10 @@ interface PortfolioHolding {
 
 interface PortfolioHoldingsProps {
   userId: number;
+  onCoinClick?: (symbol: string) => void;
 }
 
-export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
+export default function PortfolioHoldings({ userId, onCoinClick }: PortfolioHoldingsProps) {
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const { socket } = useWebSocket();
   const { toast } = useToast();
@@ -275,9 +276,13 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="text-sm font-medium text-muted-foreground">
+                  <button
+                    onClick={() => onCoinClick?.(holding.cryptocurrency?.symbol || '')}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                    disabled={!holding.cryptocurrency?.symbol}
+                  >
                     {holding.cryptocurrency?.symbol || 'N/A'}
-                  </div>
+                  </button>
                   <div>
                     <div className="font-semibold">
                       {parseFloat(holding.amount || '0').toFixed(6)}

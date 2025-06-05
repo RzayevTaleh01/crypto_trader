@@ -487,6 +487,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get trades for specific coin symbol
+  app.get("/api/trades/coin/:symbol", async (req, res) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      const userId = 1; // Default user ID
+      
+      // Get cryptocurrency by symbol
+      const crypto = await storage.getCryptocurrencyBySymbol(symbol);
+      if (!crypto) {
+        return res.status(404).json({ message: "Cryptocurrency not found" });
+      }
+      
+      // Get all trades for this crypto
+      const allTrades = await storage.getUserTrades(userId, 1000);
+      const coinTrades = allTrades.filter(trade => trade.cryptoId === crypto.id);
+      
+      // Add crypto details to each trade
+      const tradesWithDetails = coinTrades.map(trade => ({
+        ...trade,
+        cryptocurrency: {
+          symbol: crypto.symbol,
+          name: crypto.name,
+          currentPrice: crypto.currentPrice
+        }
+      }));
+      
+      res.json(tradesWithDetails);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch coin trades", error: error.message });
+    }
+  });
+
+  // Get cryptocurrency by symbol
+  app.get("/api/cryptocurrencies/symbol/:symbol", async (req, res) => {
+    try {
+      const symbol = req.params.symbol.toUpperCase();
+      const crypto = await storage.getCryptocurrencyBySymbol(symbol);
+      
+      if (!crypto) {
+        return res.status(404).json({ message: "Cryptocurrency not found" });
+      }
+      
+      res.json(crypto);
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to fetch cryptocurrency", error: error.message });
+    }
+  });
+
   // Sold coins endpoint
   app.get("/api/trades/sold/:userId", async (req, res) => {
     try {

@@ -283,53 +283,95 @@ export class DatabaseStorage implements IStorage {
     }
     const totalCurrentValue = currentBalance + currentPortfolioValue;
     
-    // Calculate total profit from initial $100
-    const startingAmount = 100.00;
-    const totalProfit = totalCurrentValue - startingAmount;
-    const profitPercentage = (totalProfit / startingAmount) * 100;
-    
-    // Get trade statistics
+    // Calculate realized profit using FIFO method for sold positions
     const userTrades = await this.getUserTrades(userId);
-    const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
-    
-    // Calculate win rate by analyzing sold coins vs their buy prices
     const sellTrades = userTrades.filter(trade => trade.type === 'SELL');
     const buyTrades = userTrades.filter(trade => trade.type === 'BUY');
-    let winningTrades = 0;
     
-    // Group trades by crypto to calculate actual profit/loss
-    const cryptoGroups = new Map();
+    // Group trades by crypto and calculate realized profits
+    const cryptoGroups = new Map<number, {buys: any[], sells: any[]}>();
     
-    // Process buy trades
     for (const buyTrade of buyTrades) {
       if (!cryptoGroups.has(buyTrade.cryptoId)) {
         cryptoGroups.set(buyTrade.cryptoId, { buys: [], sells: [] });
       }
-      cryptoGroups.get(buyTrade.cryptoId).buys.push(buyTrade);
+      cryptoGroups.get(buyTrade.cryptoId)!.buys.push(buyTrade);
     }
     
-    // Process sell trades and calculate profit/loss
     for (const sellTrade of sellTrades) {
       if (!cryptoGroups.has(sellTrade.cryptoId)) {
         cryptoGroups.set(sellTrade.cryptoId, { buys: [], sells: [] });
       }
-      cryptoGroups.get(sellTrade.cryptoId).sells.push(sellTrade);
+      cryptoGroups.get(sellTrade.cryptoId)!.sells.push(sellTrade);
     }
     
-    // Calculate win rate by comparing total sold value vs total bought value for each crypto
-    const cryptoResults = [];
-    for (const [cryptoId, trades] of cryptoGroups) {
-      const totalBought = trades.buys.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
-      const totalSold = trades.sells.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
+    // Calculate realized profit using FIFO method
+    let realizedProfit = 0;
+    let winningTrades = 0;
+    let totalTrades = 0;
+    
+    Array.from(cryptoGroups.entries()).forEach(([cryptoId, trades]) => {
+      if (trades.sells.length === 0) return;
       
-      if (totalSold > 0) { // Only count cryptos that have been sold
-        const profit = totalSold - totalBought;
-        cryptoResults.push(profit > 0);
-        if (profit > 0) winningTrades++;
+      // Sort by date
+      trades.buys.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
+      trades.sells.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
+      
+      const holdings: Array<{amount: number, price: number}> = [];
+      
+      // Add all buys to holdings
+      for (const buy of trades.buys) {
+        holdings.push({
+          amount: parseFloat(buy.amount),
+          price: parseFloat(buy.price)
+        });
       }
+      
+      // Process sells using FIFO
+      for (const sell of trades.sells) {
+        let sellAmount = parseFloat(sell.amount);
+        const sellPrice = parseFloat(sell.price);
+        let tradeProfit = 0;
+        
+        while (sellAmount > 0 && holdings.length > 0) {
+          const oldestHolding = holdings[0];
+          const usedAmount = Math.min(sellAmount, oldestHolding.amount);
+          
+          // Calculate profit for this portion
+          const profit = usedAmount * (sellPrice - oldestHolding.price);
+          tradeProfit += profit;
+          realizedProfit += profit;
+          
+          // Update holdings
+          oldestHolding.amount -= usedAmount;
+          sellAmount -= usedAmount;
+          
+          if (oldestHolding.amount <= 0) {
+            holdings.shift();
+          }
+        }
+        
+        // Count as winning trade if profitable
+        if (tradeProfit > 0) winningTrades++;
+        totalTrades++;
+      }
+    });
+    
+    // Calculate unrealized profit from current portfolio
+    let unrealizedProfit = 0;
+    for (const position of portfolioPositions) {
+      const currentValue = parseFloat(position.amount) * parseFloat((await this.getCryptocurrency(position.cryptoId))?.currentPrice || '0');
+      const invested = parseFloat(position.totalInvested);
+      unrealizedProfit += (currentValue - invested);
     }
     
-    const winRate = cryptoResults.length > 0 ? (winningTrades / cryptoResults.length) * 100 : 0;
+    // Total profit is the net gain from initial $100
+    const startingAmount = 100.00;
+    const totalProfit = totalCurrentValue - startingAmount;
+    const profitPercentage = (totalProfit / startingAmount) * 100;
+    
+    const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
+    const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
     
     // Calculate today's profit from today's sell trades
     const today = new Date();
@@ -344,12 +386,16 @@ export class DatabaseStorage implements IStorage {
 
     return {
       totalProfit: totalProfit.toFixed(2),
+      realizedProfit: realizedProfit.toFixed(2),
+      unrealizedProfit: unrealizedProfit.toFixed(2),
       totalProfitPercentage: profitPercentage.toFixed(2),
       currentBalance: currentBalance.toFixed(2),
       portfolioValue: currentPortfolioValue.toFixed(2),
       totalValue: totalCurrentValue.toFixed(2),
-      activeTrades,
+      activeTrades: activeTrades,
       winRate: winRate.toFixed(1),
+      totalTrades: totalTrades,
+      winningTrades: winningTrades,
       todayProfit: todayProfit.toFixed(2),
       uptime: "99.7"
     };

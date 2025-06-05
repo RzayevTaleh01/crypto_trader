@@ -258,7 +258,7 @@ export default function BotSettings({ userId }: BotSettingsProps) {
           {/* EMA-RSI Strategy Info */}
           <div className="bg-crypto-blue/5 rounded-lg p-4 border border-crypto-blue/20">
             <Label className="text-sm font-medium block mb-3 text-crypto-blue">
-              🎯 EMA-RSI Strategiya - Python Əsaslı Avtomatik Treyd
+              🎯 EMA-RSI Strategiya - Avtomatik Treyd
             </Label>
             <div className="text-sm text-muted-foreground space-y-1">
               <p>• EMA20/EMA50 crossover sinyalları</p>

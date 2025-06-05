@@ -13,46 +13,40 @@ export default function TelegramCommands() {
   const commands = [
     {
       command: '/start',
-      description: 'Start the trading bot and receive updates',
+      description: 'Trading botunu başlat və avtomatik ticarət aktiv et',
       icon: Play,
       color: 'text-crypto-green'
     },
     {
+      command: '/stop',
+      description: 'Trading botunu dayandır və ticarəti durdur',
+      icon: Square,
+      color: 'text-crypto-red'
+    },
+    {
       command: '/status',
-      description: 'Check current trading status and profits',
+      description: 'Bot statusu və cari kar-zərər məlumatlarını göstər',
       icon: BarChart3,
       color: 'text-crypto-blue'
     },
     {
       command: '/balance',
-      description: 'View current portfolio balance',
+      description: 'Portfolio balansı və coin məlumatlarını göstər',
       icon: Wallet,
       color: 'text-yellow-500'
     },
     {
-      command: '/trades',
-      description: 'Show recent trading activity',
-      icon: History,
+      command: '/help',
+      description: 'Bütün mövcud komandların siyahısını göstər',
+      icon: MessageSquare,
       color: 'text-purple-500'
-    },
-    {
-      command: '/stop',
-      description: 'Stop the trading bot temporarily',
-      icon: Square,
-      color: 'text-crypto-red'
-    },
-    {
-      command: '/settings',
-      description: 'Configure bot trading parameters',
-      icon: Settings,
-      color: 'text-gray-400'
     }
   ];
 
   return (
     <Card className="bg-card border-border">
       <CardContent className="p-6">
-        <h3 className="text-xl font-bold mb-6">Telegram Bot Commands</h3>
+        <h3 className="text-xl font-bold mb-6">Telegram Bot Komandları</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {commands.map((cmd) => (
@@ -70,9 +64,9 @@ export default function TelegramCommands() {
           <div className="flex items-center space-x-3">
             <MessageSquare className="h-5 w-5 text-crypto-blue" />
             <div>
-              <p className="font-medium">Connect your Telegram</p>
+              <p className="font-medium">Telegram Bot Aktiv</p>
               <p className="text-muted-foreground text-sm">
-                Start a chat with <code className="text-crypto-blue">@cryptotrade_bot</code> to receive real-time updates
+                Bot hazırda işləyir və avtomatik bildirişlər göndərir. Yuxarıdakı komandları istifadə edərək botunu idarə edə bilərsiniz.
               </p>
             </div>
           </div>

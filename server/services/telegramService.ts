@@ -141,15 +141,17 @@ ${status}
   private async handleHelpCommand(msg: any) {
     if (!this.bot || msg.chat.id.toString() !== this.chatId) return;
 
-    const message = `🤖 Bot komandları
+    const message = `🤖 Mövcud Komandlar:
 
-/start - Trading başlat
-/stop - Trading dayandır
-/status - Bot statusu
-/balance - Balans məlumatı
-/help - Bu yardım mesajı
+🚀 /start - Trading botunu başlat
+⏹️ /stop - Trading botunu dayandır
+📊 /status - Bot və trade statusu
+💰 /balance - Balans və portfolio məlumatı
+❓ /help - Bu yardım mesajı
 
-Bot həmçinin avtomatik trade bildirişləri göndərir.`;
+📱 Bot həmçinin avtomatik olaraq bütün trade bildirişlərini, profit məlumatlarını və mühüm hadisələri göndərir.
+
+💡 İpucu: /start və /stop komandları ilə dashboard-dakı düymələrin eyni funksionallığını istifadə edə bilərsiniz.`;
 
     await this.bot.sendMessage(this.chatId, message);
   }

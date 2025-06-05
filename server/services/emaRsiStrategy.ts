@@ -664,19 +664,29 @@ export class EmaRsiStrategy {
         const soldCoins = await Promise.all(sellTrades.map(async (t) => {
           const cryptoData = await storage.getCryptocurrency(t.cryptoId);
           
-          // Find corresponding buy trade
+          // Calculate profit using average buy price methodology
           const buyTrades = trades.filter(bt => 
             bt.cryptoId === t.cryptoId && 
             bt.type === 'BUY' && 
             bt.createdAt < t.createdAt
-          ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          );
           
-          const lastBuyTrade = buyTrades[0];
-          const buyPrice = lastBuyTrade ? parseFloat(lastBuyTrade.price) : 0;
+          // Calculate weighted average buy price
+          let totalBuyValue = 0;
+          let totalBuyQuantity = 0;
+          
+          for (const buyTrade of buyTrades) {
+            const buyAmount = parseFloat(buyTrade.amount);
+            const buyPrice = parseFloat(buyTrade.price);
+            totalBuyValue += buyAmount * buyPrice;
+            totalBuyQuantity += buyAmount;
+          }
+          
+          const avgBuyPrice = totalBuyQuantity > 0 ? totalBuyValue / totalBuyQuantity : 0;
           const sellPrice = parseFloat(t.price);
           const quantity = parseFloat(t.amount);
           const sellValue = parseFloat(t.total);
-          const buyValue = buyPrice * quantity;
+          const buyValue = avgBuyPrice * quantity;
           const profit = sellValue - buyValue;
           const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
           
@@ -686,7 +696,7 @@ export class EmaRsiStrategy {
             name: cryptoData?.name || 'Unknown',
             soldQuantity: t.amount,
             sellPrice: t.price,
-            buyPrice: buyPrice.toString(),
+            buyPrice: avgBuyPrice.toString(),
             sellValue: t.total,
             profit: profit.toString(),
             profitPercentage: profitPercentage.toString(),

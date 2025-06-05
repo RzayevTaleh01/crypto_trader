@@ -350,19 +350,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const soldCoins = await Promise.all(sellTrades.map(async (trade) => {
         const crypto = await storage.getCryptocurrency(trade.cryptoId);
         
-        // Find the corresponding buy trade to calculate profit
+        // Calculate profit using average buy price methodology
         const buyTrades = trades.filter(t => 
           t.cryptoId === trade.cryptoId && 
           t.type === 'BUY' && 
           t.createdAt < trade.createdAt
-        ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        );
         
-        const lastBuyTrade = buyTrades[0];
-        const buyPrice = lastBuyTrade ? parseFloat(lastBuyTrade.price) : 0;
+        // Calculate weighted average buy price
+        let totalBuyValue = 0;
+        let totalBuyQuantity = 0;
+        
+        for (const buyTrade of buyTrades) {
+          const buyAmount = parseFloat(buyTrade.amount);
+          const buyPrice = parseFloat(buyTrade.price);
+          totalBuyValue += buyAmount * buyPrice;
+          totalBuyQuantity += buyAmount;
+        }
+        
+        const avgBuyPrice = totalBuyQuantity > 0 ? totalBuyValue / totalBuyQuantity : 0;
         const sellPrice = parseFloat(trade.price);
         const quantity = parseFloat(trade.amount);
         const sellValue = parseFloat(trade.total);
-        const buyValue = buyPrice * quantity;
+        const buyValue = avgBuyPrice * quantity;
         const profit = sellValue - buyValue;
         const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
         
@@ -372,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: crypto?.name || 'Unknown',
           soldQuantity: trade.amount,
           sellPrice: trade.price,
-          buyPrice: buyPrice.toString(),
+          buyPrice: avgBuyPrice.toString(),
           sellValue: trade.total,
           profit: profit.toString(),
           profitPercentage: profitPercentage.toString(),

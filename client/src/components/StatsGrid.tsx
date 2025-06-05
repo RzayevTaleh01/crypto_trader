@@ -82,7 +82,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       bgColor: profitFromStart >= 0 ? "bg-crypto-green/20" : "bg-red-500/20",
       iconColor: profitFromStart >= 0 ? "text-crypto-green" : "text-red-500",
       change: `${profitFromStart >= 0 ? '+' : ''}$${profitFromStart.toFixed(2)}`,
-      changeText: `$50 başlanğıcdan ${profitPercentageFromStart >= 0 ? '+' : ''}${profitPercentageFromStart.toFixed(1)}%`
+      changeText: `başlanğıcdan ${profitPercentageFromStart >= 0 ? '+' : ''}${profitPercentageFromStart.toFixed(1)}%`
     },
     {
       title: "Active Trades",

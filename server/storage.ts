@@ -388,11 +388,17 @@ export class DatabaseStorage implements IStorage {
     
     const todayProfitPercentage = baselineForPercentage > 0 ? (todayProfit / baselineForPercentage) * 100 : 0;
 
-    // Expected vs Actual balance comparison (assuming $50 starting balance)
-    const expectedStartingBalance = 50.00;
+    // Dynamic starting balance calculation
+    // Calculate total amount spent on purchases (this represents the initial investment)
+    const totalInvestedAmount = buyTrades.reduce((sum, trade) => {
+      return sum + parseFloat(trade.total);
+    }, 0);
+    
+    // Use the larger value between current balance and total invested as starting reference
+    const dynamicStartingBalance = Math.max(totalInvestedAmount, currentBalance, 10.00);
     const actualCurrentValue = totalCurrentValue;
-    const profitFromExpectedStart = actualCurrentValue - expectedStartingBalance;
-    const profitPercentageFromStart = ((actualCurrentValue - expectedStartingBalance) / expectedStartingBalance) * 100;
+    const profitFromDynamicStart = actualCurrentValue - dynamicStartingBalance;
+    const profitPercentageFromStart = dynamicStartingBalance > 0 ? ((actualCurrentValue - dynamicStartingBalance) / dynamicStartingBalance) * 100 : 0;
 
     return {
       totalProfit: totalProfit.toFixed(2),
@@ -409,10 +415,10 @@ export class DatabaseStorage implements IStorage {
       todayProfit: todayProfit.toFixed(2),
       todayProfitPercentage: todayProfitPercentage.toFixed(2),
       uptime: "99.7",
-      // Expected balance comparison
-      expectedStartingBalance: expectedStartingBalance.toFixed(2),
+      // Dynamic balance comparison
+      expectedStartingBalance: dynamicStartingBalance.toFixed(2),
       actualCurrentValue: actualCurrentValue.toFixed(2),
-      profitFromExpectedStart: profitFromExpectedStart.toFixed(2),
+      profitFromExpectedStart: profitFromDynamicStart.toFixed(2),
       profitPercentageFromStart: profitPercentageFromStart.toFixed(2)
     };
   }

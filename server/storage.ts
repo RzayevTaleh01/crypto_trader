@@ -269,15 +269,18 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUser(userId);
     const currentBalance = parseFloat(user?.balance || '0');
     
-    // Calculate current portfolio value using SQL query
-    const portfolioValue = await db.execute(sql`
-      SELECT COALESCE(SUM(CAST(p.amount AS DECIMAL) * CAST(c.current_price AS DECIMAL)), 0) as portfolio_value
-      FROM portfolio p 
-      JOIN cryptocurrencies c ON p.crypto_id = c.id 
-      WHERE p.user_id = ${userId}
-    `);
+    // Calculate current portfolio value manually
+    const portfolioPositions = await this.getUserPortfolio(userId);
+    let currentPortfolioValue = 0;
     
-    const currentPortfolioValue = parseFloat(portfolioValue[0]?.portfolio_value || '0');
+    for (const position of portfolioPositions) {
+      const crypto = await this.getCryptocurrency(position.cryptoId);
+      if (crypto) {
+        const amount = parseFloat(position.amount);
+        const price = parseFloat(crypto.currentPrice);
+        currentPortfolioValue += amount * price;
+      }
+    }
     const totalCurrentValue = currentBalance + currentPortfolioValue;
     
     // Calculate total profit from initial $100
@@ -287,8 +290,7 @@ export class DatabaseStorage implements IStorage {
     
     // Get trade statistics
     const userTrades = await this.getUserTrades(userId);
-    const userPortfolio = await this.getUserPortfolio(userId);
-    const activeTrades = userPortfolio.filter(item => parseFloat(item.amount) > 0).length;
+    const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
     
     // Calculate win rate from sell trades
     const sellTrades = userTrades.filter(trade => trade.type === 'SELL');

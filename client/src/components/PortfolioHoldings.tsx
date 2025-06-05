@@ -147,8 +147,10 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     const handlePortfolioUpdate = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'portfolio_update' && data.data) {
+        if (data.type === 'portfolioUpdate' && data.data) {
           setHoldings(data.data);
+          // Also update the query cache
+          queryClient.setQueryData(['/api/portfolio/user', userId], data.data);
         }
       } catch (error) {
         console.error('Error parsing portfolio update:', error);

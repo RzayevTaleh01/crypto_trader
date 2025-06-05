@@ -126,12 +126,7 @@ export default function SoldCoins({ userId }: SoldCoinsProps) {
             </div>
             <div className="text-sm text-muted-foreground">Ümumi Kar/Zərər</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              ${totalSellValue.toFixed(2)}
-            </div>
-            <div className="text-sm text-muted-foreground">Ümumi Satış</div>
-          </div>
+         
           <div className="text-center">
             <div className="text-2xl font-bold text-green-500">
               {profitableCoins.length}

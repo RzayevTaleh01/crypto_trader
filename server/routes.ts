@@ -204,6 +204,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sell all portfolio endpoint
+  app.post("/api/trades/sell-all", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Get all user portfolio holdings
+      const portfolio = await storage.getUserPortfolio(userId);
+      
+      if (!portfolio || portfolio.length === 0) {
+        return res.status(400).json({ message: "No holdings to sell" });
+      }
+
+      const sellResults = [];
+      
+      // Sell all holdings
+      for (const coin of portfolio) {
+        try {
+          const crypto = await storage.getCryptocurrency(coin.cryptoId);
+          if (!crypto) continue;
+
+          const sellAmount = parseFloat(coin.amount);
+          const sellPrice = parseFloat(crypto.currentPrice);
+          const sellTotal = sellAmount * sellPrice;
+          const profit = sellTotal - parseFloat(coin.totalInvested);
+
+          // Create sell trade record
+          const tradeData = {
+            userId,
+            cryptoId: coin.cryptoId,
+            type: 'SELL' as const,
+            amount: sellAmount.toString(),
+            price: sellPrice.toString(),
+            total: sellTotal.toString(),
+            pnl: profit.toString(),
+            reason: 'Sell all portfolio'
+          };
+
+          const trade = await storage.createTrade(tradeData);
+
+          // Remove the position from portfolio
+          await storage.deletePortfolioItem(userId, coin.cryptoId);
+
+          // Update user balance
+          const user = await storage.getUser(userId);
+          if (user) {
+            const newBalance = parseFloat(user.balance) + sellTotal;
+            await storage.updateUserBalance(userId, newBalance.toString());
+          }
+
+          sellResults.push({
+            symbol: crypto.symbol,
+            amount: sellAmount,
+            price: sellPrice,
+            total: sellTotal,
+            profit: profit,
+            trade: trade
+          });
+
+          console.log(`✅ Sell All: ${crypto.symbol} - ${sellAmount} at $${sellPrice} = $${profit.toFixed(2)} profit`);
+
+        } catch (error) {
+          console.error(`❌ Failed to sell ${coin.cryptoId}:`, error);
+        }
+      }
+
+      // Stop trading bot
+      const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+      emaRsiStrategy.stopContinuousTrading();
+
+      // Broadcast portfolio update
+      const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
+      broadcast({
+        type: 'portfolioUpdate',
+        data: updatedPortfolio
+      });
+
+      // Broadcast stats update
+      const stats = await storage.getUserStats(userId);
+      broadcast({
+        type: 'statsUpdate',
+        data: stats
+      });
+
+      res.json({
+        message: "All portfolio sold successfully",
+        soldCount: sellResults.length,
+        results: sellResults
+      });
+
+    } catch (error: any) {
+      console.error("Error selling all portfolio:", error);
+      res.status(500).json({ message: "Failed to sell portfolio", error: error.message });
+    }
+  });
+
   // Manual sell profitable coins endpoint
   app.post("/api/trades/sell", async (req, res) => {
     try {

@@ -41,6 +41,38 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
     enabled: !!userId,
   });
 
+  // Mutation for selling all portfolio
+  const sellAllPortfolioMutation = useMutation({
+    mutationFn: async () => {
+      if (holdings.length === 0) {
+        throw new Error('Portfeldə satılacaq koin yoxdur');
+      }
+      
+      const response = await apiRequest('POST', '/api/trades/sell-all', { userId });
+      
+      return response;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Bütün portfel satıldı",
+        description: `${data.soldCount || 0} koin satıldı. Trading dayandırıldı.`,
+        variant: "default",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trades/sold'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Satış xətası",
+        description: error.message || "Portfel satışı zamanı xəta baş verdi",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Mutation for selling profitable coins
   const sellProfitableCoinsMutation = useMutation({
     mutationFn: async () => {
@@ -165,6 +197,18 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
             Portfolio Holdings
           </div>
           <div className="flex items-center gap-3">
+            {holdings.length > 0 && (
+              <Button
+                onClick={() => sellAllPortfolioMutation.mutate()}
+                disabled={sellAllPortfolioMutation.isPending}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <SellIcon className="h-3 w-3" />
+                Hamısını Sat
+              </Button>
+            )}
             {profitableCoinsCount > 0 && (
               <Button
                 onClick={() => sellProfitableCoinsMutation.mutate()}

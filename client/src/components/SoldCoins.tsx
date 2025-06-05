@@ -127,12 +127,12 @@ export default function SoldCoins({ userId }: SoldCoinsProps) {
       </CardHeader>
       <CardContent>
         {/* Summary Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
+        <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-muted/50 rounded-lg">
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              ${totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+            <div className="text-2xl font-bold">
+              {soldCoins.length}
             </div>
-            <div className="text-sm text-muted-foreground">Ümumi Kar/Zərər</div>
+            <div className="text-sm text-muted-foreground">Ümumi Satış</div>
           </div>
          
           <div className="text-center">

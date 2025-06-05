@@ -365,10 +365,10 @@ export class DatabaseStorage implements IStorage {
       unrealizedProfit += (currentValue - invested);
     }
     
-    // Calculate profit as total value minus starting balance
-    // If no trades yet, profit is 0 (current balance equals starting balance)
-    const totalProfit = totalTrades > 0 ? realizedProfit + unrealizedProfit : 0;
-    const profitPercentage = currentBalance > 0 ? (totalProfit / currentBalance) * 100 : 0;
+    // Calculate profit as total value minus $50 starting balance
+    const startingBalance = 50.0;
+    const totalProfit = totalCurrentValue - startingBalance;
+    const profitPercentage = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
     
     const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
     const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
@@ -383,6 +383,8 @@ export class DatabaseStorage implements IStorage {
     const todayProfit = todayTrades.reduce((sum, trade) => {
       return sum + parseFloat(trade.pnl || '0');
     }, 0);
+    
+    const todayProfitPercentage = startingBalance > 0 ? (todayProfit / startingBalance) * 100 : 0;
 
     return {
       totalProfit: totalProfit.toFixed(2),
@@ -397,6 +399,7 @@ export class DatabaseStorage implements IStorage {
       totalTrades: totalTrades,
       winningTrades: winningTrades,
       todayProfit: todayProfit.toFixed(2),
+      todayProfitPercentage: todayProfitPercentage.toFixed(2),
       uptime: "99.7"
     };
   }

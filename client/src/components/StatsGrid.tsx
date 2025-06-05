@@ -71,20 +71,20 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   
   const statsCards = [
     {
-      title: "Ticarət Balansı",
-      value: `$${stats.currentBalance || '0.00'}`,
-      icon: Wallet,
-      bgColor: "bg-crypto-blue/20",
-      iconColor: "text-crypto-blue",
-      change: "",
-      changeText: "trade üçün mövcud"
+      title: "Total Profit",
+      value: `+$${stats.totalProfit || '0.00'}`,
+      icon: TrendingUp,
+      bgColor: "bg-crypto-green/20",
+      iconColor: "text-crypto-green",
+      change: parseFloat(stats.totalProfit) > 0 ? "+18.2%" : "0%",
+      changeText: "vs last week"
     },
     {
       title: "Ümumi Portfolio Dəyəri",
       value: `$${stats.totalValue || '0.00'}`,
-      icon: TrendingUp,
-      bgColor: "bg-crypto-green/20",
-      iconColor: "text-crypto-green",
+      icon: Wallet,
+      bgColor: "bg-crypto-blue/20",
+      iconColor: "text-crypto-blue",
       change: `+$${stats.totalProfit || '0.00'}`,
       changeText: "ümumi qazanc"
     },

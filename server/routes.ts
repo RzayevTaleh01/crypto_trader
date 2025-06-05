@@ -146,17 +146,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stats", async (req, res) => {
     try {
       const userId = 1; // Default user for demo
-      const user = await storage.getUser(userId);
       const stats = await storage.getUserStats(userId);
-      const portfolio = await storage.getUserPortfolio(userId);
       
-      res.json({
-        totalProfit: stats.totalProfit || '0.00',
-        activeTrades: portfolio.length || 0,
-        winRate: stats.winRate || '0',
-        uptime: '99.7',
-        currentBalance: user?.balance || '10.00'
-      });
+      res.json(stats);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch stats", error: error.message });
     }

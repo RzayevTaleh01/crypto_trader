@@ -51,21 +51,40 @@ app.use((req, res, next) => {
   const { storage } = await import("./storage");
   const { emaRsiStrategy } = await import("./services/emaRsiStrategy");
   
-  const botSettings = await storage.getBotSettings(1);
+  // Get the first available user
+  let userId = 1;
+  try {
+    const user = await storage.getUser(1);
+    if (!user) {
+      // Check if there are any users and get the first one
+      const allUsers = await storage.db.select().from(storage.users);
+      if (allUsers.length > 0) {
+        userId = allUsers[0].id;
+      }
+    }
+  } catch (error) {
+    console.log('No users found, system will initialize when user is created');
+  }
+  
+  const botSettings = await storage.getBotSettings(userId);
   if (!botSettings) {
-    await storage.createBotSettings({
-      userId: 1,
-      strategy: 'ema_rsi',
-      riskLevel: 5,
-      maxDailyLoss: '50.00',
-      targetProfit: '100.00',
-      isActive: false
-    });
-    console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
+    try {
+      await storage.createBotSettings({
+        userId: userId,
+        strategy: 'ema_rsi',
+        riskLevel: 5,
+        maxDailyLoss: '50.00',
+        targetProfit: '130.00',
+        isActive: false
+      });
+      console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
+    } catch (error) {
+      console.log('✅ Trading system ready - bot will initialize when user settings are configured');
+    }
   } else if (botSettings.isActive) {
     // Resume trading automatically if bot was previously active
     console.log('🔄 Bot was previously active - resuming trading');
-    emaRsiStrategy.startContinuousTrading(1);
+    emaRsiStrategy.startContinuousTrading(userId);
     console.log('✅ Trading system ready - bot is active and trading');
   } else {
     console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');

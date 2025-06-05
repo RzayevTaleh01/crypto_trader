@@ -234,15 +234,18 @@ export default function BotSettings({ userId }: BotSettingsProps) {
 
           {/* Target Profit */}
           <div>
-            <Label className="text-sm font-medium mb-2 block">Gündəlik Hədəf Qazanc ($)</Label>
+            <Label className="text-sm font-medium mb-2 block">Maksimum Balans Hədəfi ($)</Label>
             <Input
               type="number"
               value={config.targetProfit}
               onChange={(e) => handleConfigChange('targetProfit', e.target.value)}
               className="bg-background border-border"
-              placeholder="100"
+              placeholder="130"
               disabled={isRunning || isUpdating}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Bu balansa çatanda bütün portfolio avtomatik satılır və bot dayanır
+            </p>
           </div>
 
           {/* Bot Control Buttons */}

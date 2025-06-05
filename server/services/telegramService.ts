@@ -263,6 +263,45 @@ ${botStatus}
       console.log('❌ Failed to send daily report:', error);
     }
   }
+
+  // Send sell all notification
+  async sendSellAllNotification(data: {
+    soldCount: number;
+    totalValue: number;
+    totalProfit: number;
+    coins: Array<{
+      symbol: string;
+      amount: number;
+      price: number;
+      profit: number;
+    }>;
+  }) {
+    if (!this.bot || !this.chatId) return;
+    
+    try {
+      const profitEmoji = data.totalProfit >= 0 ? '📈' : '📉';
+      const profitText = data.totalProfit >= 0 ? '+' : '';
+      
+      let message = `🔴 HAMISI SATILDI ${profitEmoji}\n\n`;
+      message += `💰 Satılan koin sayı: ${data.soldCount}\n`;
+      message += `💵 Ümumi satış dəyəri: $${data.totalValue.toFixed(2)}\n`;
+      message += `${profitEmoji} Ümumi kar/zərər: ${profitText}$${data.totalProfit.toFixed(2)}\n\n`;
+      
+      message += `📋 Satılan koinlər:\n`;
+      for (const coin of data.coins) {
+        const coinProfitEmoji = coin.profit >= 0 ? '✅' : '❌';
+        const coinProfitText = coin.profit >= 0 ? '+' : '';
+        message += `${coinProfitEmoji} ${coin.symbol}: ${coin.amount.toFixed(4)} @ $${coin.price.toFixed(4)} (${coinProfitText}$${coin.profit.toFixed(2)})\n`;
+      }
+      
+      message += `\n🛑 Trading bot dayandırıldı`;
+      
+      await this.bot.sendMessage(this.chatId, message);
+      console.log('✅ Sell all notification sent successfully');
+    } catch (error) {
+      console.error('❌ Failed to send sell all notification:', error);
+    }
+  }
 }
 
 export const telegramService = new TelegramService();

@@ -277,6 +277,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
       emaRsiStrategy.stopContinuousTrading();
 
+      // Send Telegram notification for sell all
+      const { telegramService } = await import('./services/telegramService');
+      const totalSoldValue = sellResults.reduce((sum, result) => sum + result.total, 0);
+      const totalProfit = sellResults.reduce((sum, result) => sum + result.profit, 0);
+      
+      await telegramService.sendSellAllNotification({
+        soldCount: sellResults.length,
+        totalValue: totalSoldValue,
+        totalProfit: totalProfit,
+        coins: sellResults.map(r => ({
+          symbol: r.symbol,
+          amount: r.amount,
+          price: r.price,
+          profit: r.profit
+        }))
+      });
+
       // Broadcast multiple updates for instant UI refresh
       const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
       const stats = await storage.getUserStats(userId);

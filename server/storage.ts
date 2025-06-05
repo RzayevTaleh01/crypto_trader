@@ -292,16 +292,44 @@ export class DatabaseStorage implements IStorage {
     const userTrades = await this.getUserTrades(userId);
     const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
     
-    // Calculate win rate from sell trades
+    // Calculate win rate by analyzing sold coins vs their buy prices
     const sellTrades = userTrades.filter(trade => trade.type === 'SELL');
+    const buyTrades = userTrades.filter(trade => trade.type === 'BUY');
     let winningTrades = 0;
     
-    for (const sellTrade of sellTrades) {
-      const pnl = parseFloat(sellTrade.pnl || '0');
-      if (pnl > 0) winningTrades++;
+    // Group trades by crypto to calculate actual profit/loss
+    const cryptoGroups = new Map();
+    
+    // Process buy trades
+    for (const buyTrade of buyTrades) {
+      if (!cryptoGroups.has(buyTrade.cryptoId)) {
+        cryptoGroups.set(buyTrade.cryptoId, { buys: [], sells: [] });
+      }
+      cryptoGroups.get(buyTrade.cryptoId).buys.push(buyTrade);
     }
     
-    const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
+    // Process sell trades and calculate profit/loss
+    for (const sellTrade of sellTrades) {
+      if (!cryptoGroups.has(sellTrade.cryptoId)) {
+        cryptoGroups.set(sellTrade.cryptoId, { buys: [], sells: [] });
+      }
+      cryptoGroups.get(sellTrade.cryptoId).sells.push(sellTrade);
+    }
+    
+    // Calculate win rate by comparing total sold value vs total bought value for each crypto
+    const cryptoResults = [];
+    for (const [cryptoId, trades] of cryptoGroups) {
+      const totalBought = trades.buys.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
+      const totalSold = trades.sells.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
+      
+      if (totalSold > 0) { // Only count cryptos that have been sold
+        const profit = totalSold - totalBought;
+        cryptoResults.push(profit > 0);
+        if (profit > 0) winningTrades++;
+      }
+    }
+    
+    const winRate = cryptoResults.length > 0 ? (winningTrades / cryptoResults.length) * 100 : 0;
     
     // Calculate today's profit from today's sell trades
     const today = new Date();

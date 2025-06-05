@@ -52,6 +52,17 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
       
       return response;
     },
+    onMutate: async () => {
+      // Optimistic update - immediately clear portfolio
+      queryClient.setQueryData(['/api/portfolio/user', userId], []);
+      
+      // Show immediate feedback
+      toast({
+        title: "Satış prosesi başladı",
+        description: "Bütün portfel satılır...",
+        variant: "default",
+      });
+    },
     onSuccess: (data: any) => {
       toast({
         title: "Bütün portfel satıldı",
@@ -59,10 +70,12 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
         variant: "default",
       });
       
+      // Force refresh all related data
       queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trades/sold'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/performance'] });
     },
     onError: (error: any) => {
       toast({

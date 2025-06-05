@@ -277,18 +277,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
       emaRsiStrategy.stopContinuousTrading();
 
-      // Broadcast portfolio update
+      // Broadcast multiple updates for instant UI refresh
       const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
+      const stats = await storage.getUserStats(userId);
+      
+      // Send individual broadcasts for immediate UI updates
       broadcast({
         type: 'portfolioUpdate',
         data: updatedPortfolio
       });
-
-      // Broadcast stats update
-      const stats = await storage.getUserStats(userId);
+      
       broadcast({
         type: 'statsUpdate',
         data: stats
+      });
+      
+      // Send additional updates for sold coins and recent trades
+      broadcast({
+        type: 'soldCoinsUpdate',
+        data: sellResults
+      });
+      
+      broadcast({
+        type: 'tradeUpdate',
+        data: {
+          type: 'SELL_ALL',
+          message: `Sold ${sellResults.length} positions`,
+          timestamp: new Date().toISOString()
+        }
       });
 
       res.json({

@@ -46,7 +46,14 @@ export default function SoldCoins({ userId }: SoldCoinsProps) {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'soldCoinsUpdate' && message.data) {
-          setSoldCoins(message.data);
+          // Refresh sold coins data
+          queryClient.invalidateQueries({ queryKey: ['/api/trades/sold'] });
+        } else if (message.type === 'tradeUpdate' && message.data?.type === 'SELL_ALL') {
+          // Handle sell all notification - refresh data
+          queryClient.invalidateQueries({ queryKey: ['/api/trades/sold'] });
+        } else if (message.type === 'statsUpdate') {
+          // Ignore stats updates here - handled by stats component
+          return;
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);

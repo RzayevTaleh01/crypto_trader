@@ -45,6 +45,9 @@ export default function LiveTradingActivity() {
         } else if (message.type === 'tradesUpdate' && message.data) {
           // Update entire trades list
           setActivities(message.data);
+        } else if (message.type === 'statsUpdate' || message.type === 'soldCoinsUpdate') {
+          // Ignore these updates - handled by other components
+          return;
         }
       } catch (error) {
         console.log('Error parsing WebSocket trade message:', error);

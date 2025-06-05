@@ -59,6 +59,45 @@ export class EmaRsiStrategy {
     console.log(`🎯 EMA-RSI Strategy - Balance: $${balance.toFixed(2)}`);
     console.log(`📊 Analyzing ${cryptos.length} cryptocurrencies, ${portfolio.length} positions`);
 
+    // Check target profit limit before trading
+    const botSettings = await storage.getBotSettings(userId);
+    if (botSettings && botSettings.targetProfit) {
+      const targetProfitAmount = parseFloat(botSettings.targetProfit);
+      const initialBalance = 100; // Starting balance
+      const totalCurrentValue = balance;
+      
+      // Calculate portfolio value
+      let portfolioValue = 0;
+      for (const item of portfolio) {
+        const crypto = await storage.getCryptocurrency(item.cryptoId);
+        if (crypto) {
+          portfolioValue += parseFloat(item.amount) * parseFloat(crypto.currentPrice);
+        }
+      }
+      
+      const totalBalance = totalCurrentValue + portfolioValue;
+      const targetBalance = initialBalance + targetProfitAmount;
+      
+      console.log(`💰 Current total value: $${totalBalance.toFixed(2)}, Target: $${targetBalance.toFixed(2)}`);
+      
+      if (totalBalance >= targetBalance) {
+        console.log(`🎯 TARGET REACHED! Profit target of $${targetProfitAmount} achieved. Selling all and stopping bot.`);
+        
+        // Sell all portfolio
+        await this.sellAllPortfolio(userId);
+        
+        // Stop trading
+        await storage.updateBotSettings(userId, { isActive: false });
+        this.stopContinuousTrading();
+        
+        // Send Telegram notification
+        const { telegramService } = await import('./telegramService');
+        await telegramService.sendTargetReachedNotification(targetProfitAmount, totalBalance);
+        
+        return;
+      }
+    }
+
     // Force Binance API data fetch for trading analysis
     const { binanceService } = await import('./binanceService');
     console.log('📡 Fetching real market data from Binance...');
@@ -750,6 +789,48 @@ export class EmaRsiStrategy {
       const newTotalInvested = newAmount * avgPrice;
       
       await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), avgPrice.toString(), newTotalInvested.toString());
+    }
+  }
+
+  private async sellAllPortfolio(userId: number) {
+    try {
+      const portfolio = await storage.getUserPortfolio(userId);
+      const sellResults = [];
+
+      for (const item of portfolio) {
+        try {
+          const crypto = await storage.getCryptocurrency(item.cryptoId);
+          if (!crypto) continue;
+
+          const quantity = parseFloat(item.amount);
+          const price = parseFloat(crypto.currentPrice);
+          const total = quantity * price;
+
+          // Calculate profit
+          const avgBuyPrice = parseFloat(item.averagePrice);
+          const profit = (price - avgBuyPrice) * quantity;
+
+          console.log(`✅ Target Reached - Sell All: ${crypto.symbol} - ${quantity} at $${price} = $${profit.toFixed(2)} profit`);
+
+          // Execute sell order
+          await this.executeSellOrder(userId, crypto, quantity, 'Target profit reached - auto sell');
+
+          sellResults.push({
+            symbol: crypto.symbol,
+            amount: quantity,
+            price: price,
+            total: total,
+            profit: profit
+          });
+        } catch (error) {
+          console.error(`❌ Failed to sell ${item.cryptoId}:`, error);
+        }
+      }
+
+      return sellResults;
+    } catch (error) {
+      console.error('❌ Error selling all portfolio:', error);
+      return [];
     }
   }
 }

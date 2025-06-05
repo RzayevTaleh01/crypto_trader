@@ -31,6 +31,7 @@ export const trades = pgTable("trades", {
   price: decimal("price", { precision: 20, scale: 8 }).notNull(),
   total: decimal("total", { precision: 20, scale: 8 }).notNull(),
   pnl: decimal("pnl", { precision: 20, scale: 8 }),
+  reason: text("reason"),
   isBot: boolean("is_bot").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

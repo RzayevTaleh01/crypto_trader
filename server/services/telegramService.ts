@@ -302,6 +302,28 @@ ${botStatus}
       console.error('❌ Failed to send sell all notification:', error);
     }
   }
+
+  // Send target reached notification
+  async sendTargetReachedNotification(targetProfit: number, totalBalance: number) {
+    if (!this.bot || !this.chatId) return;
+    
+    try {
+      const message = `🎯 HƏDƏF ÇATILDI! 🎉
+
+💰 Target Profit: $${targetProfit.toFixed(2)}
+💵 Ümumi Balans: $${totalBalance.toFixed(2)}
+
+✅ Bütün portfolio avtomatik satıldı
+🛑 Trading bot dayandırıldı
+
+Təbriklər! Profit hədəfinizə çatdınız.`;
+
+      await this.bot.sendMessage(this.chatId, message);
+      console.log('✅ Target reached notification sent successfully');
+    } catch (error) {
+      console.error('❌ Failed to send target reached notification:', error);
+    }
+  }
 }
 
 export const telegramService = new TelegramService();

@@ -53,6 +53,9 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
       return response;
     },
     onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/portfolio/user', userId] });
+      
       // Optimistic update - immediately clear portfolio
       queryClient.setQueryData(['/api/portfolio/user', userId], []);
       
@@ -63,19 +66,25 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
         variant: "default",
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
+      // Clear all portfolio related cache immediately
+      queryClient.removeQueries({ queryKey: ['/api/portfolio/user'] });
+      queryClient.setQueryData(['/api/portfolio/user', userId], []);
+      
       toast({
         title: "Bütün portfel satıldı",
         description: `${data.soldCount || 0} koin satıldı. Trading dayandırıldı.`,
         variant: "default",
       });
       
-      // Force refresh all related data
-      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/trades/sold'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/trades/recent'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/performance'] });
+      // Force fresh data fetch
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['/api/portfolio/user'] });
+        queryClient.refetchQueries({ queryKey: ['/api/trades/sold'] });
+        queryClient.refetchQueries({ queryKey: ['/api/trades/recent'] });
+        queryClient.refetchQueries({ queryKey: ['/api/stats'] });
+        queryClient.refetchQueries({ queryKey: ['/api/portfolio/performance'] });
+      }, 100);
     },
     onError: (error: any) => {
       toast({

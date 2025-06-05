@@ -589,7 +589,17 @@ export class EmaRsiStrategy {
         });
       }
       
-      // Create trade record
+      // Calculate PnL for the sell trade
+      const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
+      let pnl = '0';
+      if (portfolioItem) {
+        const avgBuyPrice = parseFloat(portfolioItem.averagePrice);
+        const sellPrice = price;
+        const profit = (sellPrice - avgBuyPrice) * quantity;
+        pnl = profit.toString();
+      }
+
+      // Create trade record with PnL
       const tradeData: InsertTrade = {
         userId,
         cryptoId: crypto.id,
@@ -597,6 +607,8 @@ export class EmaRsiStrategy {
         amount: quantity.toString(),
         price: price.toString(),
         total: total.toString(),
+        pnl: pnl,
+        reason: reason,
         isBot: true
       };
       

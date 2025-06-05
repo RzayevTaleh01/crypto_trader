@@ -23,6 +23,11 @@ export default function LiveTradingActivity() {
   // Primary data source: API query for initial load and fallback
   const { data: apiActivities = [], isLoading } = useQuery<TradingActivity[]>({
     queryKey: ['/api/trades/recent', 1],
+    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 3000, // Refetch every 3 seconds for real-time updates
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    gcTime: 15000, // Keep in cache for 15 seconds
   });
 
   // Initialize activities from API data

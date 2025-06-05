@@ -36,15 +36,24 @@ export default function ManualTrading({ userId }: { userId: number }) {
   const queryClient = useQueryClient();
 
   const { data: cryptos = [] } = useQuery<Cryptocurrency[]>({
-    queryKey: ['/api/cryptocurrencies']
+    queryKey: ['/api/cryptocurrencies'],
+    staleTime: 10000, // Keep crypto data fresh for 10 seconds
+    gcTime: 60000, // Cache for 1 minute
+    refetchOnMount: true,
   });
 
   const { data: portfolio = [] } = useQuery<PortfolioHolding[]>({
-    queryKey: ['/api/portfolio/user', userId]
+    queryKey: ['/api/portfolio/user', userId],
+    staleTime: 500, // Fresh data for 0.5 seconds
+    refetchInterval: 2000, // Backup refetch every 2 seconds
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: user } = useQuery({
-    queryKey: ['/api/user', userId]
+    queryKey: ['/api/user', userId],
+    staleTime: 5000, // User data changes less frequently
+    refetchOnMount: true,
   });
 
   const tradeMutation = useMutation({

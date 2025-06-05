@@ -27,8 +27,12 @@ export default function Sidebar({ isOpen, onClose, botStatus }: SidebarProps) {
   const { socket } = useWebSocket();
 
   // Primary data source: API query for initial load and fallback
-  const { data: apiStats } = useQuery<UserStats>({
+  const { data: apiStats, refetch: refetchStats } = useQuery<UserStats>({
     queryKey: ['/api/stats', 1],
+    staleTime: 1000, // Consider data stale after 1 second
+    refetchInterval: 3000, // Refetch every 3 seconds as backup
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Initialize stats from API data

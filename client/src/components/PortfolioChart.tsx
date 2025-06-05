@@ -25,7 +25,11 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     queryKey: ['/api/portfolio/performance', userId, timeframe],
     queryFn: () => fetch(`/api/portfolio/performance/${userId}?hours=${hoursMap[timeframe as keyof typeof hoursMap]}`).then(res => res.json()),
     enabled: !!userId,
-    refetchInterval: 30000, // Update every 30 seconds
+    staleTime: 5000, // Consider data stale after 5 seconds
+    refetchInterval: 15000, // Update every 15 seconds for more frequent updates
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    gcTime: 30000, // Keep in cache for 30 seconds
   });
 
   useEffect(() => {

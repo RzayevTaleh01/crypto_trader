@@ -36,9 +36,14 @@ export default function PortfolioHoldings({ userId }: PortfolioHoldingsProps) {
   const queryClient = useQueryClient();
 
   // Primary data source: API query for initial load and fallback
-  const { data: apiHoldings = [], isLoading } = useQuery<PortfolioHolding[]>({
+  const { data: apiHoldings = [], isLoading, refetch: refetchHoldings } = useQuery<PortfolioHolding[]>({
     queryKey: ['/api/portfolio/user', userId],
     enabled: !!userId,
+    staleTime: 500, // Consider data stale after 0.5 seconds for faster updates
+    refetchInterval: 2000, // Refetch every 2 seconds as backup
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    gcTime: 30000, // Keep in cache for 30 seconds
   });
 
   // Mutation for selling all portfolio

@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async getUserTrades(userId: number, limit = 50): Promise<Trade[]> {
+  async getUserTrades(userId: number, limit = 500): Promise<Trade[]> {
     return await db
       .select()
       .from(trades)

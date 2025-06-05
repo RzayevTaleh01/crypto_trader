@@ -343,7 +343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/trades/sold/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const trades = await storage.getUserTrades(userId, 100); // Get more trades to find sells
+      const trades = await storage.getUserTrades(userId, 500); // Get many more trades to ensure all sells are included
       
       // Filter only sell trades and get crypto details
       const sellTrades = trades.filter(trade => trade.type === 'SELL');

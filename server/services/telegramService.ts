@@ -56,7 +56,7 @@ class TelegramService {
       await storage.updateBotSettings(1, { isActive: true });
       
       // Import and start the strategy
-      const { emaRsiStrategy } = await import('./emaRsiStrategy');
+      const { emaRsiStrategy } = await import('./emaRsiStrategy.ts');
       await emaRsiStrategy.startContinuousTrading(1);
       
       await this.bot.sendMessage(this.chatId, '🚀 Bot aktivləşdirildi və trading başladı!');
@@ -73,7 +73,7 @@ class TelegramService {
       await storage.updateBotSettings(1, { isActive: false });
       
       // Import and stop the strategy
-      const { emaRsiStrategy } = await import('./emaRsiStrategy');
+      const { emaRsiStrategy } = await import('./emaRsiStrategy.ts');
       emaRsiStrategy.stopContinuousTrading();
       
       await this.bot.sendMessage(this.chatId, '⏹️ Bot dayandırıldı və trading bitdi!');

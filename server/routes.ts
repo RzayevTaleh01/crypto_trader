@@ -11,21 +11,21 @@ import { eq, desc } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
-  
+
   // Set up WebSocket server on a distinct path
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
   // WebSocket connection handling
   wss.on('connection', (ws) => {
     console.log('Client connected to WebSocket');
-    
+
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message.toString());
-        
+
         if (data.type === 'requestInitialData') {
           const userId = data.userId || 1;
-          
+
           // Fetch all initial data
           const [
             user,
@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storage.getBotSettings(userId),
             portfolioService.getPortfolioPerformance(userId, 24)
           ]);
-          
+
           // Send initial data
           ws.send(JSON.stringify({
             type: 'initialData',
@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('WebSocket message error:', error);
       }
     });
-    
+
     ws.on('close', () => {
       console.log('Client disconnected from WebSocket');
     });
@@ -80,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize crypto service with broadcast function
   cryptoService.setBroadcastFunction(broadcast);
-  
+
   // Initialize EMA-RSI strategy with broadcast function
   const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
   emaRsiStrategy.setBroadcastFunction(broadcast);
@@ -112,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const stats = await storage.getUserStats(userId);
       const portfolio = await storage.getUserPortfolio(userId);
-      
+
       res.json({
         totalProfit: stats.totalProfit || '0.00',
         activeTrades: portfolio.length || 0,
@@ -147,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // Default user for demo
       const stats = await storage.getUserStats(userId);
-      
+
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch stats", error: error.message });
@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const symbol = req.params.symbol;
       const crypto = await storage.getCryptocurrencyBySymbol(symbol);
-      
+
       if (!crypto) {
         return res.status(404).json({ message: "Cryptocurrency not found" });
       }
@@ -184,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const tradeData = insertTradeSchema.parse(req.body);
       const trade = await storage.createTrade(tradeData);
-      
+
       broadcast({
         type: 'trade',
         data: trade
@@ -200,20 +200,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/trades/sell-all", async (req, res) => {
     try {
       const { userId } = req.body;
-      
+
       if (!userId) {
         return res.status(400).json({ message: "User ID is required" });
       }
 
       // Get all user portfolio holdings
       const portfolio = await storage.getUserPortfolio(userId);
-      
+
       if (!portfolio || portfolio.length === 0) {
         return res.status(400).json({ message: "No holdings to sell" });
       }
 
       const sellResults = [];
-      
+
       // Sell all holdings
       for (const coin of portfolio) {
         try {
@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { telegramService } = await import('./services/telegramService');
       const totalSoldValue = sellResults.reduce((sum, result) => sum + result.total, 0);
       const totalProfit = sellResults.reduce((sum, result) => sum + result.profit, 0);
-      
+
       await telegramService.sendSellAllNotification({
         soldCount: sellResults.length,
         totalValue: totalSoldValue,
@@ -289,24 +289,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast multiple updates for instant UI refresh
       const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
       const stats = await storage.getUserStats(userId);
-      
+
       // Send individual broadcasts for immediate UI updates
       broadcast({
         type: 'portfolioUpdate',
         data: updatedPortfolio
       });
-      
+
       broadcast({
         type: 'statsUpdate',
         data: stats
       });
-      
+
       // Send additional updates for sold coins and recent trades
       broadcast({
         type: 'soldCoinsUpdate',
         data: sellResults
       });
-      
+
       broadcast({
         type: 'tradeUpdate',
         data: {
@@ -332,10 +332,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/trades/sell", async (req, res) => {
     try {
       const userId = req.body.userId || 1;
-      
+
       // Get current portfolio with details
       const portfolio = await portfolioService.getUserPortfolioWithDetails(userId);
-      
+
       // Filter coins with profit > $0.05
       const profitableCoins = portfolio.filter((holding: any) => {
         const currentValue = parseFloat(holding.currentValue);
@@ -431,9 +431,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: stats
       });
 
-      res.json({ 
+      res.json({
         message: `Successfully sold ${sellResults.length} profitable coins`,
-        trades: sellResults 
+        trades: sellResults
       });
 
     } catch (error: any) {
@@ -457,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const trades = await storage.getUserTrades(userId, 10);
-      
+
       // Get crypto details for each trade
       const activities = await Promise.all(trades.map(async (trade) => {
         const crypto = await storage.getCryptocurrency(trade.cryptoId);
@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           strategy: 'EMA-RSI'
         };
       }));
-      
+
       res.json(activities);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch recent trades", error: error.message });
@@ -484,17 +484,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const symbol = req.params.symbol.toUpperCase();
       const userId = 1; // Default user ID
-      
+
       // Get cryptocurrency by symbol
       const crypto = await storage.getCryptocurrencyBySymbol(symbol);
       if (!crypto) {
         return res.status(404).json({ message: "Cryptocurrency not found" });
       }
-      
+
       // Get all trades for this crypto
       const allTrades = await storage.getUserTrades(userId, 1000);
       const coinTrades = allTrades.filter(trade => trade.cryptoId === crypto.id);
-      
+
       // Add crypto details to each trade
       const tradesWithDetails = coinTrades.map(trade => ({
         ...trade,
@@ -504,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentPrice: crypto.currentPrice
         }
       }));
-      
+
       res.json(tradesWithDetails);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch coin trades", error: error.message });
@@ -516,11 +516,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const symbol = req.params.symbol.toUpperCase();
       const crypto = await storage.getCryptocurrencyBySymbol(symbol);
-      
+
       if (!crypto) {
         return res.status(404).json({ message: "Cryptocurrency not found" });
       }
-      
+
       res.json(crypto);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch cryptocurrency", error: error.message });
@@ -532,30 +532,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const trades = await storage.getUserTrades(userId, 500); // Get many more trades to ensure all sells are included
-      
+
       // Filter only sell trades and get crypto details
       const sellTrades = trades.filter(trade => trade.type === 'SELL');
       const soldCoins = await Promise.all(sellTrades.map(async (trade) => {
         const crypto = await storage.getCryptocurrency(trade.cryptoId);
-        
+
         // Calculate profit using average buy price methodology
-        const buyTrades = trades.filter(t => 
-          t.cryptoId === trade.cryptoId && 
-          t.type === 'BUY' && 
-          t.createdAt < trade.createdAt
+        const buyTrades = trades.filter(t =>
+            t.cryptoId === trade.cryptoId &&
+            t.type === 'BUY' &&
+            t.createdAt < trade.createdAt
         );
-        
+
         // Calculate weighted average buy price
         let totalBuyValue = 0;
         let totalBuyQuantity = 0;
-        
+
         for (const buyTrade of buyTrades) {
           const buyAmount = parseFloat(buyTrade.amount);
           const buyPrice = parseFloat(buyTrade.price);
           totalBuyValue += buyAmount * buyPrice;
           totalBuyQuantity += buyAmount;
         }
-        
+
         const avgBuyPrice = totalBuyQuantity > 0 ? totalBuyValue / totalBuyQuantity : 0;
         const sellPrice = parseFloat(trade.price);
         const quantity = parseFloat(trade.amount);
@@ -563,7 +563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const buyValue = avgBuyPrice * quantity;
         const profit = sellValue - buyValue;
         const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
-        
+
         return {
           id: trade.id,
           symbol: crypto?.symbol || 'Unknown',
@@ -577,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           soldAt: trade.createdAt.toISOString()
         };
       }));
-      
+
       res.json(soldCoins);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch sold coins", error: error.message });
@@ -588,7 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // Default user for demo
       const trades = await storage.getUserTrades(userId, 10);
-      
+
       // Get crypto details for each trade
       const activities = await Promise.all(trades.map(async (trade) => {
         const crypto = await storage.getCryptocurrency(trade.cryptoId);
@@ -603,7 +603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           strategy: 'EMA-RSI'
         };
       }));
-      
+
       res.json(activities);
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch recent trades", error: error.message });
@@ -658,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // Default user for demo
       let settings = await storage.getBotSettings(userId);
-      
+
       if (!settings) {
         settings = await storage.createBotSettings({
           userId,
@@ -681,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       let settings = await storage.getBotSettings(userId);
-      
+
       if (!settings) {
         settings = await storage.createBotSettings({
           userId,
@@ -704,7 +704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const settingsData = insertBotSettingsSchema.partial().parse(req.body);
-      
+
       await storage.updateBotSettings(userId, settingsData);
       res.json({ message: "Bot settings updated successfully" });
     } catch (error: any) {
@@ -716,33 +716,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const settingsData = insertBotSettingsSchema.partial().parse(req.body);
-      
+
       await storage.updateBotSettings(userId, settingsData);
-      
+
       if (settingsData.isActive !== undefined) {
         if (settingsData.isActive) {
           const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
           const { binanceService } = await import('./services/binanceService');
           const { cryptoService } = await import('./services/cryptoService');
-          
+
           console.log('🤖 EMA-RSI bot activated for user:', userId);
-          
+
           // Initialize Binance API connection immediately
           binanceService.initialize();
-          
+
           // Start cryptocurrency price monitoring
           cryptoService.startPriceUpdates();
-          
+
           // Start continuous trading strategy
           emaRsiStrategy.startContinuousTrading(userId);
-          
+
           console.log('📊 Binance API calls initiated, trading strategy started');
         } else {
           const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
           const { cryptoService } = await import('./services/cryptoService');
-          
+
           console.log('🛑 EMA-RSI bot deactivated for user:', userId);
-          
+
           // Stop all trading activities
           emaRsiStrategy.stopContinuousTrading();
           cryptoService.stopPriceUpdates();
@@ -765,22 +765,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { balance } = req.body;
-      
+
       if (!balance || isNaN(parseFloat(balance))) {
         return res.status(400).json({ message: "Valid balance amount required" });
       }
-      
+
       await storage.updateUserBalance(userId, balance);
-      
+
       // Broadcast balance update to WebSocket clients
       broadcast({
         type: 'balanceUpdate',
         data: { userId, balance: parseFloat(balance) }
       });
-      
+
       res.json({ message: "Balance updated successfully", newBalance: balance });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update balance", error: error.message });
+    }
+  });
+
+  // Database reset route
+  app.post("/api/database/reset", async (req, res) => {
+    try {
+      const userId = 1; // Default user
+
+      // Stop trading bot first
+      const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
+      emaRsiStrategy.stopContinuousTrading();
+
+      // Clear all user data
+      await storage.resetUserData(userId);
+
+      // Reset user balance to $20
+      await storage.updateUserBalance(userId, "20.00");
+
+      // Set bot to inactive
+      await storage.updateBotSettings(userId, { isActive: false });
+
+      // Broadcast reset to all clients
+      broadcast({
+        type: 'databaseReset',
+        data: {
+          userId,
+          message: 'Database reset completed',
+          newBalance: "20.00",
+          botActive: false
+        }
+      });
+
+      res.json({
+        message: "Database reset successfully",
+        newBalance: "20.00",
+        botActive: false
+      });
+
+    } catch (error: any) {
+      console.error('Database reset error:', error);
+      res.status(500).json({ message: "Failed to reset database", error: error.message });
     }
   });
 
@@ -818,7 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timeframe: '5-30 dəqiqə'
         }
       ];
-      
+
       res.json({ success: true, strategies });
     } catch (error: any) {
       console.log('Strategies list error:', error);
@@ -831,14 +872,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // Default user
       const { strategy } = req.body;
-      
+
       const validStrategies = ['ema_rsi'];
       if (!validStrategies.includes(strategy)) {
         return res.status(400).json({ success: false, message: 'Invalid strategy' });
       }
-      
+
       await storage.updateBotSettings(userId, { strategy });
-      
+
       // Restart bot with new strategy if it's active
       const { emaRsiStrategy } = await import('./services/emaRsiStrategy');
       const botSettings = await storage.getBotSettings(userId);
@@ -846,7 +887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         emaRsiStrategy.stopContinuousTrading();
         await emaRsiStrategy.startContinuousTrading(userId);
       }
-      
+
       res.json({ success: true, message: 'Strategy updated successfully' });
     } catch (error: any) {
       console.log('Strategy update error:', error);
@@ -856,12 +897,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {
     const existing = await storage.getPortfolioItem(userId, cryptoId);
-    
+
     if (existing) {
       const newAmount = parseFloat(existing.amount) + quantity;
       const newTotal = parseFloat(existing.totalInvested) + (quantity * price);
       const newAvgPrice = newTotal / newAmount;
-      
+
       await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), newAvgPrice.toString(), newTotal.toString());
     } else {
       await storage.createPortfolioItem({
@@ -876,18 +917,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function updatePortfolioAfterSell(userId: number, cryptoId: number, soldAmount: number) {
     const existing = await storage.getPortfolioItem(userId, cryptoId);
-    
+
     if (existing) {
       const currentAmount = parseFloat(existing.amount);
       const newAmount = Math.max(0, currentAmount - soldAmount);
-      
+
       if (newAmount < 0.001) {
         await storage.deletePortfolioItem(userId, cryptoId);
       } else {
         const sellRatio = soldAmount / currentAmount;
         const currentTotal = parseFloat(existing.totalInvested);
         const newTotal = currentTotal * (1 - sellRatio);
-        
+
         await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), existing.averagePrice, newTotal.toString());
       }
     }

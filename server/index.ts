@@ -1,3 +1,4 @@
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -49,7 +50,7 @@ app.use((req, res, next) => {
   
   // Check bot state and resume trading if previously active
   const { storage } = await import("./storage");
-  const { emaRsiStrategy } = await import("./services/emaRsiStrategy");
+  const { emaRsiStrategy } = await import("./services/emaRsiStrategy.ts");
   
   // Get the first available user
   let userId = 1;

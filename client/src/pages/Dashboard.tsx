@@ -106,6 +106,10 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <BotSettings userId={userId} />
             <PortfolioChart userId={userId} />
+          </div>
+
+          {/* Bot settings and Live Trading Activity */}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6">
             <PortfolioHoldings userId={userId} onCoinClick={handleCoinClick} />
           </div>
 

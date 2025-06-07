@@ -82,13 +82,11 @@ app.use((req, res, next) => {
     } catch (error) {
       console.log('✅ Trading system ready - bot will initialize when user settings are configured');
     }
-  } else if (botSettings.isActive) {
-    // Resume trading automatically if bot was previously active
-    console.log('🔄 Bot was previously active - resuming trading');
-    emaRsiStrategy.startContinuousTrading(userId);
-    console.log('✅ Trading system ready - bot is active and trading');
   } else {
-    console.log('✅ Trading system ready - bot will only analyze when manually activated from dashboard');
+    // Always set bot to inactive on server start to prevent auto-trading
+    await storage.updateBotSettings(userId, { isActive: false });
+    console.log('🛑 Bot state reset to inactive - manual activation required from dashboard or Telegram');
+    console.log('✅ Trading system ready - bot will only analyze when manually activated');
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

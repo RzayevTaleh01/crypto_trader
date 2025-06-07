@@ -257,21 +257,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const newMainBalance = currentBalance + totalInvested;
               const newProfitBalance = currentProfitBalance + profitLoss;
               await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
-              console.log(`💰 Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
             } else {
               // Return total sell amount to main balance (includes loss)
               const newMainBalance = currentBalance + sellTotal;
               await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
-              console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
+              console.log(`📉 ${crypto.symbol} SELL ALL: Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
 
-            // Force broadcast balance update
+            // Get updated user data and broadcast correct balance update
+            const updatedUser = await storage.getUser(userId);
             broadcast({
               type: 'balanceUpdate',
               data: { 
                 userId, 
-                balance: parseFloat(user.balance), 
-                profitBalance: parseFloat(user.profitBalance || '0')
+                balance: parseFloat(updatedUser.balance), 
+                profitBalance: parseFloat(updatedUser.profitBalance || '0')
               }
             });
           }
@@ -420,21 +421,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const newMainBalance = currentBalance + totalInvested;
               const newProfitBalance = currentProfitBalance + profitLoss;
               await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
-              console.log(`💰 Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} SELL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
             } else {
               // Return total sell amount to main balance (includes loss)
               const newMainBalance = currentBalance + sellTotal;
               await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
-              console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
+              console.log(`📉 ${crypto.symbol} SELL: Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
 
-            // Force broadcast balance update
+            // Get updated user data and broadcast correct balance update
+            const updatedUser = await storage.getUser(userId);
             broadcast({
               type: 'balanceUpdate',
               data: { 
                 userId, 
-                balance: parseFloat(user.balance), 
-                profitBalance: parseFloat(user.profitBalance || '0')
+                balance: parseFloat(updatedUser.balance), 
+                profitBalance: parseFloat(updatedUser.profitBalance || '0')
               }
             });
           }
@@ -934,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/backtest/run', async (req, res) => {
     try {
       const { backtestService } = await import('./services/backtestService');
-      
+
       const config = {
         startBalance: req.body.startBalance || 20,
         startDate: req.body.startDate || '2024-01-01',
@@ -944,12 +946,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       console.log('🚀 Starting backtest with config:', config);
-      
+
       const results = await backtestService.runBacktest(config);
-      
+
       console.log('✅ Backtest completed successfully');
       console.log(`📊 Results: ${results.totalReturnPercent.toFixed(2)}% return, ${results.winRate.toFixed(1)}% win rate`);
-      
+
       res.json({ 
         success: true, 
         results: results,

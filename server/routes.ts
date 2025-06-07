@@ -925,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, strategies });
     } catch (error: any) {
-      console.log('Strategies list error:', error);```text
+      console.log('Strategies list error:', error);
       res.status(500).json({ success: false, message: 'Failed to get strategies' });
     }
   });

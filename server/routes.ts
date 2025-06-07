@@ -930,6 +930,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Run Backtest
+  app.post('/api/backtest/run', async (req, res) => {
+    try {
+      const { backtestService } = await import('./services/backtestService');
+      
+      const config = {
+        startBalance: req.body.startBalance || 20,
+        startDate: req.body.startDate || '2024-01-01',
+        endDate: req.body.endDate || '2024-12-31',
+        strategy: req.body.strategy || 'ema_rsi',
+        riskLevel: req.body.riskLevel || 5
+      };
+
+      console.log('🚀 Starting backtest with config:', config);
+      
+      const results = await backtestService.runBacktest(config);
+      
+      console.log('✅ Backtest completed successfully');
+      console.log(`📊 Results: ${results.totalReturnPercent.toFixed(2)}% return, ${results.winRate.toFixed(1)}% win rate`);
+      
+      res.json({ 
+        success: true, 
+        results: results,
+        message: 'Backtest completed successfully'
+      });
+    } catch (error: any) {
+      console.log('❌ Backtest error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Backtest failed',
+        error: error.message 
+      });
+    }
+  });
+
   // Update Bot Strategy
   app.put('/api/bot-settings/strategy', async (req, res) => {
     try {

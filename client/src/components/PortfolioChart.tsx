@@ -33,6 +33,14 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     gcTime: 30000,
   });
 
+  const { data: user } = useQuery({
+    queryKey: ['/api/user', userId],
+    queryFn: () => fetch(`/api/user/${userId}`).then(res => res.json()),
+    enabled: !!userId,
+    staleTime: 5000,
+    refetchInterval: 15000,
+  });
+
   useEffect(() => {
     if (!chartRef.current || !performanceData) return;
 
@@ -59,7 +67,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
       data: {
         labels,
         datasets: [{
-          label: 'Portfolio Value',
+          label: 'Ümumi Balans',
           data: values,
           borderColor: 'hsl(175, 100%, 42%)',
           backgroundColor: 'hsla(175, 100%, 42%, 0.1)',
@@ -90,7 +98,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
             bodyColor: 'hsl(0, 0%, 98%)',
             callbacks: {
               label: function(context) {
-                return `Portfolio: $${context.parsed.y.toFixed(2)}`;
+                return `Ümumi: $${context.parsed.y.toFixed(2)}`;
               }
             }
           }
@@ -143,6 +151,11 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const valueChange = currentValue - startValue;
   const percentageChange = startValue > 0 ? ((valueChange / startValue) * 100) : 0;
 
+  // Current balances from user data
+  const currentBalance = parseFloat(user?.user?.balance || '0');
+  const profitBalance = parseFloat(user?.user?.profitBalance || '0');
+  const totalBalance = currentBalance + profitBalance;
+
   console.log(`🔍 PortfolioChart Values: Current: $${currentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
   console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));
 
@@ -151,23 +164,30 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xl font-bold">Ümumi Portfel Performansı</h3>
-              {safePerformanceData.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-2xl font-bold text-foreground">
-                      ${parseFloat(currentValue).toFixed(2)}
-                    </div>
-                    <div className={`text-sm flex items-center gap-1 ${
+              <h3 className="text-xl font-bold">Ümumi Balans Performansı</h3>
+              <div className="mt-2">
+                <div className="text-2xl font-bold text-foreground">
+                  ${totalBalance.toFixed(2)}
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Əsas: </span>
+                    <span className="font-medium">${currentBalance.toFixed(2)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Kar: </span>
+                    <span className="font-medium text-green-600">${profitBalance.toFixed(2)}</span>
+                  </div>
+                </div>
+                {safePerformanceData.length > 0 && (
+                    <div className={`text-sm flex items-center gap-1 mt-1 ${
                         valueChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {valueChange >= 0 ? '+' : ''}${Math.abs(valueChange).toFixed(2)}
                       ({percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(2)}%)
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Əsas + Kar Balansı + Portfolio
-                    </div>
-                  </div>
-              )}
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               {timeframes.map((tf) => (

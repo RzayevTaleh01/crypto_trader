@@ -249,22 +249,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const currentProfitBalance = parseFloat(user.profitBalance || '0');
             const totalInvested = parseFloat(coin.totalInvested);
 
-            // Return the original investment to main balance
-            const newMainBalance = currentBalance + totalInvested;
-
             // Calculate profit/loss
             const profitLoss = sellTotal - totalInvested;
 
             if (profitLoss > 0) {
-              // Add profit to profit balance
+              // Return original investment to main balance + add profit to profit balance
+              const newMainBalance = currentBalance + totalInvested;
               const newProfitBalance = currentProfitBalance + profitLoss;
               await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
-              console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
+              console.log(`💰 Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
             } else {
-              // Deduct loss from main balance
-              const adjustedMainBalance = newMainBalance + profitLoss; // profitLoss is negative
-              await storage.updateUserBalances(userId, adjustedMainBalance.toString(), undefined);
-              console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} deducted from main balance`);
+              // Return total sell amount to main balance (includes loss)
+              const newMainBalance = currentBalance + sellTotal;
+              await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
+              console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
           }
 
@@ -404,22 +402,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const currentProfitBalance = parseFloat(user.profitBalance || '0');
             const totalInvested = parseFloat(coin.totalInvested);
 
-            // Return the original investment to main balance
-            const newMainBalance = currentBalance + totalInvested;
-
             // Calculate profit/loss
             const profitLoss = sellTotal - totalInvested;
 
             if (profitLoss > 0) {
-              // Add profit to profit balance
+              // Return original investment to main balance + add profit to profit balance
+              const newMainBalance = currentBalance + totalInvested;
               const newProfitBalance = currentProfitBalance + profitLoss;
               await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
-              console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
+              console.log(`💰 Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
             } else {
-              // Deduct loss from main balance
-              const adjustedMainBalance = newMainBalance + profitLoss; // profitLoss is negative
-              await storage.updateUserBalances(userId, adjustedMainBalance.toString(), undefined);
-              console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} deducted from main balance`);
+              // Return total sell amount to main balance (includes loss)
+              const newMainBalance = currentBalance + sellTotal;
+              await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
+              console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
           }
 
@@ -922,7 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validStrategies = ['ema_rsi'];
       if (!validStrategies.includes(strategy)) {
-        return res.status(400).json({ success: false, message: 'Invalid strategy' });
+        returnres.status(400).json({ success: false, message: 'Invalid strategy' });
       }
 
       await storage.updateBotSettings(userId, { strategy });

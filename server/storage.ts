@@ -440,6 +440,31 @@ export class DatabaseStorage implements IStorage {
       profitPercentageFromStart: profitPercentageFromStart.toFixed(2)
     };
   }
+
+  async executeTrade(userId: number, trade: InsertTrade) {
+    return await this.db.transaction(async (tx) => {
+      // Create the trade
+      const [newTrade] = await tx.insert(trades).values(trade).returning();
+
+      // Update user balance
+      if (trade.type === 'BUY') {
+        // Subtract total amount from balance for buy orders
+        await tx.update(users)
+            .set({
+              balance: sql`${users.balance} - ${trade.total}`
+            })
+            .where(eq(users.id, userId));
+      } else if (trade.type === 'SELL') {
+        // Add only the actual total received to balance for sell orders
+        // The total already includes the amount after commission
+        await tx.update(users)
+            .set({
+              balance: sql`${users.balance} + ${trade.total}`
+            })
+            .where(eq(users.id, userId));
+      }
+    });
+  }
 }
 
 export const storage = new DatabaseStorage();

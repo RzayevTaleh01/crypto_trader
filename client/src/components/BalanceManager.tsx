@@ -52,7 +52,7 @@ export default function BalanceManager({ userId, currentBalance }: BalanceManage
 
   const resetDatabaseMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/database/reset', {
+      const response = await fetch(`/api/user/${userId}/reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

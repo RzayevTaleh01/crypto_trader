@@ -82,7 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   cryptoService.setBroadcastFunction(broadcast);
 
   // Initialize EMA-RSI strategy with broadcast function
-  const { emaRsiStrategy } = await import('./services/emaRsiStrategy_old.ts');
+  const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
   emaRsiStrategy.setBroadcastFunction(broadcast);
 
   // User routes
@@ -266,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Stop trading bot
-      const { emaRsiStrategy } = await import('./services/emaRsiStrategy_old.ts');
+      const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
       emaRsiStrategy.stopContinuousTrading();
 
       // Send Telegram notification for sell all
@@ -540,9 +540,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Calculate profit using average buy price methodology
         const buyTrades = trades.filter(t =>
-          t.cryptoId === trade.cryptoId &&
-          t.type === 'BUY' &&
-          t.createdAt < trade.createdAt
+            t.cryptoId === trade.cryptoId &&
+            t.type === 'BUY' &&
+            t.createdAt < trade.createdAt
         );
 
         // Calculate weighted average buy price
@@ -721,7 +721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (settingsData.isActive !== undefined) {
         if (settingsData.isActive) {
-          const { emaRsiStrategy } = await import('./services/emaRsiStrategy_old.ts');
+          const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
           const { binanceService } = await import('./services/binanceService');
           const { cryptoService } = await import('./services/cryptoService');
 
@@ -738,7 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           console.log('📊 Binance API calls initiated, trading strategy started');
         } else {
-          const { emaRsiStrategy } = await import('./services/emaRsiStrategy_old.ts');
+          const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
           const { cryptoService } = await import('./services/cryptoService');
 
           console.log('🛑 EMA-RSI bot deactivated for user:', userId);
@@ -781,6 +781,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Balance updated successfully", newBalance: balance });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update balance", error: error.message });
+    }
+  });
+
+  // Reset user data endpoint
+  app.post("/api/user/:id/reset", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+
+      // Reset all user data
+      await storage.resetUserData(userId);
+
+      // Set balance back to $20
+      await storage.updateUserBalance(userId, "20.00");
+
+      console.log(`🔄 User ${userId} data reset - balance set to $20.00`);
+
+      // Broadcast multiple updates for complete UI refresh
+      broadcast({
+        type: 'dataReset',
+        data: { userId, newBalance: 20.00 }
+      });
+
+      broadcast({
+        type: 'portfolioUpdate',
+        data: []
+      });
+
+      broadcast({
+        type: 'statsUpdate',
+        data: {
+          totalProfit: '0.00',
+          activeTrades: 0,
+          winRate: '0',
+          currentBalance: '20.00',
+          totalValue: '20.00',
+          portfolioValue: '0.00'
+        }
+      });
+
+      res.json({
+        message: "User data reset successfully",
+        newBalance: "20.00"
+      });
+
+    } catch (error: any) {
+      console.error("Reset error:", error);
+      res.status(500).json({
+        message: "Failed to reset user data",
+        error: error.message
+      });
     }
   });
 
@@ -840,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateBotSettings(userId, { strategy });
 
       // Restart bot with new strategy if it's active
-      const { emaRsiStrategy } = await import('./services/emaRsiStrategy_old.ts');
+      const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
       const botSettings = await storage.getBotSettings(userId);
       if (botSettings && botSettings.isActive) {
         emaRsiStrategy.stopContinuousTrading();

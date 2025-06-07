@@ -264,6 +264,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
               console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
+
+            // Force broadcast balance update
+            broadcast({
+              type: 'balanceUpdate',
+              data: { 
+                userId, 
+                balance: parseFloat(user.balance), 
+                profitBalance: parseFloat(user.profitBalance || '0')
+              }
+            });
           }
 
           sellResults.push({
@@ -417,6 +427,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateUserBalances(userId, newMainBalance.toString(), currentProfitBalance.toString());
               console.log(`📉 Loss: $${Math.abs(profitLoss).toFixed(2)}, Total $${sellTotal.toFixed(2)} → Main Balance`);
             }
+
+            // Force broadcast balance update
+            broadcast({
+              type: 'balanceUpdate',
+              data: { 
+                userId, 
+                balance: parseFloat(user.balance), 
+                profitBalance: parseFloat(user.profitBalance || '0')
+              }
+            });
           }
 
           sellResults.push({
@@ -905,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, strategies });
     } catch (error: any) {
-      console.log('Strategies list error:', error);
+      console.log('Strategies list error:', error);```text
       res.status(500).json({ success: false, message: 'Failed to get strategies' });
     }
   });

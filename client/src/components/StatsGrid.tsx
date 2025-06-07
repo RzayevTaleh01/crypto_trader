@@ -20,6 +20,8 @@ interface StatsData {
   actualCurrentValue?: string;
   profitFromExpectedStart?: string;
   profitPercentageFromStart?: string;
+  profitBalance?: string;
+  totalAvailableBalance?: string;
 }
 
 export default function StatsGrid({ userId }: StatsGridProps) {
@@ -30,7 +32,9 @@ export default function StatsGrid({ userId }: StatsGridProps) {
     uptime: '99.7',
     currentBalance: '0.00',
     totalValue: '0.00',
-    portfolioValue: '0.00'
+    portfolioValue: '0.00',
+    profitBalance: '0.00',
+    totalAvailableBalance: '0.00'
   });
   const { socket } = useWebSocket();
 
@@ -71,22 +75,22 @@ export default function StatsGrid({ userId }: StatsGridProps) {
 
   const statsCards = [
     {
-      title: "Total Profit",
-      value: `+$${stats.totalProfit || '0.00'}`,
-      icon: TrendingUp,
-      bgColor: "bg-crypto-green/20",
-      iconColor: "text-crypto-green",
-      change: parseFloat(stats.totalProfit) > 0 ? "+18.2%" : "0%",
-      changeText: "vs last week"
-    },
-    {
-      title: "Ümumi Portfolio Dəyəri",
-      value: `$${stats.totalValue || '0.00'}`,
+      title: "Əsas Balans",
+      value: `$${stats.currentBalance || '0.00'}`,
       icon: Wallet,
       bgColor: "bg-crypto-blue/20",
       iconColor: "text-crypto-blue",
-      change: `+$${stats.totalProfit || '0.00'}`,
-      changeText: "ümumi qazanc"
+      change: "",
+      changeText: "ticarət üçün"
+    },
+    {
+      title: "Kar Balansı",
+      value: `$${stats.profitBalance || '0.00'}`,
+      icon: TrendingUp,
+      bgColor: "bg-crypto-green/20",
+      iconColor: "text-crypto-green",
+      change: parseFloat(stats.profitBalance || '0') > 0 ? "+100%" : "0%",
+      changeText: "qazanılan kar"
     },
     {
       title: "Active Trades",
@@ -110,51 +114,53 @@ export default function StatsGrid({ userId }: StatsGridProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <Card key={index} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-16 bg-muted rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-16 bg-muted rounded"></div>
+                </CardContent>
+              </Card>
+          ))}
+        </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-      {statsCards.map((stat, index) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={index} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-3 sm:p-4 lg:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stat.title}
-                  </p>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
-                  <div className="flex items-center mt-2 text-sm">
-                    {stat.change && (
-                      <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        {statsCards.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+              <Card key={index} className="hover:shadow-lg transition-shadow">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {stat.title}
+                      </p>
+                      <div className="text-2xl font-bold text-foreground">
+                        {stat.value}
+                      </div>
+                      <div className="flex items-center mt-2 text-sm">
+                        {stat.change && (
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                         <ArrowUp className="h-3 w-3" />
-                        {stat.change}
+                              {stat.change}
                       </span>
-                    )}
-                    <span className="text-muted-foreground ml-2">
+                        )}
+                        <span className="text-muted-foreground ml-2">
                       {stat.changeText}
                     </span>
+                      </div>
+                    </div>
+                    <div className={`${stat.bgColor} p-3 rounded-full`}>
+                      <Icon className={`h-6 w-6 ${stat.iconColor}`} />
+                    </div>
                   </div>
-                </div>
-                <div className={`${stat.bgColor} p-3 rounded-full`}>
-                  <Icon className={`h-6 w-6 ${stat.iconColor}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+                </CardContent>
+              </Card>
+          );
+        })}
+      </div>
   );
 }

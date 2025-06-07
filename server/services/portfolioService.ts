@@ -3,20 +3,20 @@ import { storage } from "../storage";
 class PortfolioService {
   async getUserPortfolioWithDetails(userId: number) {
     const portfolio = await storage.getUserPortfolio(userId);
-    
+
     const portfolioWithDetails = portfolio.map((item: any) => {
       // Portfolio data already includes cryptocurrency details from the join
       const currentPrice = parseFloat(item.cryptocurrency?.currentPrice || "0");
       const amount = parseFloat(item.amount);
       const averagePrice = parseFloat(item.averagePrice);
       const totalInvested = parseFloat(item.totalInvested);
-      
+
       // Calculate current value based on amount and current price
       const currentValue = amount * currentPrice;
-      
+
       // Calculate P&L: difference between current value and total invested
       const pnl = currentValue - totalInvested;
-      
+
       // Calculate P&L percentage: (current value - total invested) / total invested * 100
       const pnlPercentage = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
 
@@ -35,59 +35,74 @@ class PortfolioService {
 
   async getPortfolioPerformance(userId: number, hours: number) {
     const portfolio = await storage.getUserPortfolio(userId);
-    const trades = await storage.getUserTrades(userId, 100); // Get more trades for better data
-    
-    if (portfolio.length === 0) {
+    const user = await storage.getUser(userId);
+
+    if (!user) {
       return [];
     }
 
-    // Calculate portfolio performance based on actual trading history
-    const performanceData = [];
-    const intervals = Math.min(hours, 24);
-    
-    // Get current portfolio value
-    let currentTotalValue = 0;
+    const currentBalance = parseFloat(user.balance || '0');
+    const profitBalance = parseFloat(user.profitBalance || '0');
+
+    // Calculate current portfolio value accurately
+    let currentPortfolioValue = 0;
     for (const item of portfolio) {
       const crypto = await storage.getCryptocurrency(item.cryptoId);
       const currentPrice = parseFloat(crypto?.currentPrice || "0");
-      currentTotalValue += parseFloat(item.amount) * currentPrice;
+      const amount = parseFloat(item.amount);
+      currentPortfolioValue += amount * currentPrice;
     }
-    
-    // Calculate historical portfolio values based on price history
+
+    // Total value = balance + profit balance + portfolio current value
+    const currentTotalValue = currentBalance + profitBalance + currentPortfolioValue;
+
+    console.log(`📊 Portfolio Performance: Balance: $${currentBalance}, Profit: $${profitBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Total: $${currentTotalValue.toFixed(2)}`);
+
+    // Create simple performance data based on actual values
+    const performanceData = [];
+    const intervals = Math.min(hours, 24);
+
+    // For demo purposes, create realistic historical data based on current values
     for (let i = 0; i < intervals; i++) {
       const hoursBack = (intervals - 1 - i);
       const timestamp = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
-      
-      let historicalValue = 0;
-      
-      // For each portfolio item, get historical price
+
+      // Calculate historical portfolio value with small variations
+      let historicalPortfolioValue = currentPortfolioValue;
+
       for (const item of portfolio) {
-        const priceHistory = await storage.getPriceHistory(item.cryptoId, hoursBack + 1);
-        let historicalPrice;
-        
-        if (priceHistory.length > 0) {
-          historicalPrice = parseFloat(priceHistory[0].price);
-        } else {
-          // Fallback to current price if no historical data
-          const crypto = await storage.getCryptocurrency(item.cryptoId);
-          historicalPrice = parseFloat(crypto?.currentPrice || "0");
-        }
-        
-        historicalValue += parseFloat(item.amount) * historicalPrice;
+        const crypto = await storage.getCryptocurrency(item.cryptoId);
+        const currentPrice = parseFloat(crypto?.currentPrice || "0");
+        const priceChange24h = parseFloat(crypto?.priceChange24h || "0");
+
+        // Estimate historical price based on recent price changes
+        const hourlyChange = priceChange24h / 24;
+        const historicalPrice = currentPrice * (1 - (hourlyChange * hoursBack / 100));
+        const amount = parseFloat(item.amount);
+
+        historicalPortfolioValue += (amount * historicalPrice) - (amount * currentPrice);
       }
-      
+
+      // Keep balances constant for simplicity (they don't change as frequently)
+      const historicalTotalValue = currentBalance + profitBalance + Math.max(0, historicalPortfolioValue);
+
+      const finalValue = parseFloat(historicalTotalValue.toFixed(2));
       performanceData.push({
         timestamp: timestamp.toISOString(),
-        value: historicalValue
+        value: finalValue.toString()
       });
+
+      if (i === intervals - 1) {
+        console.log(`🔍 Latest performance data point: $${finalValue.toFixed(2)}`);
+      }
     }
-    
+
     return performanceData;
   }
 
   async getPortfolioSummary(userId: number) {
     const portfolioWithDetails = await this.getUserPortfolioWithDetails(userId);
-    
+
     const totalValue = portfolioWithDetails.reduce((sum, item) => {
       return sum + parseFloat(item.currentValue);
     }, 0);

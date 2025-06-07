@@ -1,4 +1,3 @@
-
 import { storage } from '../storage';
 import { telegramService } from './telegramService';
 import { binanceService } from './binanceService';
@@ -231,7 +230,7 @@ export class EmaRsiStrategy {
                     console.log(`💰 Selling ${(sellPercentage * 100).toFixed(0)}% (${sellAmount.toFixed(6)}) at $${currentPrice.toFixed(6)}`);
                     console.log(`📊 Net profit: ${netProfitPercent.toFixed(2)}%`);
 
-                    await this.executeSellOrder(userId, crypto, sellAmount, sellReason);
+                    await this.executeSellOrder(userId, crypto, sellAmount, sellReason, position);
                     telegramService.sendProfitAlert(netProfitPercent, crypto.symbol);
                 } else {
                     console.log(`⚪ HOLD: ${crypto.symbol} - Score: ${analysis.compositeScore}/10`);
@@ -657,28 +656,41 @@ export class EmaRsiStrategy {
         }
     }
 
-    private async executeSellOrder(userId: number, crypto: any, quantity: number, reason: string) {
+    private async executeSellOrder(userId: number, crypto: any, quantity: number, reason: string, position: any) {
         try {
             const price = parseFloat(crypto.currentPrice);
             const total = quantity * price;
 
+            // Update user balances - separate profit from main investment
             const user = await storage.getUser(userId);
-            if (!user) return;
+            if (user) {
+                const currentBalance = parseFloat(user.balance);
+                const currentProfitBalance = parseFloat(user.profitBalance || '0');
+                const totalInvested = parseFloat(position.totalInvested);
 
-            const currentBalance = parseFloat(user.balance);
-            const newBalance = currentBalance + total;
+                // Return the original investment to main balance
+                const newMainBalance = currentBalance + totalInvested;
 
-            if (newBalance < 0) {
-                console.log(`❌ Sell order calculation error: Current: $${currentBalance.toFixed(2)}, Adding: $${total.toFixed(2)}, Result: $${newBalance.toFixed(2)}`);
-                return;
+                // Calculate profit/loss
+                const profitLoss = total - totalInvested;
+
+                if (profitLoss > 0) {
+                    // Add profit to profit balance
+                    const newProfitBalance = currentProfitBalance + profitLoss;
+                    await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
+                    console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
+                } else {
+                    // Deduct loss from main balance
+                    const adjustedMainBalance = newMainBalance + profitLoss; // profitLoss is negative
+                    await storage.updateUserBalances(userId, adjustedMainBalance.toString(), undefined);
+                    console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} deducted from main balance`);
+                }
             }
-
-            await storage.updateUserBalance(userId, newBalance.toString());
 
             if (this.broadcastFn) {
                 this.broadcastFn({
                     type: 'balanceUpdate',
-                    data: { userId, balance: newBalance }
+                    data: { userId, balance: user?.balance }
                 });
             }
 
@@ -914,7 +926,7 @@ export class EmaRsiStrategy {
 
                     console.log(`✅ Target Reached - Sell All: ${crypto.symbol} - ${quantity} at $${price} = $${profit.toFixed(2)} profit`);
 
-                    await this.executeSellOrder(userId, crypto, quantity, 'Target profit reached - auto sell');
+                    await this.executeSellOrder(userId, crypto, quantity, 'Target profit reached - auto sell', item);
 
                     sellResults.push({
                         symbol: crypto.symbol,

@@ -1,5 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, decimal, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   balance: decimal("balance", { precision: 20, scale: 8 }).notNull().default("0"),
+  profitBalance: decimal("profit_balance", { precision: 20, scale: 8 }).notNull().default("0"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -145,3 +146,8 @@ export type InsertBotSettings = z.infer<typeof insertBotSettingsSchema>;
 
 export type PriceHistory = typeof priceHistory.$inferSelect;
 export type InsertPriceHistory = z.infer<typeof insertPriceHistorySchema>;
+
+export const updateUserBalanceSchema = z.object({
+  balance: z.string().optional(),
+  profitBalance: z.string().optional(),
+});

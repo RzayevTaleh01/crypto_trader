@@ -10,21 +10,22 @@ import { useToast } from "@/hooks/use-toast";
 interface BalanceManagerProps {
   userId: number;
   currentBalance: string;
+  profitBalance?: string;
 }
 
-export default function BalanceManager({ userId, currentBalance }: BalanceManagerProps) {
+export default function BalanceManager({ userId, currentBalance, profitBalance = "0.00" }: BalanceManagerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState("100");
 
   const updateBalanceMutation = useMutation({
-    mutationFn: async (newBalance: string) => {
+    mutationFn: async (balanceData: { balance?: string; profitBalance?: string }) => {
       const response = await fetch(`/api/user/${userId}/balance`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ balance: newBalance }),
+        body: JSON.stringify(balanceData),
       });
 
       if (!response.ok) {
@@ -87,7 +88,7 @@ export default function BalanceManager({ userId, currentBalance }: BalanceManage
 
   const handleSetBalance = (newBalance: string) => {
     if (parseFloat(newBalance) < 0) return;
-    updateBalanceMutation.mutate(newBalance);
+    updateBalanceMutation.mutate({ balance: newBalance });
   };
 
   const handleAddFunds = () => {
@@ -111,11 +112,29 @@ export default function BalanceManager({ userId, currentBalance }: BalanceManage
           </h3>
 
           <div className="space-y-6">
-            {/* Current Balance Display */}
-            <div className="text-center">
-              <Label className="text-sm text-muted-foreground">Mövcud Balans</Label>
+            {/* Balance Display */}
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <Label className="text-sm text-muted-foreground">Əsas Balans</Label>
+                <div className="text-2xl font-bold text-crypto-blue">
+                  ${parseFloat(currentBalance).toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Ticarət üçün</p>
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Kar Balansı</Label>
+                <div className="text-2xl font-bold text-crypto-green">
+                  ${parseFloat(profitBalance).toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Qazanılan kar</p>
+              </div>
+            </div>
+
+            {/* Total Balance */}
+            <div className="text-center pt-4 border-t border-border">
+              <Label className="text-sm text-muted-foreground">Ümumi Balans</Label>
               <div className="text-3xl font-bold text-crypto-green">
-                ${parseFloat(currentBalance).toFixed(2)}
+                ${(parseFloat(currentBalance) + parseFloat(profitBalance)).toFixed(2)}
               </div>
             </div>
 

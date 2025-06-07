@@ -28,6 +28,8 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserBalance(userId: number, balance: string): Promise<void>;
+  updateUserProfitBalance(userId: number, newProfitBalance: string): Promise<void>;
+  updateUserBalances(userId: number, balance?: string, profitBalance?: string): Promise<void>;
 
   // Cryptocurrency operations
   getCryptocurrency(id: number): Promise<Cryptocurrency | undefined>;
@@ -104,6 +106,24 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, userId));
   }
 
+  async updateUserProfitBalance(userId: number, newProfitBalance: string): Promise<void> {
+    await db
+        .update(users)
+        .set({ profitBalance: newProfitBalance, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+  }
+
+  async updateUserBalances(userId: number, balance?: string, profitBalance?: string): Promise<void> {
+    const updateData: any = { updatedAt: new Date() };
+    if (balance !== undefined) updateData.balance = balance;
+    if (profitBalance !== undefined) updateData.profitBalance = profitBalance;
+
+    await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, userId));
+  }
+
   async resetUserData(userId: number): Promise<void> {
     // Delete all trades
     await db
@@ -117,6 +137,22 @@ export class DatabaseStorage implements IStorage {
 
     // Clear price history (optional - keeps crypto price data)
     // await db.delete(priceHistory);
+    await db.transaction(async (tx) => {
+      // Delete all user trades
+      await tx.delete(trades).where(eq(trades.userId, userId));
+
+      // Delete all user portfolio items
+      await tx.delete(portfolio).where(eq(portfolio.userId, userId));
+
+      // Delete all user price history
+      // await tx.delete(priceHistory).where(eq(priceHistory.userId, userId));
+
+      // Reset both balances - main balance to $20, profit balance to $0
+      await tx
+          .update(users)
+          .set({ balance: "20.00", profitBalance: "0.00", updatedAt: new Date() })
+          .where(eq(users.id, userId));
+    });
   }
 
   // Cryptocurrency operations

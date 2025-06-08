@@ -143,8 +143,22 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
 
   // Current balances from user data
   const currentBalance = parseFloat(user?.user?.balance || '0');
-  const profitBalance = parseFloat(user?.user?.profit_balance || '0');
+
+  // Debug user object structure to find correct profit balance field
+  console.log(`🔍 User Object Structure:`, user?.user);
+
+  // Try different possible field names for profit balance
+  const profitBalance = parseFloat(
+    user?.user?.profit_balance || 
+    user?.user?.profitBalance || 
+    user?.user?.profit || 
+    '0'
+  );
   const totalBalance = currentBalance + profitBalance;
+
+  // Debug logging for balance values
+  console.log(`💰 Balance Debug: Main: $${currentBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
+  console.log(`🎯 Display Value: Current API: $${currentValue.toFixed(8)}, Real Total: $${totalBalance.toFixed(8)}`);
 
   // Parse values correctly from API response - use actual total balance if no performance data
   const currentValue = safePerformanceData.length > 0 ?
@@ -154,10 +168,6 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
 
   const valueChange = currentValue - startValue;
   const percentageChange = startValue > 0 ? ((valueChange / startValue) * 100) : 0;
-
-  // Debug logging for balance values
-  console.log(`💰 Balance Debug: Main: $${currentBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
-  console.log(`🎯 Display Value: Current API: $${currentValue.toFixed(8)}, Real Total: $${totalBalance.toFixed(8)}`);
 
   console.log(`🔍 PortfolioChart Values: Current: $${currentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
   console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));

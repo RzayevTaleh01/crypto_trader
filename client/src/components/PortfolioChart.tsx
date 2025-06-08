@@ -187,14 +187,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                 <div className="text-center mt-2 p-2 bg-muted/30 rounded-lg">
                   <div className="text-xs text-muted-foreground">Ümumi Balans</div>
                   <div className="text-lg font-bold text-foreground">
-                    $</div_str>
-                  </div>
-                  {profitBalance > 0 && (
-                    <div className="text-xs text-green-600">
-                      +${profitBalance.toFixed(2)} kar ({((profitBalance / 20) * 100).toFixed(2)}% ROI)
-                    </div>
-                  )}
-                </div>{totalBalance.toFixed(2)}
+                    ${totalBalance.toFixed(2)}
                   </div>
                   {profitBalance > 0 && (
                     <div className="text-xs text-green-600">

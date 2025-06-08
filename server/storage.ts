@@ -454,8 +454,8 @@ export class DatabaseStorage implements IStorage {
       unrealizedProfit += (currentValue - invested);
     }
 
-    // Calculate profit based on realized and unrealized gains
-    const totalProfit = realizedProfit + unrealizedProfit;
+    // Kar sadəcə realized profit (satış karı) olmalıdır - unrealized profit daxil edilməməlidir
+    const totalProfit = realizedProfit; // Sadəcə satış karı
 
     // Use current balance as baseline for percentage calculation
     const baselineForPercentage = Math.max(currentBalance, 10);
@@ -490,10 +490,10 @@ export class DatabaseStorage implements IStorage {
     const profitPercentageFromStart = dynamicStartingBalance > 0 ? ((actualCurrentValue - dynamicStartingBalance) / dynamicStartingBalance) * 100 : 0;
 
     return {
-      totalProfit: totalProfit.toFixed(2),
+      totalProfit: currentProfitBalance.toFixed(2), // Kar balansından götür
       realizedProfit: realizedProfit.toFixed(2),
       unrealizedProfit: unrealizedProfit.toFixed(2),
-      totalProfitPercentage: profitPercentage.toFixed(2),
+      totalProfitPercentage: currentProfitBalance > 0 ? ((currentProfitBalance / baselineForPercentage) * 100).toFixed(2) : "0.00",
       currentBalance: currentBalance.toFixed(2),
       currentProfitBalance: currentProfitBalance.toFixed(2),
       portfolioValue: currentPortfolioValue.toFixed(2),

@@ -369,7 +369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentValue = parseFloat(holding.currentValue);
         const totalInvested = parseFloat(holding.totalInvested);
         const profit = currentValue - totalInvested;
-        return profit > 0.05;
+        return profit > 0.02;
       });
 
       if (profitableCoins.length === 0) {

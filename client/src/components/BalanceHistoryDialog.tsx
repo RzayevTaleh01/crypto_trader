@@ -59,11 +59,16 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
           const tradesData = await tradesRes.json();
           const userData = await userRes.json();
           
-          setTrades(tradesData.trades || []);
-          setUser(userData.user || null);
+          // Backend-də trades array-i birbaşa qayıdır, nested deyil
+          setTrades(Array.isArray(tradesData) ? tradesData : tradesData.trades || []);
+          setUser(userData.user || userData || null);
         }
       } catch (error) {
         console.error('Error fetching balance history data:', error);
+        console.log('Trades response status:', tradesRes?.status);
+        console.log('User response status:', userRes?.status);
+        setTrades([]);
+        setUser(null);
       } finally {
         setLoading(false);
       }

@@ -921,8 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, strategies });
     } catch (error: any) {
-      console.log('Strategies list error:', error);
-      res.status(500).json({ success: false, message: 'Failed to get strategies' });
+      console.log('Strategies list error:', error);      res.status(500).json({ success: false, message: 'Failed to get strategies' });
     }
   });
 
@@ -1027,6 +1026,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   }
+
+  // Get user trades
+  app.get('/api/trades/user', async (req, res) => {
+    try {
+      const userId = 1; // Hardcoded user ID for now
+      const trades = await storage.getUserTrades(userId);
+      console.log(`📊 User ${userId} trades count:`, trades.length);
+      res.json(trades);
+    } catch (error) {
+      console.error('Error fetching user trades:', error);
+      res.status(500).json({ error: 'Failed to fetch trades' });
+    }
+  });
 
   return httpServer;
 }

@@ -22,6 +22,8 @@ interface StatsData {
   profitPercentageFromStart?: string;
   profitBalance?: string;
   totalAvailableBalance?: string;
+  realizedProfit?: string;
+  unrealizedProfit?: string;
 }
 
 export default function StatsGrid({ userId }: StatsGridProps) {
@@ -42,6 +44,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   const { data: apiStats, isLoading } = useQuery<StatsData>({
     queryKey: ['/api/stats', userId],
     enabled: !!userId,
+    refetchInterval: 2000, // Refetch every 2 seconds
   });
 
   // Initialize stats from API data
@@ -76,7 +79,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   const statsCards = [
     {
       title: "Əsas Balans",
-      value: `$${stats.currentBalance || '0.00'}`,
+      value: `$${parseFloat(stats.currentBalance || '0').toFixed(2)}`,
       icon: Wallet,
       bgColor: "bg-crypto-blue/20",
       iconColor: "text-crypto-blue",
@@ -84,12 +87,12 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       changeText: "ticarət üçün"
     },
     {
-      title: "Kar Balansı",
-      value: `$${stats.profitBalance || '0.00'}`,
+      title: "Kar Balansı", 
+      value: `$${parseFloat(stats.totalProfit || stats.profitBalance || '0').toFixed(2)}`,
       icon: TrendingUp,
       bgColor: "bg-crypto-green/20",
       iconColor: "text-crypto-green",
-      change: parseFloat(stats.profitBalance || '0') > 0 ? "+100%" : "0%",
+      change: parseFloat(stats.totalProfit || stats.profitBalance || '0') > 0 ? "+100%" : "0%",
       changeText: "qazanılan kar"
     },
     {

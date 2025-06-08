@@ -661,29 +661,25 @@ export class EmaRsiStrategy {
             const price = parseFloat(crypto.currentPrice);
             const total = quantity * price;
 
-            // Update user balances - separate profit from main investment
+            // Update user balances using new balance mechanism
             const user = await storage.getUser(userId);
             if (user) {
-                const currentBalance = parseFloat(user.balance);
-                const currentProfitBalance = parseFloat(user.profitBalance || '0');
+                const currentMainBalance = parseFloat(user.balance);
                 const totalInvested = parseFloat(position.totalInvested);
-
-                // Return the original investment to main balance
-                const newMainBalance = currentBalance + totalInvested;
-
-                // Calculate profit/loss
                 const profitLoss = total - totalInvested;
+
+                // Return original investment to main balance
+                const newMainBalance = currentMainBalance + totalInvested;
+                await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
 
                 if (profitLoss > 0) {
                     // Add profit to profit balance
-                    const newProfitBalance = currentProfitBalance + profitLoss;
-                    await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
+                    await storage.addProfit(userId, profitLoss);
                     console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
                 } else {
-                    // Deduct loss from main balance
-                    const adjustedMainBalance = newMainBalance + profitLoss; // profitLoss is negative
-                    await storage.updateUserBalances(userId, adjustedMainBalance.toString(), undefined);
-                    console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} deducted from main balance`);
+                    // Subtract loss from main balance
+                    await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
+                    console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} subtracted from main balance`);
                 }
             }
 

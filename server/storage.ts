@@ -64,6 +64,7 @@ export interface IStorage {
 
   // Reset user data
   resetUserData(userId: number): Promise<void>;
+  executeTrade(userId: number, trade: InsertTrade): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -121,6 +122,39 @@ export class DatabaseStorage implements IStorage {
     await db
         .update(users)
         .set(updateData)
+        .where(eq(users.id, userId));
+  }
+
+  // New method for trading operations
+  async addProfit(userId: number, profitAmount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) return;
+
+    const currentProfitBalance = parseFloat(user.profitBalance || '0');
+    const newProfitBalance = currentProfitBalance + profitAmount;
+
+    await db
+        .update(users)
+        .set({
+          profitBalance: newProfitBalance.toString(),
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+  }
+
+  async subtractFromMainBalance(userId: number, lossAmount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (!user) return;
+
+    const currentMainBalance = parseFloat(user.balance || '0');
+    const newMainBalance = Math.max(0, currentMainBalance - lossAmount);
+
+    await db
+        .update(users)
+        .set({
+          balance: newMainBalance.toString(),
+          updatedAt: new Date()
+        })
         .where(eq(users.id, userId));
   }
 
@@ -322,6 +356,7 @@ export class DatabaseStorage implements IStorage {
     // Get user data and current portfolio value
     const user = await this.getUser(userId);
     const currentBalance = parseFloat(user?.balance || '0');
+    const currentProfitBalance = parseFloat(user?.profitBalance || '0');
 
     // Calculate current portfolio value manually
     const portfolioPositions = await this.getUserPortfolio(userId);
@@ -460,6 +495,7 @@ export class DatabaseStorage implements IStorage {
       unrealizedProfit: unrealizedProfit.toFixed(2),
       totalProfitPercentage: profitPercentage.toFixed(2),
       currentBalance: currentBalance.toFixed(2),
+      currentProfitBalance: currentProfitBalance.toFixed(2),
       portfolioValue: currentPortfolioValue.toFixed(2),
       totalValue: totalCurrentValue.toFixed(2),
       activeTrades: activeTrades,
@@ -478,26 +514,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async executeTrade(userId: number, trade: InsertTrade) {
-    return await this.db.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Create the trade
       const [newTrade] = await tx.insert(trades).values(trade).returning();
 
-      // Update user balance
+      const user = await this.getUser(userId);
+      if (!user) return;
+
+      const currentMainBalance = parseFloat(user.balance || '0');
+
       if (trade.type === 'BUY') {
-        // Subtract total amount from balance for buy orders
-        await tx.update(users)
-            .set({
-              balance: sql`${users.balance} - ${trade.total}`
-            })
-            .where(eq(users.id, userId));
+        const tradeTotal = parseFloat(trade.total);
+
+        if (currentMainBalance < tradeTotal) {
+          throw new Error('Insufficient balance');
+        }
+        await this.subtractFromMainBalance(userId, tradeTotal);
+
       } else if (trade.type === 'SELL') {
-        // Add only the actual total received to balance for sell orders
-        // The total already includes the amount after commission
-        await tx.update(users)
-            .set({
-              balance: sql`${users.balance} + ${trade.total}`
-            })
-            .where(eq(users.id, userId));
+        const tradeTotal = parseFloat(trade.total);
+        await this.addProfit(userId, tradeTotal);
       }
     });
   }

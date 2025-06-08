@@ -141,12 +141,12 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
 
   const safePerformanceData = Array.isArray(performanceData) ? performanceData : [];
 
-  // Current balances from user data
-  const currentBalance = parseFloat(user?.user?.balance || '0');
-  const profitBalance = parseFloat(user?.user?.profitBalance || user?.user?.profit_balance || '0');
-  const totalBalance = currentBalance + profitBalance;
+  // Current balances from user data - separate main and profit
+  const currentMainBalance = parseFloat(user?.user?.balance || '0');
+  const profitBalance = parseFloat(user?.user?.profitBalance || '0');
+  const totalBalance = currentMainBalance + profitBalance;
 
-  // Parse values correctly from API response - use actual total balance if no performance data
+  // Parse values correctly from API response
   const chartCurrentValue = safePerformanceData.length > 0 ?
       parseFloat(String(safePerformanceData[safePerformanceData.length - 1]?.value || '0')) : totalBalance;
   const startValue = safePerformanceData.length > 0 ?
@@ -155,10 +155,8 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const valueChange = chartCurrentValue - startValue;
   const percentageChange = startValue > 0 ? ((valueChange / startValue) * 100) : 0;
 
-  // Debug logging for balance values
-  console.log(`💰 Balance Debug: Main: $${currentBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
-  console.log(`🎯 Display Value: Current API: $${chartCurrentValue.toFixed(8)}, Real Total: $${totalBalance.toFixed(8)}`);
-
+  console.log(`💰 Balance Debug: Main: $${currentMainBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
+  console.log(`🎯 Trading Balance (Main): $${currentMainBalance.toFixed(8)}, Profit Balance: $${profitBalance.toFixed(8)}`);
   console.log(`🔍 PortfolioChart Values: Current: $${chartCurrentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
   console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));
 
@@ -174,24 +172,27 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Əsas: </span>
-                    <span className="font-medium">${currentBalance.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Ticarət Balansı: </span>
+                    <span className="font-medium text-crypto-blue">${currentMainBalance.toFixed(2)}</span>
+                    <div className="text-xs text-muted-foreground">Ticarət üçün</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Kar: </span>
+                    <span className="text-muted-foreground">Kar Balansı: </span>
                     <span className="font-medium text-green-600">
                       ${profitBalance > 0 ? profitBalance.toFixed(2) : '0.00'}
                     </span>
+                    <div className="text-xs text-muted-foreground">Qazanılan kar</div>
                   </div>
                 </div>
-                <div className={`text-sm flex items-center gap-1 mt-1 ${
-                    profitBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {profitBalance >= 0 ? '+' : ''}${profitBalance.toFixed(2)} kar
+                <div className="text-center mt-2 p-2 bg-muted/30 rounded-lg">
+                  <div className="text-xs text-muted-foreground">Ümumi Balans</div>
+                  <div className="text-lg font-bold text-foreground">
+                    ${totalBalance.toFixed(2)}
+                  </div>
                   {profitBalance > 0 && (
-                    <span className="text-muted-foreground">
-                      ({((profitBalance / currentBalance) * 100).toFixed(2)}%)
-                    </span>
+                    <div className="text-xs text-green-600">
+                      +${profitBalance.toFixed(2)} kar ({((profitBalance / 20) * 100).toFixed(2)}% ROI)
+                    </div>
                   )}
                 </div>
               </div>

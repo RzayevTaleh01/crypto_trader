@@ -78,13 +78,13 @@ export default function StatsGrid({ userId }: StatsGridProps) {
 
   const statsCards = [
     {
-      title: "Əsas Balans",
+      title: "Ticarət Balansı",
       value: `$${parseFloat(stats.currentBalance || '0').toFixed(2)}`,
       icon: Wallet,
       bgColor: "bg-crypto-blue/20",
       iconColor: "text-crypto-blue",
       change: "",
-      changeText: "ticarət üçün"
+      changeText: "ticarət üçün aktiv"
     },
     {
       title: "Kar Balansı", 
@@ -92,7 +92,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       icon: TrendingUp,
       bgColor: "bg-crypto-green/20",
       iconColor: "text-crypto-green",
-      change: parseFloat(stats.totalProfit || stats.profitBalance || '0') > 0 ? "+100%" : "0%",
+      change: parseFloat(stats.totalProfit || stats.profitBalance || '0') > 0 ? "+ROI" : "0%",
       changeText: "qazanılan kar"
     },
     {

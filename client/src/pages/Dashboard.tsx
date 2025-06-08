@@ -81,9 +81,14 @@ export default function Dashboard() {
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <div className="flex items-center space-x-1 sm:space-x-2 bg-background rounded-lg px-2 sm:px-3 py-2">
                   <Wallet className="h-4 w-4 text-crypto-blue" />
-                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Balance:</span>
-                  <span className="text-crypto-green font-bold text-sm sm:text-base">
+                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Ticarət:</span>
+                  <span className="text-crypto-blue font-bold text-sm sm:text-base">
                   ${user.data?.user?.balance || '0.00'}
+                </span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">|</span>
+                  <span className="text-xs sm:text-sm font-medium hidden sm:inline">Kar:</span>
+                  <span className="text-crypto-green font-bold text-sm sm:text-base">
+                  ${user.data?.user?.profitBalance || '0.00'}
                 </span>
                 </div>
 

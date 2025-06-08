@@ -113,29 +113,30 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
 
           <div className="space-y-6">
             {/* Balance Display */}
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <Label className="text-sm text-muted-foreground">Əsas Balans</Label>
+            <div className="space-y-4">
+              <div className="text-center p-3 bg-crypto-blue/10 rounded-lg">
+                <Label className="text-sm text-muted-foreground">Ticarət Balansı</Label>
                 <div className="text-2xl font-bold text-crypto-blue">
                   ${parseFloat(currentBalance).toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Ticarət üçün</p>
+                <p className="text-xs text-muted-foreground mt-1">Sadəcə bu balans ticarət edir</p>
               </div>
-              <div>
+
+              <div className="text-center p-3 bg-green-500/10 rounded-lg">
                 <Label className="text-sm text-muted-foreground">Kar Balansı</Label>
                 <div className="text-2xl font-bold text-crypto-green">
                   ${parseFloat(profitBalance).toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Qazanılan kar</p>
+                <p className="text-xs text-muted-foreground mt-1">Kar olduqda bura köçür</p>
               </div>
             </div>
 
             {/* Total Balance */}
             <div className="text-center pt-4 border-t border-border">
               <Label className="text-sm text-muted-foreground">Ümumi Balans</Label>
-              <div className="text-3xl font-bold text-crypto-green">
-                ${(parseFloat(currentBalance) + parseFloat(profitBalance)).toFixed(2)}
-              </div>
+              <div className="text-3xl font-bold text-foreground">
+                ${(parseFloat(currentBalance) + parseFloat(profitBalance)).toFixed(2)}</div>
+
             </div>
 
             {/* Amount Input */}

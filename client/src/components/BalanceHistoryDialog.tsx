@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, TrendingDown, DollarSign, ArrowRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
 interface BalanceHistoryProps {
   isOpen: boolean;
@@ -40,19 +39,41 @@ interface BalanceHistoryItem {
 
 export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, userId }: BalanceHistoryProps) {
   const [balanceHistory, setBalanceHistory] = useState<BalanceHistoryItem[]>([]);
+  const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { data: trades } = useQuery<TradeHistoryItem[]>({
-    queryKey: ['/api/trades/user', userId],
-    enabled: isOpen && !!userId,
-  });
+  // Fetch data when dialog opens
+  useEffect(() => {
+    if (!isOpen || !userId) return;
 
-  const { data: user } = useQuery({
-    queryKey: ['/api/user', userId],
-    enabled: isOpen && !!userId,
-  });
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [tradesRes, userRes] = await Promise.all([
+          fetch('/api/trades/user'),
+          fetch(`/api/user/${userId}`)
+        ]);
+
+        if (tradesRes.ok && userRes.ok) {
+          const tradesData = await tradesRes.json();
+          const userData = await userRes.json();
+          
+          setTrades(tradesData.trades || []);
+          setUser(userData.user || null);
+        }
+      } catch (error) {
+        console.error('Error fetching balance history data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isOpen, userId]);
 
   useEffect(() => {
-    if (!trades || !user) return;
+    if (!trades.length || !user) return;
 
     const history: BalanceHistoryItem[] = [];
     let runningMainBalance = 20.00; // Başlanğıc balans
@@ -154,26 +175,38 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             <DollarSign className="h-5 w-5" />
             {getBalanceTitle()}
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Bu balansın necə formalaşdığını və tarixçəsini görə bilərsiniz
+          </p>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Cari Balans */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Cari Balans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                ${getCurrentBalance().toFixed(2)}
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-sm text-muted-foreground">Məlumatlar yüklənir...</p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {balanceType === "main" 
-                  ? "Ticarət üçün istifadə edilən balans" 
-                  : "Satışlardan əldə edilən kar"
-                }
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <>
+              {/* Cari Balans */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Cari Balans</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">
+                    ${getCurrentBalance().toFixed(2)}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {balanceType === "main" 
+                      ? "Ticarət üçün istifadə edilən balans" 
+                      : "Satışlardan əldə edilən kar"
+                    }
+                  </p>
+                </CardContent>
+              </Card>
 
           {/* Balans Tarixçəsi */}
           <Card>
@@ -267,6 +300,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                 </div>
               </CardContent>
             </Card>
+            </>
           )}
         </div>
       </DialogContent>

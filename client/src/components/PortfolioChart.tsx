@@ -154,6 +154,11 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const currentBalance = parseFloat(user?.user?.balance || '0');
   const profitBalance = parseFloat(user?.user?.profitBalance || '0');
   const totalBalance = currentBalance + profitBalance;
+    const displayValue = profitBalance
+
+  // Debug logging for balance values
+  console.log(`💰 Balance Debug: Main: $${currentBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
+  console.log(`🎯 Display Value: $${displayValue.toFixed(8)}, API Current: $${currentValue.toFixed(8)}`);
 
   console.log(`🔍 PortfolioChart Values: Current: $${currentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
   console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));
@@ -175,7 +180,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Kar: </span>
-                    <span className="font-medium text-green-600">${profitBalance.toFixed(2)}</span>
+                    <span className="font-medium text-green-600">${profitBalance.toFixed(8)}</span>
                   </div>
                 </div>
                 {safePerformanceData.length > 0 && (

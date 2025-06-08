@@ -76,33 +76,37 @@ export default function StatsGrid({ userId }: StatsGridProps) {
   const profitFromStart = parseFloat(stats.profitFromExpectedStart || '0');
   const profitPercentageFromStart = parseFloat(stats.profitPercentageFromStart || '0');
 
+  const mainBalance = parseFloat(stats.currentBalance || '0');
+  const profitBalance = parseFloat(stats.profitBalance || stats.totalProfit || '0');
+  const totalBalance = mainBalance + profitBalance;
+
   const statsCards = [
     {
-      title: "Ticarət Balansı",
-      value: `$${parseFloat(stats.currentBalance || '0').toFixed(2)}`,
+      title: "Əsas Balans",
+      value: `$${mainBalance.toFixed(2)}`,
       icon: Wallet,
       bgColor: "bg-crypto-blue/20",
       iconColor: "text-crypto-blue",
       change: "",
-      changeText: "ticarət üçün aktiv"
+      changeText: "ticarət üçün"
     },
     {
       title: "Kar Balansı", 
-      value: `$${parseFloat(stats.totalProfit || stats.profitBalance || '0').toFixed(2)}`,
+      value: `$${profitBalance.toFixed(2)}`,
       icon: TrendingUp,
       bgColor: "bg-crypto-green/20",
       iconColor: "text-crypto-green",
-      change: parseFloat(stats.totalProfit || stats.profitBalance || '0') > 0 ? "+ROI" : "0%",
+      change: profitBalance > 0 ? `+${((profitBalance / 20) * 100).toFixed(1)}%` : "0%",
       changeText: "qazanılan kar"
     },
     {
-      title: "Active Trades",
-      value: stats.activeTrades || '0',
-      icon: ArrowUpDown,
+      title: "Ümumi Balans",
+      value: `$${totalBalance.toFixed(2)}`,
+      icon: ArrowUp,
       bgColor: "bg-purple-500/20",
       iconColor: "text-purple-500",
-      change: "",
-      changeText: `${stats.activeTrades || 0} positions`
+      change: totalBalance > 20 ? `+${((totalBalance - 20) / 20 * 100).toFixed(1)}%` : "0%",
+      changeText: "ümumi dəyər"
     },
     {
       title: "Win Rate",
@@ -111,7 +115,7 @@ export default function StatsGrid({ userId }: StatsGridProps) {
       bgColor: "bg-yellow-500/20",
       iconColor: "text-yellow-500",
       change: parseFloat(stats.winRate) > 50 ? "+5.2%" : "0%",
-      changeText: "improvement"
+      changeText: "uğur nisbəti"
     }
   ];
 

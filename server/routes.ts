@@ -253,14 +253,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const newMainBalance = currentMainBalance + totalInvested;
             await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
 
+            // Always add invested amount back to main balance
+            await storage.addToMainBalance(userId, totalInvested);
+            
             if (profitLoss > 0) {
-              // Add profit to profit balance
+              // Add only profit to profit balance
               await storage.addProfit(userId, profitLoss);
               console.log(`💰 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
             } else {
-              // Subtract loss from main balance
+              // For losses, add back invested amount minus loss to main balance
               await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
-              console.log(`📉 ${crypto.symbol} SELL ALL: Loss: $${Math.abs(profitLoss).toFixed(2)} → Subtracted from Main Balance`);
+              console.log(`📉 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Loss: $${Math.abs(profitLoss).toFixed(2)} subtracted from Main Balance`);
             }
 
             // Get updated user data and broadcast correct balance update

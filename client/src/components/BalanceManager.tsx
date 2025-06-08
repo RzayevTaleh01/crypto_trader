@@ -115,11 +115,11 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
             {/* Balance Display */}
             <div className="space-y-4">
               <div className="text-center p-3 bg-crypto-blue/10 rounded-lg">
-                <Label className="text-sm text-muted-foreground">Ticarət Balansı</Label>
+                <Label className="text-sm text-muted-foreground">Əsas Balans</Label>
                 <div className="text-2xl font-bold text-crypto-blue">
                   ${parseFloat(currentBalance).toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Sadəcə bu balans ticarət edir</p>
+                <p className="text-xs text-muted-foreground mt-1">Ticarət üçün istifadə edilir</p>
               </div>
 
               <div className="text-center p-3 bg-green-500/10 rounded-lg">
@@ -127,7 +127,7 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
                 <div className="text-2xl font-bold text-crypto-green">
                   ${parseFloat(profitBalance).toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Kar olduqda bura köçür</p>
+                <p className="text-xs text-muted-foreground mt-1">Sadəcə satış karı saxlanır</p>
               </div>
             </div>
 
@@ -135,8 +135,11 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
             <div className="text-center pt-4 border-t border-border">
               <Label className="text-sm text-muted-foreground">Ümumi Balans</Label>
               <div className="text-3xl font-bold text-foreground">
-                ${(parseFloat(currentBalance) + parseFloat(profitBalance)).toFixed(2)}</div>
-
+                ${(parseFloat(currentBalance) + parseFloat(profitBalance)).toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Əsas balans + Kar balansı
+              </p>
             </div>
 
             {/* Amount Input */}
@@ -215,7 +218,7 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
                 {resetDatabaseMutation.isPending ? 'Sıfırlanır...' : 'Sıfırla'}
               </Button>
               <p className="text-xs text-muted-foreground mt-2 text-center">
-                Bütün məlumatları silir və $20 balans ilə başlayır
+                Bütün məlumatları silir və $20 əsas balans ilə başlayır
               </p>
             </div>
           </div>

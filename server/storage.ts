@@ -125,37 +125,37 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, userId));
   }
 
-  // New method for trading operations
-  async addProfit(userId: number, profitAmount: number): Promise<void> {
+  async addProfit(userId: number, profit: number): Promise<void> {
     const user = await this.getUser(userId);
-    if (!user) return;
-
-    const currentProfitBalance = parseFloat(user.profitBalance || '0');
-    const newProfitBalance = currentProfitBalance + profitAmount;
-
-    await db
-        .update(users)
-        .set({
-          profitBalance: newProfitBalance.toString(),
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, userId));
+    if (user) {
+      const newProfitBalance = parseFloat(user.profitBalance || '0') + profit;
+      await db.update(users).set({ 
+        profitBalance: newProfitBalance.toString(),
+        updatedAt: new Date()
+      }).where(eq(users.id, userId));
+    }
   }
 
-  async subtractFromMainBalance(userId: number, lossAmount: number): Promise<void> {
+  async addToMainBalance(userId: number, amount: number): Promise<void> {
     const user = await this.getUser(userId);
-    if (!user) return;
+    if (user) {
+      const newBalance = parseFloat(user.balance || '0') + amount;
+      await db.update(users).set({ 
+        balance: newBalance.toString(),
+        updatedAt: new Date()
+      }).where(eq(users.id, userId));
+    }
+  }
 
-    const currentMainBalance = parseFloat(user.balance || '0');
-    const newMainBalance = Math.max(0, currentMainBalance - lossAmount);
-
-    await db
-        .update(users)
-        .set({
-          balance: newMainBalance.toString(),
-          updatedAt: new Date()
-        })
-        .where(eq(users.id, userId));
+  async subtractFromMainBalance(userId: number, amount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (user) {
+      const newBalance = Math.max(0, parseFloat(user.balance || '0') - amount);
+      await db.update(users).set({ 
+        balance: newBalance.toString(),
+        updatedAt: new Date()
+      }).where(eq(users.id, userId));
+    }
   }
 
   async resetUserData(userId: number): Promise<void> {

@@ -44,10 +44,10 @@ class PortfolioService {
     const currentBalance = parseFloat(user.balance || '0');
     const profitBalance = parseFloat(user.profitBalance || '0');
 
-    // Total value = main balance + profit balance
+    // Total value = main balance + profit balance (new logic)
     const currentTotalValue = currentBalance + profitBalance;
 
-    console.log(`📊 Portfolio Performance: Main Balance: $${currentBalance}, Profit Balance: $${profitBalance}, Total: $${currentTotalValue.toFixed(2)}`);
+    console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Kar Balansı: $${profitBalance}, Ümumi: $${currentTotalValue.toFixed(2)}`);
 
     // Create simple performance data based on balance history
     const performanceData = [];

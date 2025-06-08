@@ -172,7 +172,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Ticarət Balansı: </span>
+                    <span className="text-muted-foreground">Əsas Balans: </span>
                     <span className="font-medium text-crypto-blue">${currentMainBalance.toFixed(2)}</span>
                     <div className="text-xs text-muted-foreground">Ticarət üçün</div>
                   </div>
@@ -181,13 +181,20 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                     <span className="font-medium text-green-600">
                       ${profitBalance > 0 ? profitBalance.toFixed(2) : '0.00'}
                     </span>
-                    <div className="text-xs text-muted-foreground">Qazanılan kar</div>
+                    <div className="text-xs text-muted-foreground">Satış karı</div>
                   </div>
                 </div>
                 <div className="text-center mt-2 p-2 bg-muted/30 rounded-lg">
                   <div className="text-xs text-muted-foreground">Ümumi Balans</div>
                   <div className="text-lg font-bold text-foreground">
-                    ${totalBalance.toFixed(2)}
+                    $</div_str>
+                  </div>
+                  {profitBalance > 0 && (
+                    <div className="text-xs text-green-600">
+                      +${profitBalance.toFixed(2)} kar ({((profitBalance / 20) * 100).toFixed(2)}% ROI)
+                    </div>
+                  )}
+                </div>{totalBalance.toFixed(2)}
                   </div>
                   {profitBalance > 0 && (
                     <div className="text-xs text-green-600">

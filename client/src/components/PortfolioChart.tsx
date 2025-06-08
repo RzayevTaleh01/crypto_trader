@@ -147,19 +147,19 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const totalBalance = currentBalance + profitBalance;
 
   // Parse values correctly from API response - use actual total balance if no performance data
-  const currentValue = safePerformanceData.length > 0 ?
+  const chartCurrentValue = safePerformanceData.length > 0 ?
       parseFloat(String(safePerformanceData[safePerformanceData.length - 1]?.value || '0')) : totalBalance;
   const startValue = safePerformanceData.length > 0 ?
       parseFloat(String(safePerformanceData[0]?.value || '0')) : 20.00;
 
-  const valueChange = currentValue - startValue;
+  const valueChange = chartCurrentValue - startValue;
   const percentageChange = startValue > 0 ? ((valueChange / startValue) * 100) : 0;
 
   // Debug logging for balance values
   console.log(`💰 Balance Debug: Main: $${currentBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
-  console.log(`🎯 Display Value: Current API: $${currentValue.toFixed(8)}, Real Total: $${totalBalance.toFixed(8)}`);
+  console.log(`🎯 Display Value: Current API: $${chartCurrentValue.toFixed(8)}, Real Total: $${totalBalance.toFixed(8)}`);
 
-  console.log(`🔍 PortfolioChart Values: Current: $${currentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
+  console.log(`🔍 PortfolioChart Values: Current: $${chartCurrentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
   console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));
 
   return (
@@ -180,18 +180,20 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
                   <div>
                     <span className="text-muted-foreground">Kar: </span>
                     <span className="font-medium text-green-600">
-                      ${profitBalance > 0 ? profitBalance.toFixed(8) : '0.00'}
+                      ${profitBalance > 0 ? profitBalance.toFixed(2) : '0.00'}
                     </span>
                   </div>
                 </div>
-                {safePerformanceData.length > 0 && (
-                    <div className={`text-sm flex items-center gap-1 mt-1 ${
-                        valueChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {valueChange >= 0 ? '+' : ''}${Math.abs(valueChange).toFixed(2)}
-                      ({percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(2)}%)
-                    </div>
-                )}
+                <div className={`text-sm flex items-center gap-1 mt-1 ${
+                    profitBalance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {profitBalance >= 0 ? '+' : ''}${profitBalance.toFixed(2)} kar
+                  {profitBalance > 0 && (
+                    <span className="text-muted-foreground">
+                      ({((profitBalance / currentBalance) * 100).toFixed(2)}%)
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center space-x-2">

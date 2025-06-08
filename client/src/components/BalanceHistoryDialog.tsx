@@ -22,7 +22,8 @@ interface TradeHistoryItem {
   total: string;
   pnl?: string;
   createdAt: string;
-  cryptocurrency: {
+  cryptoId: number;
+  cryptocurrency?: {
     symbol: string;
     name: string;
   };
@@ -42,6 +43,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
 
   // Fetch data when dialog opens
   useEffect(() => {
@@ -49,24 +51,69 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
     const fetchData = async () => {
       setLoading(true);
+      setError("");
+      
       try {
-        const [tradesRes, userRes] = await Promise.all([
-          fetch('/api/trades/user'),
-          fetch(`/api/user/${userId}`)
-        ]);
-
-        if (tradesRes.ok && userRes.ok) {
-          const tradesData = await tradesRes.json();
-          const userData = await userRes.json();
-          
-          // Backend-də trades array-i birbaşa qayıdır, nested deyil
-          setTrades(Array.isArray(tradesData) ? tradesData : tradesData.trades || []);
-          setUser(userData.user || userData || null);
+        console.log('🔄 Fetching balance history data...');
+        
+        // Fetch trades
+        const tradesResponse = await fetch('/api/trades/user');
+        console.log('📊 Trades response status:', tradesResponse.status);
+        
+        if (!tradesResponse.ok) {
+          throw new Error(`Trades API failed: ${tradesResponse.status}`);
         }
-      } catch (error) {
-        console.error('Error fetching balance history data:', error);
-        console.log('Trades response status:', tradesRes?.status);
-        console.log('User response status:', userRes?.status);
+        
+        const tradesData = await tradesResponse.json();
+        console.log('📊 Raw trades data:', tradesData);
+        
+        // Fetch user data
+        const userResponse = await fetch(`/api/user/${userId}`);
+        console.log('👤 User response status:', userResponse.status);
+        
+        if (!userResponse.ok) {
+          throw new Error(`User API failed: ${userResponse.status}`);
+        }
+        
+        const userData = await userResponse.json();
+        console.log('👤 Raw user data:', userData);
+
+        // Fetch cryptocurrencies to map trade data
+        const cryptosResponse = await fetch('/api/cryptocurrencies');
+        const cryptosData = await cryptosResponse.json();
+        console.log('💰 Cryptos data length:', cryptosData.length);
+
+        // Map crypto data by ID for quick lookup
+        const cryptoMap = new Map();
+        cryptosData.forEach((crypto: any) => {
+          cryptoMap.set(crypto.id, { symbol: crypto.symbol, name: crypto.name });
+        });
+
+        // Process trades data - ensure it's an array
+        let processedTrades: TradeHistoryItem[] = [];
+        if (Array.isArray(tradesData)) {
+          processedTrades = tradesData;
+        } else if (tradesData.trades && Array.isArray(tradesData.trades)) {
+          processedTrades = tradesData.trades;
+        } else {
+          console.warn('⚠️ Invalid trades data structure:', tradesData);
+          processedTrades = [];
+        }
+
+        // Add cryptocurrency info to trades
+        const tradesWithCrypto = processedTrades.map((trade: any) => ({
+          ...trade,
+          cryptocurrency: cryptoMap.get(trade.cryptoId) || { symbol: 'Unknown', name: 'Unknown' }
+        }));
+
+        console.log('✅ Processed trades with crypto info:', tradesWithCrypto.length);
+
+        setTrades(tradesWithCrypto);
+        setUser(userData.user || userData);
+        
+      } catch (error: any) {
+        console.error('❌ Error fetching balance history data:', error);
+        setError(error.message || 'Məlumatları yükləyərkən xəta baş verdi');
         setTrades([]);
         setUser(null);
       } finally {
@@ -77,8 +124,15 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
     fetchData();
   }, [isOpen, userId]);
 
+  // Generate balance history from trades
   useEffect(() => {
-    if (!trades.length || !user) return;
+    if (!trades.length || !user) {
+      console.log('⚠️ Cannot generate balance history - missing trades or user data');
+      setBalanceHistory([]);
+      return;
+    }
+
+    console.log('🔄 Generating balance history for', balanceType, 'balance');
 
     const history: BalanceHistoryItem[] = [];
     let runningMainBalance = 20.00; // Başlanğıc balans
@@ -100,9 +154,18 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-    sortedTrades.forEach(trade => {
+    console.log('📊 Processing', sortedTrades.length, 'sorted trades');
+
+    sortedTrades.forEach((trade, index) => {
       const tradeAmount = parseFloat(trade.total);
       const profit = parseFloat(trade.pnl || '0');
+
+      console.log(`🔍 Processing trade ${index + 1}:`, {
+        type: trade.type,
+        symbol: trade.cryptocurrency?.symbol,
+        amount: tradeAmount,
+        profit: profit
+      });
 
       if (trade.type === 'BUY') {
         // Alış zamanı əsas balansdan çıxılır
@@ -112,7 +175,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "BUY",
             amount: -tradeAmount,
-            description: `${trade.cryptocurrency.symbol} alışı üçün ödəniş`,
+            description: `${trade.cryptocurrency?.symbol || 'Unknown'} alışı üçün ödəniş`,
             newBalance: runningMainBalance,
             relatedTrade: trade
           });
@@ -127,7 +190,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "SELL_RETURN",
             amount: originalInvestment,
-            description: `${trade.cryptocurrency.symbol} satışından əsas investisiyanın qayıdışı`,
+            description: `${trade.cryptocurrency?.symbol || 'Unknown'} satışından əsas investisiyanın qayıdışı`,
             newBalance: runningMainBalance,
             relatedTrade: trade
           });
@@ -138,7 +201,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "PROFIT",
             amount: profit,
-            description: `${trade.cryptocurrency.symbol} satışından kar`,
+            description: `${trade.cryptocurrency?.symbol || 'Unknown'} satışından kar`,
             newBalance: runningProfitBalance,
             relatedTrade: trade
           });
@@ -146,6 +209,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       }
     });
 
+    console.log('✅ Generated balance history:', history.length, 'entries');
     setBalanceHistory(history.reverse()); // Ən yenidən köhnəyə
   }, [trades, user, balanceType]);
 
@@ -193,6 +257,13 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                 <p className="text-sm text-muted-foreground">Məlumatlar yüklənir...</p>
               </div>
             </div>
+          ) : error ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <p className="text-red-600 font-medium">Xəta: {error}</p>
+                <p className="text-sm text-muted-foreground mt-1">Lütfən yenidən cəhd edin</p>
+              </div>
+            </div>
           ) : (
             <>
               {/* Cari Balans */}
@@ -213,7 +284,20 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                 </CardContent>
               </Card>
 
-          {/* Balans Tarixçəsi */}
+              {/* Debug Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Debug Məlumatları</CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs space-y-1">
+                  <p>Trades sayı: {trades.length}</p>
+                  <p>User məlumatı: {user ? 'Var' : 'Yox'}</p>
+                  <p>Balance history: {balanceHistory.length} giriş</p>
+                  <p>Balance type: {balanceType}</p>
+                </CardContent>
+              </Card>
+
+              {/* Balans Tarixçəsi */}
               <Card>
                 <CardHeader>
                   <CardTitle>Balans Dəyişiklikləri</CardTitle>
@@ -258,7 +342,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                               
                               {item.relatedTrade && (
                                 <div className="mt-1 text-xs text-muted-foreground">
-                                  {item.relatedTrade.amount} {item.relatedTrade.cryptocurrency.symbol} × 
+                                  {item.relatedTrade.amount} {item.relatedTrade.cryptocurrency?.symbol || 'Unknown'} × 
                                   ${parseFloat(item.relatedTrade.price).toFixed(4)}
                                 </div>
                               )}

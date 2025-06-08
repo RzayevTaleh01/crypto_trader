@@ -1027,13 +1027,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
-  // Get user trades
+  // Get user trades with cryptocurrency details
   app.get('/api/trades/user', async (req, res) => {
     try {
       const userId = 1; // Hardcoded user ID for now
       const trades = await storage.getUserTrades(userId);
-      console.log(`📊 User ${userId} trades count:`, trades.length);
-      res.json(trades);
+      
+      // Add cryptocurrency details to each trade
+      const tradesWithCrypto = await Promise.all(trades.map(async (trade) => {
+        const crypto = await storage.getCryptocurrency(trade.cryptoId);
+        return {
+          ...trade,
+          cryptocurrency: crypto ? {
+            symbol: crypto.symbol,
+            name: crypto.name
+          } : {
+            symbol: 'Unknown',
+            name: 'Unknown'
+          }
+        };
+      }));
+      
+      console.log(`📊 User ${userId} trades count:`, tradesWithCrypto.length);
+      res.json(tradesWithCrypto);
     } catch (error) {
       console.error('Error fetching user trades:', error);
       res.status(500).json({ error: 'Failed to fetch trades' });

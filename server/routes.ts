@@ -117,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({ user: { id: user.id, username: user.username, email: user.email, balance: user.balance } });
+      res.json({ user: { id: user.id, username: user.username, email: user.email, balance: user.balance, profitBalance: user.profitBalance } });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to fetch user", error: error.message });
     }
@@ -918,7 +918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           id: 'ema_rsi',
           name: 'EMA-RSI Strategy',
-          description: 'Python əsaslı EMA20/EMA50 crossover və RSI sinyalları ilə treyd',
+          description: 'Python əsaslı EMA20/EMA50 crossover və RSI sinyyalları ilə treyd',
           riskLevel: 'Optimal',
           expectedReturn: '15-35%',
           timeframe: '5-30 dəqiqə'

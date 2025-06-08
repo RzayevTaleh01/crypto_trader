@@ -143,7 +143,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
 
   // Current balances from user data
   const currentBalance = parseFloat(user?.user?.balance || '0');
-  const profitBalance = parseFloat(user?.user?.profit_balance || '0');
+  const profitBalance = parseFloat(user?.user?.profitBalance || user?.user?.profit_balance || '0');
   const totalBalance = currentBalance + profitBalance;
 
   // Parse values correctly from API response - use actual total balance if no performance data

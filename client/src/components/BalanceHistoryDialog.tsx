@@ -209,97 +209,98 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
               </Card>
 
           {/* Balans Tarixçəsi */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Balans Dəyişiklikləri</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-96">
-                <div className="space-y-3">
-                  {balanceHistory.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {balanceType === "profit" 
-                        ? "Hələ kar əldə edilməyib" 
-                        : "Balans dəyişikliyi yoxdur"
-                      }
-                    </div>
-                  ) : (
-                    balanceHistory.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {item.action === "BUY" ? (
-                              <TrendingDown className="h-4 w-4 text-red-500" />
-                            ) : (
-                              <TrendingUp className="h-4 w-4 text-green-500" />
-                            )}
-                            <Badge 
-                              variant={item.action === "BUY" ? "destructive" : "default"}
-                              className="text-xs"
-                            >
-                              {item.action === "INITIAL" ? "BAŞLANĞIC" :
-                               item.action === "BUY" ? "ALIŞ" :
-                               item.action === "SELL_RETURN" ? "GERI QAYTARMA" :
-                               item.action === "PROFIT" ? "KAR" : item.action}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {formatTime(item.timestamp)}
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm font-medium">
-                            {item.description}
-                          </p>
-                          
-                          {item.relatedTrade && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {item.relatedTrade.amount} {item.relatedTrade.cryptocurrency.symbol} × 
-                              ${parseFloat(item.relatedTrade.price).toFixed(4)}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Balans Dəyişiklikləri</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-96">
+                    <div className="space-y-3">
+                      {balanceHistory.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          {balanceType === "profit" 
+                            ? "Hələ kar əldə edilməyib" 
+                            : "Balans dəyişikliyi yoxdur"
+                          }
+                        </div>
+                      ) : (
+                        balanceHistory.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                {item.action === "BUY" ? (
+                                  <TrendingDown className="h-4 w-4 text-red-500" />
+                                ) : (
+                                  <TrendingUp className="h-4 w-4 text-green-500" />
+                                )}
+                                <Badge 
+                                  variant={item.action === "BUY" ? "destructive" : "default"}
+                                  className="text-xs"
+                                >
+                                  {item.action === "INITIAL" ? "BAŞLANĞIC" :
+                                   item.action === "BUY" ? "ALIŞ" :
+                                   item.action === "SELL_RETURN" ? "GERI QAYTARMA" :
+                                   item.action === "PROFIT" ? "KAR" : item.action}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {formatTime(item.timestamp)}
+                                </span>
+                              </div>
+                              
+                              <p className="text-sm font-medium">
+                                {item.description}
+                              </p>
+                              
+                              {item.relatedTrade && (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {item.relatedTrade.amount} {item.relatedTrade.cryptocurrency.symbol} × 
+                                  ${parseFloat(item.relatedTrade.price).toFixed(4)}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
 
-                        <div className="text-right">
-                          <div className={`text-lg font-bold ${
-                            item.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {item.amount >= 0 ? '+' : ''}${Math.abs(item.amount).toFixed(2)}
+                            <div className="text-right">
+                              <div className={`text-lg font-bold ${
+                                item.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {item.amount >= 0 ? '+' : ''}${Math.abs(item.amount).toFixed(2)}
+                              </div>
+                              
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <ArrowRight className="h-3 w-3" />
+                                <span>${item.newBalance.toFixed(2)}</span>
+                              </div>
+                            </div>
                           </div>
-                          
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <ArrowRight className="h-3 w-3" />
-                            <span>${item.newBalance.toFixed(2)}</span>
-                          </div>
-                        </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Xülasə */}
+              {balanceHistory.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Xülasə</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Ümumi əməliyyat: </span>
+                        <span className="font-medium">{balanceHistory.length}</span>
                       </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          {/* Xülasə */}
-          {balanceHistory.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Xülasə</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Ümumi əməliyyat: </span>
-                    <span className="font-medium">{balanceHistory.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Son yeniləmə: </span>
-                    <span className="font-medium">
-                      {balanceHistory[0] ? formatTime(balanceHistory[0].timestamp) : 'Yoxdur'}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                      <div>
+                        <span className="text-muted-foreground">Son yeniləmə: </span>
+                        <span className="font-medium">
+                          {balanceHistory[0] ? formatTime(balanceHistory[0].timestamp) : 'Yoxdur'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
         </div>

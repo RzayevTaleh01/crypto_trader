@@ -289,7 +289,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <div className="bg-crypto-green/20 p-1.5 rounded-md">
-                      <Wallet className="h-4 w-4 text-crypto-green" />
+                      <div className="h-4 w-4 text-crypto-green" />
                     </div>
                     Cari Balans
                   </CardTitle>

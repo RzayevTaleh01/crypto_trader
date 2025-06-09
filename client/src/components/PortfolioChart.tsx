@@ -149,9 +149,10 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   // Parse values correctly from API response
   const chartCurrentValue = safePerformanceData.length > 0 ?
       parseFloat(String(safePerformanceData[safePerformanceData.length - 1]?.value || '0')) : totalBalance;
-  
+
   // Calculate starting value from actual investment data
-  const buyTrades = trades?.filter((t: any) => t.type === 'BUY') || [];
+  //Added a check to ensure trades is an array before attempting to filter it
+  const buyTrades = Array.isArray(trades) ? trades?.filter((t: any) => t.type === 'BUY') || [] : [];
   const totalInvested = buyTrades.reduce((sum: number, trade: any) => sum + parseFloat(trade.total || '0'), 0);
   const startValue = Math.max(totalInvested, 20);
 

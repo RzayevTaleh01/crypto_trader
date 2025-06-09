@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, TrendingDown, DollarSign, ArrowRight } from "lucide-react";
+import { useCallback } from "react";
 
 interface BalanceHistoryProps {
   isOpen: boolean;
@@ -35,6 +36,14 @@ interface BalanceHistoryItem {
   description: string;
   newBalance: number;
   relatedTrade?: TradeHistoryItem;
+}
+
+interface BalanceHistoryPoint {
+  timestamp: string;
+  balance: number;
+  type: 'initial' | 'buy' | 'sell' | 'current';
+  amount?: number;
+  symbol?: string;
 }
 
 export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, userId }: BalanceHistoryProps) {
@@ -122,6 +131,59 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
     fetchData();
   }, [isOpen, userId]);
+
+  // Generate balance history data
+  const generateBalanceHistory = useCallback(() => {
+    if (!trades || trades.length === 0 || !user) {
+      console.log('⚠️ Cannot generate balance history - missing trades or user data');
+      return [];
+    }
+
+    const history: BalanceHistoryPoint[] = [];
+    let currentBalance = parseFloat(user.balance || '20');
+
+    // Add initial balance point
+    history.push({
+      timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      balance: currentBalance,
+      type: 'initial'
+    });
+
+    // Process trades chronologically
+    const sortedTrades = [...trades].sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    for (const trade of sortedTrades) {
+      const tradeAmount = parseFloat(trade.total);
+
+      if (trade.type === 'BUY') {
+        currentBalance -= tradeAmount;
+      } else if (trade.type === 'SELL') {
+        currentBalance += tradeAmount;
+        if (trade.pnl) {
+          currentBalance += parseFloat(trade.pnl);
+        }
+      }
+
+      history.push({
+        timestamp: trade.createdAt,
+        balance: Math.max(0, currentBalance),
+        type: trade.type.toLowerCase() as 'buy' | 'sell',
+        amount: tradeAmount,
+        symbol: 'Unknown' // We'll need to fetch crypto data for this
+      });
+    }
+
+    // Add current balance point
+    history.push({
+      timestamp: new Date().toISOString(),
+      balance: parseFloat(user.balance || '0') + parseFloat(user.profitBalance || '0'),
+      type: 'current'
+    });
+
+    return history;
+  }, [trades, user]);
 
   // Generate balance history from trades
   useEffect(() => {

@@ -101,6 +101,31 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
     handleSetMainBalance(newBalance);
   };
 
+  const handleTransferProfitToMain = () => {
+    const profitAmount = parseFloat(profitBalance);
+    if (profitAmount <= 0) {
+      toast({
+        title: "Xəta",
+        description: "Transfer ediləcək kar yoxdur.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newMainBalance = (parseFloat(currentBalance) + profitAmount).toFixed(2);
+    const newProfitBalance = "0.00";
+
+    updateBalanceMutation.mutate({ 
+      balance: newMainBalance, 
+      profitBalance: newProfitBalance 
+    });
+
+    toast({
+      title: "Transfer uğurlu",
+      description: `$${profitAmount.toFixed(2)} kar əsas balansa köçürüldü.`,
+    });
+  };
+
   const quickAmounts = ["50", "100", "250", "500", "1000"];
 
   return (
@@ -132,6 +157,15 @@ export default function BalanceManager({ userId, currentBalance, profitBalance =
               <p className="text-xs text-muted-foreground mt-2">
                 Yalnız satış qazanclarından toplanan pul
               </p>
+              {parseFloat(profitBalance) > 0 && (
+                <Button
+                  onClick={handleTransferProfitToMain}
+                  disabled={updateBalanceMutation.isPending}
+                  className="mt-3 w-full bg-crypto-green text-white hover:bg-crypto-green/80 text-xs py-1 h-8"
+                >
+                  Əsas Balansa Transfer Et
+                </Button>
+              )}
             </div>
           </div>
 

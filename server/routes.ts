@@ -843,21 +843,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/user/:id/balance", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      const { balance } = req.body;
+      const { balance, profitBalance } = req.body;
 
-      if (!balance || isNaN(parseFloat(balance))) {
+      if (balance !== undefined && (balance === null || isNaN(parseFloat(balance)))) {
         return res.status(400).json({ message: "Valid balance amount required" });
       }
 
-      await storage.updateUserBalance(userId, balance);
+      if (profitBalance !== undefined && (profitBalance === null || isNaN(parseFloat(profitBalance)))) {
+        return res.status(400).json({ message: "Valid profit balance amount required" });
+      }
+
+      // Update balances using the new method
+      await storage.updateUserBalances(userId, balance, profitBalance);
+
+      // Get updated user data for broadcast
+      const updatedUser = await storage.getUser(userId);
 
       // Broadcast balance update to WebSocket clients
       broadcast({
         type: 'balanceUpdate',
-        data: { userId, balance: parseFloat(balance) }
+        data: { 
+          userId, 
+          balance: parseFloat(updatedUser?.balance || '0'), 
+          profitBalance: parseFloat(updatedUser?.profitBalance || '0')
+        }
       });
 
-      res.json({ message: "Balance updated successfully", newBalance: balance });
+      res.json({ 
+        message: "Balance updated successfully", 
+        newBalance: updatedUser?.balance,
+        newProfitBalance: updatedUser?.profitBalance
+      });
     } catch (error: any) {
       res.status(500).json({ message: "Failed to update balance", error: error.message });
     }
@@ -895,8 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           winRate: '0',
           currentBalance: '20.00',
           totalValue: '20.00',
-          portfolioValue: '0.00'
-        }
+          portfolioValue: '0.00'        }
       });
 
       res.json({
@@ -1372,252 +1387,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Bot settings updated successfully" });
     } catch (error: any) {
       res.status(400).json({ message: "Failed to update bot settings", error: error.message });
-    }
-  });
-
-  // Balance management route
-  app.patch("/api/user/:id/balance", async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-      const { balance } = req.body;
-
-      if (!balance || isNaN(parseFloat(balance))) {
-        return res.status(400).json({ message: "Valid balance amount required" });
-      }
-
-      await storage.updateUserBalance(userId, balance);
-
-      // Broadcast balance update to WebSocket clients
-      broadcast({
-        type: 'balanceUpdate',
-        data: { userId, balance: parseFloat(balance) }
-      });
-
-      res.json({ message: "Balance updated successfully", newBalance: balance });
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed to update balance", error: error.message });
-    }
-  });
-
-  // Reset user data endpoint
-  app.post("/api/user/:id/reset", async (req, res) => {
-    try {
-      const userId = parseInt(req.params.id);
-
-      // Reset all user data
-      await storage.resetUserData(userId);
-
-      // Set balance back to $20
-      await storage.updateUserBalance(userId, "20.00");
-
-      console.log(`🔄 User ${userId} data reset - balance set to $20.00`);
-
-      // Broadcast multiple updates for complete UI refresh
-      broadcast({
-        type: 'dataReset',
-        data: { userId, newBalance: 20.00 }
-      });
-
-      broadcast({
-        type: 'portfolioUpdate',
-        data: []
-      });
-
-      broadcast({
-        type: 'statsUpdate',
-        data: {
-          totalProfit: '0.00',
-          activeTrades: 0,
-          winRate: '0',
-          currentBalance: '20.00',
-          totalValue: '20.00',
-          portfolioValue: '0.00'
-        }
-      });
-
-      res.json({
-        message: "User data reset successfully",
-        newBalance: "20.00"
-      });
-
-    } catch (error: any) {
-      console.error("Reset error:", error);
-      res.status(500).json({
-        message: "Failed to reset user data",
-        error: error.message
-      });
-    }
-  });
-
-  // Analytics route
-  app.get("/api/analytics/user", async (req, res) => {
-    try {
-      const userId = 1; // Default user for demo
-      const stats = await storage.getUserStats(userId);
-      res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed to fetch analytics", error: error.message });
-    }
-  });
-
-  app.get("/api/analytics/user/:userId", async (req, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      const stats = await storage.getUserStats(userId);
-      res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ message: "Failed to fetch analytics", error: error.message });
-    }
-  });
-
-  // Get Available Trading Strategies
-  app.get('/api/strategies/available', async (req, res) => {
-    try {
-      const strategies = [
-        {
-          id: 'ema_rsi',
-          name: 'EMA-RSI Strategy',
-          description: 'Python əsaslı EMA20/EMA50 crossover və RSI sinyyalları ilə treyd',
-          riskLevel: 'Optimal',
-          expectedReturn: '15-35%',
-          timeframe: '5-30 dəqiqə'
-        }
-      ];
-
-      res.json({ success: true, strategies });
-    } catch (error: any) {
-      console.log('Strategies list error:', error);      res.status(500).json({ success: false, message: 'Failed to get strategies' });
-    }
-  });
-
-  // Run Backtest
-  app.post('/api/backtest/run', async (req, res) => {
-    try {
-      const { backtestService } = await import('./services/backtestService');
-
-      const config = {
-        startBalance: req.body.startBalance || 20,
-        startDate: req.body.startDate || '2024-01-01',
-        endDate: req.body.endDate || '2024-12-31',
-        strategy: req.body.strategy || 'ema_rsi',
-        riskLevel: req.body.riskLevel || 5
-      };
-
-      console.log('🚀 Starting backtest with config:', config);
-
-      const results = await backtestService.runBacktest(config);
-
-      console.log('✅ Backtest completed successfully');
-      console.log(`📊 Results: ${results.totalReturnPercent.toFixed(2)}% return, ${results.winRate.toFixed(1)}% win rate`);
-
-      res.json({ 
-        success: true, 
-        results: results,
-        message: 'Backtest completed successfully'
-      });
-    } catch (error: any) {
-      console.log('❌ Backtest error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Backtest failed',
-        error: error.message 
-      });
-    }
-  });
-
-  // Update Bot Strategy
-  app.put('/api/bot-settings/strategy', async (req, res) => {
-    try {
-      const userId = 1; // Default user
-      const { strategy } = req.body;
-
-      const validStrategies = ['ema_rsi'];
-      if (!validStrategies.includes(strategy)) {
-        returnres.status(400).json({ success: false, message: 'Invalid strategy' });
-      }
-
-      await storage.updateBotSettings(userId, { strategy });
-
-      // Restart bot with new strategy if it's active
-      const { emaRsiStrategy } = await import('./services/emaRsiStrategy.ts');
-      const botSettings = await storage.getBotSettings(userId);
-      if (botSettings && botSettings.isActive) {
-        emaRsiStrategy.stopContinuousTrading();
-        await emaRsiStrategy.startContinuousTrading(userId);
-      }
-
-      res.json({ success: true, message: 'Strategy updated successfully' });
-    } catch (error: any) {
-      console.log('Strategy update error:', error);
-      res.status(500).json({ success: false, message: 'Failed to update strategy' });
-    }
-  });
-
-  async function updatePortfolioAfterBuy(userId: number, cryptoId: number, quantity: number, price: number) {
-    const existing = await storage.getPortfolioItem(userId, cryptoId);
-
-    if (existing) {
-      const newAmount = parseFloat(existing.amount) + quantity;
-      const newTotal = parseFloat(existing.totalInvested) + (quantity * price);
-      const newAvgPrice = newTotal / newAmount;
-
-      await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), newAvgPrice.toString(), newTotal.toString());
-    } else {
-      await storage.createPortfolioItem({
-        userId,
-        cryptoId,
-        amount: quantity.toString(),
-        averagePrice: price.toString(),
-        totalInvested: (quantity * price).toString()
-      });
-    }
-  }
-
-  async function updatePortfolioAfterSell(userId: number, cryptoId: number, soldAmount: number) {
-    const existing = await storage.getPortfolioItem(userId, cryptoId);
-
-    if (existing) {
-      const currentAmount = parseFloat(existing.amount);
-      const newAmount = Math.max(0, currentAmount - soldAmount);
-
-      if (newAmount < 0.001) {
-        await storage.deletePortfolioItem(userId, cryptoId);
-      } else {
-        const sellRatio = soldAmount / currentAmount;
-        const currentTotal = parseFloat(existing.totalInvested);
-        const newTotal = currentTotal * (1 - sellRatio);
-
-        await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), existing.averagePrice, newTotal.toString());
-      }
-    }
-  }
-
-  // Get user trades with cryptocurrency details
-  app.get('/api/trades/user', async (req, res) => {
-    try {
-      const userId = 1; // Hardcoded user ID for now
-      const trades = await storage.getUserTrades(userId);
-
-      // Add cryptocurrency details to each trade
-      const tradesWithCrypto = await Promise.all(trades.map(async (trade) => {
-        const crypto = await storage.getCryptocurrency(trade.cryptoId);
-        return {
-          ...trade,
-          cryptocurrency: crypto ? {
-            symbol: crypto.symbol,
-            name: crypto.name
-          } : {
-            symbol: 'Unknown',
-            name: 'Unknown'
-          }
-        };
-      }));
-
-      console.log(`📊 User ${userId} trades count:`, tradesWithCrypto.length);
-      res.json(tradesWithCrypto);
-    } catch (error) {
-      console.error('Error fetching user trades:', error);
-      res.status(500).json({ error: 'Failed to fetch trades' });
     }
   });
 

@@ -62,19 +62,19 @@ class PortfolioService {
         }
       }
 
-      // Total value includes main balance + portfolio + profit balance for display
-      const currentTotalValue = currentBalance + currentPortfolioValue + currentProfitBalance;
+      // Real total value = ONLY main balance + portfolio value (trading capital)
+      // Profit balance is stored separately and not part of trading performance
+      const currentTotalValue = currentBalance + currentPortfolioValue;
 
-      console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, Ümumi: $${currentTotalValue.toFixed(2)}`);
+      console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, Trading Dəyəri: $${currentTotalValue.toFixed(2)}`);
 
-      // Calculate investment history
+      // Calculate investment history for realistic simulation
       const buyTrades = allTrades.filter(t => t.type === 'BUY');
       const sellTrades = allTrades.filter(t => t.type === 'SELL');
       const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total || '0'), 0);
-      const totalRealizedProfit = sellTrades.reduce((sum, trade) => sum + parseFloat(trade.pnl || '0'), 0);
-
-      // Starting value based on actual investment
-      const startingValue = Math.max(totalInvested || 20, 20);
+      
+      // Starting value should reflect actual trading capital, not including profit balance
+      const startingValue = Math.max(totalInvested || currentTotalValue || 10, 10);
 
       // Generate hourly data points
       const pointsCount = Math.min(hours, 24); // Max 24 points for readability
@@ -89,18 +89,18 @@ class PortfolioService {
           // Current value
           historicalValue = currentTotalValue;
         } else {
-          // Calculate gradual progression
+          // Calculate realistic progression based on actual trading
           const progressRatio = 1 - (hoursBack / hours);
           
-          // Base growth simulation with profit accumulation
-          const profitAccumulation = totalRealizedProfit * progressRatio;
+          // Simulate portfolio growth over time
           const portfolioGrowth = currentPortfolioValue * progressRatio;
+          const balanceProgression = currentBalance * progressRatio;
           
-          // Add some realistic variation
-          const variation = Math.sin(hoursBack / 4) * 0.02; // Small fluctuation
-          const baseGrowth = 1 + (progressRatio * 0.1) + variation; // Max 10% growth
+          // Add realistic market variation (smaller fluctuations)
+          const variation = Math.sin(hoursBack / 6) * 0.01; // 1% max variation
+          const growthFactor = 1 + (progressRatio * 0.05) + variation; // Max 5% base growth
           
-          historicalValue = startingValue * baseGrowth + profitAccumulation + portfolioGrowth;
+          historicalValue = (startingValue * growthFactor * 0.7) + portfolioGrowth + balanceProgression;
         }
 
         const finalValue = Math.max(startingValue * 0.95, parseFloat(historicalValue.toFixed(2))); // Don't go below 95% of start

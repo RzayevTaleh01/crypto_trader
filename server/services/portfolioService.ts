@@ -1,4 +1,3 @@
-
 import { storage } from "../storage";
 
 class PortfolioService {
@@ -69,7 +68,7 @@ class PortfolioService {
 
       // Portfolio chart must show EXACTLY user's actual balance - no fake growth
       const actualCurrentValue = realTotalValue;
-      
+
       // Start from a realistic baseline very close to current actual value
       const startingValue = Math.max(actualCurrentValue - 1, actualCurrentValue * 0.95);
 
@@ -89,7 +88,7 @@ class PortfolioService {
           // Very minimal progression - no artificial growth
           const progressRatio = 1 - (hoursBack / hours);
           historicalValue = startingValue + ((actualCurrentValue - startingValue) * progressRatio);
-          
+
           // Strict cap to prevent any inflation
           historicalValue = Math.min(historicalValue, actualCurrentValue);
         }
@@ -104,14 +103,14 @@ class PortfolioService {
       // Sort by timestamp
       performanceData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-      console.log(`📈 FINAL CORRECTED: ${performanceData.length} points from $${startingValue.toFixed(2)} to $${actualTotalValue.toFixed(2)}`);
+      console.log(`📈 FINAL CORRECTED: ${performanceData.length} points from $${startingValue.toFixed(2)} to $${realTotalValue.toFixed(2)}`);
       return performanceData;
     } catch (error) {
       console.error('❌ Portfolio performance error:', error);
       // Fallback - use only main balance
       const user = await storage.getUser(userId);
       const currentBalance = parseFloat(user?.balance || '0');
-      
+
       return [{
         timestamp: new Date().toISOString(),
         value: currentBalance

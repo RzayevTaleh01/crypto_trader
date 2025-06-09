@@ -732,8 +732,7 @@ export class EmaRsiStrategy {
                     console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
                 } else {
                     // Subtract loss from main balance
-                    ```tool_code
-await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
+                    await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
                     console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} subtracted from main balance`);
                 }
             }

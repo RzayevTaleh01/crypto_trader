@@ -243,74 +243,100 @@ export class EmaRsiStrategy {
     private async checkAdvancedBuySignals(userId: number, cryptos: any[], balance: number): Promise<void> {
         const opportunities = [];
 
-        console.log(`🔍 Advanced Market Analysis on ${cryptos.length} assets`);
+        console.log(`🔍 Enhanced Profit-Focused Analysis on ${cryptos.length} assets`);
 
         for (const crypto of cryptos) {
             const analysis = await this.performAdvancedAnalysis(crypto);
 
+            // More strict criteria for profitable coin selection
             if (analysis && analysis.signal === 'STRONG_BUY') {
                 const momentum = analysis.momentum;
                 const volatility = analysis.volatility;
                 const trendscore = analysis.trendscore;
+                const priceChange24h = parseFloat(crypto.priceChange24h || '0');
 
-                // Enhanced opportunity scoring
-                const opportunityScore = (
-                    analysis.compositeScore * 2 +
-                    momentum * 10 +
-                    (10 - volatility) +
-                    trendscore +
-                    (analysis.volume_strength * 5) +
-                    (analysis.market_structure * 3)
+                // Enhanced profit-focused scoring with stricter requirements
+                const profitPotentialScore = (
+                    analysis.compositeScore * 3 +           // Weight composite score more
+                    momentum * 15 +                         // Higher momentum weight
+                    (trendscore > 7 ? trendscore * 2 : 0) + // Bonus for strong trends
+                    (analysis.volume_strength * 8) +        // Volume is critical
+                    (analysis.market_structure * 5) +
+                    (Math.abs(priceChange24h) > 3 ? 5 : 0) + // Bonus for higher volatility
+                    (analysis.rsi < 25 ? 8 : 0) +           // Big bonus for oversold
+                    (analysis.confidence > 0.85 ? 10 : 0)   // Bonus for high confidence
                 );
 
-                opportunities.push({
-                    crypto,
-                    analysis,
-                    score: opportunityScore,
-                    confidence: analysis.confidence
-                });
+                // Strict filtering for only highest potential coins
+                const meetsStrictCriteria = (
+                    analysis.confidence > 0.75 &&           // Higher confidence threshold
+                    momentum > 0.3 &&                       // Strong positive momentum
+                    trendscore >= 6 &&                      // Strong trend only
+                    analysis.volume_strength > 1.2 &&       // Good volume
+                    analysis.compositeScore >= 7.5 &&       // High composite score
+                    volatility >= 3 && volatility <= 15     // Optimal volatility range
+                );
 
-                console.log(`🟢 BUY Opportunity: ${crypto.symbol} - Score: ${opportunityScore.toFixed(1)}, Confidence: ${(analysis.confidence * 100).toFixed(0)}%`);
+                if (meetsStrictCriteria) {
+                    opportunities.push({
+                        crypto,
+                        analysis,
+                        score: profitPotentialScore,
+                        confidence: analysis.confidence,
+                        profitPotential: this.calculateProfitPotential(analysis, priceChange24h)
+                    });
+
+                    console.log(`💎 HIGH-PROFIT Opportunity: ${crypto.symbol} - Score: ${profitPotentialScore.toFixed(1)}, Confidence: ${(analysis.confidence * 100).toFixed(0)}%`);
+                    console.log(`   Momentum: ${momentum.toFixed(2)}, Trend: ${trendscore}/10, Volume: ${analysis.volume_strength.toFixed(2)}`);
+                }
             }
         }
 
-        // Sort by composite scoring
+        // Sort by profit potential score (highest first)
         opportunities.sort((a, b) => b.score - a.score);
 
-        const maxTrades = Math.min(2, opportunities.length); // Focused on top 2 opportunities
-        const usableBalance = balance * 0.85; // Use 85% of balance
+        // Only take the absolute best opportunities
+        const topOpportunities = opportunities.slice(0, Math.min(3, opportunities.length));
+        const usableBalance = balance * 0.90; // Use 90% of balance for high-conviction trades
 
-        console.log(`🎯 Executing ${maxTrades} advanced buy orders from ${opportunities.length} opportunities`);
+        console.log(`🎯 Executing ONLY TOP ${topOpportunities.length} highest-profit opportunities from ${opportunities.length} candidates`);
 
-        for (let i = 0; i < maxTrades; i++) {
-            const opp = opportunities[i];
+        for (let i = 0; i < topOpportunities.length; i++) {
+            const opp = topOpportunities[i];
 
-            // Dynamic position sizing based on confidence and market conditions
-            let positionSize = 0.15; // Base 15%
+            // Aggressive position sizing for highest conviction trades
+            let positionSize = 0.20; // Base 20% for top picks
 
-            if (opp.confidence > 0.8 && opp.analysis.momentum > 0.5) {
-                positionSize = 0.25; // Increase to 25% for very strong signals
-            } else if (opp.confidence > 0.7 && opp.analysis.volatility < 5) {
-                positionSize = 0.20; // 20% for good signals in low volatility
+            if (opp.confidence > 0.9 && opp.analysis.momentum > 0.6) {
+                positionSize = 0.35; // 35% for exceptional opportunities
+            } else if (opp.confidence > 0.85 && opp.analysis.trendscore >= 8) {
+                positionSize = 0.30; // 30% for very strong signals
+            } else if (opp.score > 50) {
+                positionSize = 0.25; // 25% for high-scoring opportunities
             }
 
-            const investAmount = Math.min(usableBalance * positionSize, 1.5); // Max $1.5 per trade
-            const commissionBuffer = 1.005; // 0.5% buffer
+            const investAmount = Math.min(usableBalance * positionSize, 2.0); // Max $2.0 per trade
+            const commissionBuffer = 1.003; // Minimal buffer for high-conviction trades
             const finalAmount = investAmount / commissionBuffer;
 
-            if (finalAmount >= 0.20 && usableBalance >= 0.50 && opp.confidence > 0.65) {
-                console.log(`🟢 ADVANCED BUY: ${opp.crypto.symbol}`);
-                console.log(`   Score: ${opp.score.toFixed(1)}, Confidence: ${(opp.confidence * 100).toFixed(0)}%`);
-                console.log(`   Investment: $${finalAmount.toFixed(3)}, Momentum: ${opp.analysis.momentum.toFixed(2)}`);
-                console.log(`   RSI: ${opp.analysis.rsi}, Trend: ${opp.analysis.trendscore}/10`);
+            // Higher minimum investment for quality focus
+            if (finalAmount >= 0.30 && usableBalance >= 0.60 && opp.confidence > 0.75) {
+                console.log(`💎 HIGH-PROFIT BUY: ${opp.crypto.symbol}`);
+                console.log(`   Profit Score: ${opp.score.toFixed(1)}, Confidence: ${(opp.confidence * 100).toFixed(0)}%`);
+                console.log(`   Investment: $${finalAmount.toFixed(3)}, Expected Return: ${(opp.profitPotential * 100).toFixed(1)}%`);
+                console.log(`   RSI: ${opp.analysis.rsi}, Momentum: ${opp.analysis.momentum.toFixed(2)}, Trend: ${opp.analysis.trendscore}/10`);
 
-                // Detailed buy reason logging
-                this.logBuySignals(opp.crypto.symbol, opp.analysis, finalAmount, opp.score, opp.confidence);
+                // Enhanced buy reason logging for profit focus
+                this.logProfitFocusedBuySignals(opp.crypto.symbol, opp.analysis, finalAmount, opp.score, opp.confidence, opp.profitPotential);
 
                 await this.executeBuyOrder(userId, opp.crypto, finalAmount,
-                    `Advanced Multi-Indicator - Score:${opp.score.toFixed(1)} Conf:${(opp.confidence*100).toFixed(0)}%`);
+                    `Profit-Focused Strategy - Score:${opp.score.toFixed(1)} ExpectedReturn:${(opp.profitPotential*100).toFixed(1)}%`);
                 balance -= finalAmount;
             }
+        }
+
+        if (topOpportunities.length === 0) {
+            console.log(`⚠️ No coins meet strict profit criteria - waiting for better opportunities`);
         }
     }
 
@@ -354,21 +380,34 @@ export class EmaRsiStrategy {
             // Support/Resistance levels with Fibonacci
             const levels = this.calculateKeyLevels(currentPrice, priceChange24h, fibLevels);
 
-            // Advanced signal conditions with new indicators
+            // Enhanced signal conditions for higher profit potential
             const buyConditions = {
                 rsi_oversold: rsi < 30,
+                rsi_deep_oversold: rsi < 25,                // Extra strong signal
                 momentum_positive: momentum > 0.2,
+                momentum_strong: momentum > 0.4,            // Stronger momentum
+                momentum_explosive: momentum > 0.6,         // Explosive momentum
                 macd_bullish: macdSignal > 0.3,
+                macd_strong_bullish: macdSignal > 0.5,      // Very bullish MACD
                 fibonacci_support: fibLevels.nearSupport,
                 bollinger_oversold: bollingerPosition < -1.5,
+                bollinger_deep_oversold: bollingerPosition < -2.0, // Deeper oversold
                 volume_surge: volumeStrength > 1.5,
+                volume_explosion: volumeStrength > 2.5,     // Volume explosion
                 whale_accumulation: whaleActivity > 0.5,
+                whale_strong_accumulation: whaleActivity > 0.8, // Strong whale activity
                 trend_strong: trendscore >= 6,
+                trend_dominant: trendscore >= 8,            // Dominant trend
                 volatility_ok: volatility >= 2 && volatility <= 12,
+                volatility_optimal: volatility >= 4 && volatility <= 8, // Optimal range
                 structure_bullish: marketStructure > 0.3,
+                structure_very_bullish: marketStructure > 0.5, // Very bullish structure
                 support_level: currentPrice <= levels.support * 1.02,
                 breakout_potential: priceChange24h > -2 && rsi < 40,
-                golden_cross: this.checkGoldenCross(priceChange24h, momentum)
+                strong_breakout: priceChange24h > 1 && momentum > 0.3, // Active breakout
+                golden_cross: this.checkGoldenCross(priceChange24h, momentum),
+                high_profit_setup: (rsi < 30 && momentum > 0.4 && trendscore >= 7), // Combined high profit
+                exceptional_opportunity: (rsi < 25 && momentum > 0.5 && volumeStrength > 2.0) // Exceptional setup
             };
 
             const sellConditions = {
@@ -395,17 +434,32 @@ export class EmaRsiStrategy {
                 (buyScore * 1.2) - (sellScore * 0.8) + (trendscore * 0.3) + (momentum * 5)
             ));
 
-            // Signal determination with enhanced logic
+            // Enhanced signal determination focused on high-profit opportunities
             let signal = 'HOLD';
             let confidence = 0;
 
-            if (buyScore >= 5 && sellScore <= 2 && compositeScore >= 7) {
+            // Check for exceptional profit opportunities first
+            if (buyConditions.exceptional_opportunity && compositeScore >= 8.5) {
                 signal = 'STRONG_BUY';
-                confidence = Math.min(0.95, (buyScore + trendscore + momentum * 5) / 15);
-            } else if (buyScore >= 4 && compositeScore >= 6) {
+                confidence = Math.min(0.98, (buyScore + trendscore + momentum * 8) / 18);
+            }
+            // High profit setup with strict requirements
+            else if (buyConditions.high_profit_setup && buyScore >= 7 && sellScore <= 1) {
+                signal = 'STRONG_BUY';
+                confidence = Math.min(0.95, (buyScore + trendscore + momentum * 6) / 16);
+            }
+            // Standard strong buy with higher thresholds
+            else if (buyScore >= 6 && sellScore <= 2 && compositeScore >= 7.5) {
+                signal = 'STRONG_BUY';
+                confidence = Math.min(0.92, (buyScore + trendscore + momentum * 5) / 15);
+            }
+            // Regular buy with stricter criteria
+            else if (buyScore >= 5 && compositeScore >= 7 && momentum > 0.3) {
                 signal = 'BUY';
-                confidence = (buyScore + trendscore) / 12;
-            } else if (sellScore >= 4 && compositeScore <= 4) {
+                confidence = (buyScore + trendscore + momentum * 3) / 13;
+            }
+            // Sell signals remain the same
+            else if (sellScore >= 4 && compositeScore <= 4) {
                 signal = 'STRONG_SELL';
                 confidence = (sellScore + (10 - trendscore)) / 12;
             } else if (sellScore >= 3) {
@@ -841,6 +895,48 @@ export class EmaRsiStrategy {
 
             await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), avgPrice.toString(), newTotalInvested.toString());
         }
+    }
+
+    private calculateProfitPotential(analysis: any, priceChange24h: number): number {
+        // Calculate expected profit potential based on multiple factors
+        const momentumFactor = Math.max(0, analysis.momentum) * 0.3;
+        const trendFactor = (analysis.trendscore / 10) * 0.25;
+        const volumeFactor = Math.min(analysis.volume_strength / 3, 0.2);
+        const volatilityFactor = Math.min(Math.abs(priceChange24h) / 20, 0.15);
+        const confidenceFactor = analysis.confidence * 0.1;
+        
+        const totalPotential = momentumFactor + trendFactor + volumeFactor + volatilityFactor + confidenceFactor;
+        return Math.min(totalPotential, 0.25); // Cap at 25% expected return
+    }
+
+    private logProfitFocusedBuySignals(symbol: string, analysis: any, amount: number, score: number, confidence: number, profitPotential: number): void {
+        console.log(`\n💎 ═══════ YÜKSEK KAR POTENSİALI - ${symbol} ═══════`);
+        console.log(`💰 Investisiya məbləği: $${amount.toFixed(3)}`);
+        console.log(`📊 Kar Potensial Skoru: ${score.toFixed(1)}/100`);
+        console.log(`🎲 Etibar dərəcəsi: ${(confidence * 100).toFixed(1)}%`);
+        console.log(`💹 Gözlənilən gəlir: ${(profitPotential * 100).toFixed(1)}%`);
+        console.log(`\n🚀 ÜSTÜN İNDİKATORLAR:`);
+        console.log(`   • RSI: ${analysis.rsi} ${analysis.rsi < 25 ? '🔥 (Çox oversold - güclü alış)' : analysis.rsi < 35 ? '✅ (Oversold)' : '⚠️ (Normal)'}`);
+        console.log(`   • Momentum: ${analysis.momentum.toFixed(3)} ${analysis.momentum > 0.6 ? '🚀 (Çox güclü)' : analysis.momentum > 0.3 ? '✅ (Güclü)' : '⚠️ (Orta)'}`);
+        console.log(`   • Trend Gücü: ${analysis.trendscore}/10 ${analysis.trendscore >= 8 ? '🔥 (Dominant trend)' : analysis.trendscore >= 6 ? '✅ (Güclü trend)' : '⚠️ (Orta)'}`);
+        console.log(`   • Volume Gücü: ${analysis.volumeStrength.toFixed(2)} ${analysis.volumeStrength > 2 ? '🔥 (Çox yüksək)' : analysis.volumeStrength > 1.5 ? '✅ (Yüksək)' : '⚠️ (Orta)'}`);
+        console.log(`   • Kompozit Skor: ${analysis.compositeScore.toFixed(1)}/10 ${analysis.compositeScore >= 8 ? '🔥 (Mükəmməl)' : analysis.compositeScore >= 7.5 ? '✅ (Çox yaxşı)' : '⚠️ (Yaxşı)'}`);
+        console.log(`   • Bazar Strukturu: ${analysis.marketStructure.toFixed(3)} ${analysis.marketStructure > 0.5 ? '🚀 (Çox bullish)' : analysis.marketStructure > 0.3 ? '✅ (Bullish)' : '⚠️ (Neytral)'}`);
+        
+        console.log(`\n💡 KAR SƏBƏBLƏRİ:`);
+        if (analysis.momentum > 0.6) console.log(`   🚀 Çox güclü momentum (${analysis.momentum.toFixed(3)}) - böyük hərəkat gözlənilir`);
+        if (analysis.trendscore >= 8) console.log(`   📈 Dominant yüksəliş trendi (${analysis.trendscore}/10)`);
+        if (analysis.rsi < 25) console.log(`   🔥 Həddindən çox satılmış (RSI: ${analysis.rsi}) - güclü toparlanma`);
+        if (analysis.volumeStrength > 2) console.log(`   💪 Çox yüksək volume aktivliyi - güclü maraq`);
+        if (confidence > 0.9) console.log(`   ⭐ İstisna etibar dərəcəsi (${(confidence * 100).toFixed(1)}%)`);
+        if (analysis.compositeScore >= 8.5) console.log(`   🎯 Mükəmməl texniki göstəricilər kombinasiyası`);
+        
+        console.log(`\n🎯 QƏRAR ƏSASLARI:`);
+        console.log(`   ✅ Sərt meyarlara uyğun: Confidence>75%, Momentum>0.3, Trend≥6`);
+        console.log(`   ✅ Yüksək həcm aktivliği və güclü bazar strukturu`);
+        console.log(`   ✅ Optimal volatillik aralığında (3-15%)`);
+        console.log(`   ✅ TOP ${Math.ceil(score/20)} ən yüksək kar potensialı`);
+        console.log(`═══════════════════════════════════════════\n`);
     }
 
     private logBuySignals(symbol: string, analysis: any, amount: number, score: number, confidence: number): void {

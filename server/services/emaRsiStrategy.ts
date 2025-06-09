@@ -842,7 +842,20 @@ export class EmaRsiStrategy {
 
             await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
 
+            // TEK DƏFƏ BROADCAST - DUPLİKAT QARŞISINI AL
             if (this.broadcastFn) {
+                const updatedUser = await storage.getUser(userId);
+
+                // Single balance update broadcast
+                this.broadcastFn({
+                    type: 'balanceUpdate',
+                    data: { 
+                        userId, 
+                        balance: parseFloat(updatedUser?.balance || '0'),
+                        profitBalance: parseFloat(updatedUser?.profitBalance || '0')
+                    }
+                });
+
                 const { portfolioService } = await import('../services/portfolioService');
                 const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
                 this.broadcastFn({

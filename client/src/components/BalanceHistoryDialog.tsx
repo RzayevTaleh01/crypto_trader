@@ -51,15 +51,13 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
   const user = userData?.user;
 
-  const { data: tradesData } = useQuery({
+  const { data: trades = [] } = useQuery({
     queryKey: [`/api/trades/user/${userId}`],
     queryFn: async () => {
       const response = await fetch(`/api/trades/user/${userId}`);
       return response.json();
     }
   });
-
-  const trades = tradesData || [];
 
   useEffect(() => {
     if (!user || !trades) {

@@ -16,10 +16,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   const [timeframe, setTimeframe] = useState('1D');
 
   const hoursMap = {
-    '1H': 1,
-    '6H': 6,
     '1D': 24,
-    '3D': 72,
     '1W': 168,
     '1M': 720
   };
@@ -57,29 +54,12 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
 
     const labels = safePerformanceData.map((point: any) => {
       const date = new Date(point.timestamp);
-      switch(timeframe) {
-        case '1H':
-        case '6H':
-          return date.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-        case '1D':
-          return date.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-        case '3D':
-          return date.toLocaleDateString('az-AZ', { month: 'short', day: 'numeric', hour: '2-digit' });
-        case '1W':
-        case '1M':
-          return date.toLocaleDateString('az-AZ', { month: 'short', day: 'numeric' });
-        default:
-          return date.toLocaleDateString('az-AZ', { month: 'short', day: 'numeric' });
-      }
+      return timeframe === '1D'
+          ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
     const values = safePerformanceData.map((point: any) => parseFloat(String(point.value || '0')));
-
-    // Calculate min and max for better scaling
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const range = maxValue - minValue;
-    const padding = range * 0.1;
 
     chartInstance.current = new Chart(ctx, {
       type: 'line',
@@ -88,19 +68,14 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
         datasets: [{
           label: 'Ümumi Balans',
           data: values,
-          borderColor: values[values.length - 1] > values[0] ? 'hsl(142, 76%, 36%)' : 'hsl(0, 84%, 60%)',
-          backgroundColor: values[values.length - 1] > values[0] ? 'hsla(142, 76%, 36%, 0.1)' : 'hsla(0, 84%, 60%, 0.1)',
+          borderColor: 'hsl(175, 100%, 42%)',
+          backgroundColor: 'hsla(175, 100%, 42%, 0.1)',
           fill: true,
-          tension: 0.3,
+          tension: 0.4,
           pointBackgroundColor: 'hsl(175, 100%, 42%)',
-          pointBorderColor: '#ffffff',
-          pointBorderWidth: 2,
-          pointRadius: timeframe === '1H' || timeframe === '6H' ? 3 : 2,
-          pointHoverRadius: 8,
-          pointHoverBackgroundColor: 'hsl(175, 100%, 42%)',
-          pointHoverBorderColor: '#ffffff',
-          pointHoverBorderWidth: 3,
-          borderWidth: 3
+          pointBorderColor: 'hsl(175, 100%, 42%)',
+          pointRadius: 4,
+          pointHoverRadius: 6
         }]
       },
       options: {
@@ -116,34 +91,13 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
           },
           tooltip: {
             backgroundColor: 'hsl(240, 4%, 16%)',
-            borderColor: 'hsl(175, 100%, 42%)',
-            borderWidth: 2,
+            borderColor: 'hsl(215, 15%, 65%)',
+            borderWidth: 1,
             titleColor: 'hsl(0, 0%, 98%)',
             bodyColor: 'hsl(0, 0%, 98%)',
-            titleFont: {
-              size: 14,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            padding: 12,
-            cornerRadius: 8,
-            displayColors: false,
             callbacks: {
-              title: function(context) {
-                return context[0].label;
-              },
               label: function(context) {
-                const value = context.parsed.y;
-                const change = values.length > 1 ? value - values[0] : 0;
-                const changePercent = values[0] > 0 ? ((change / values[0]) * 100) : 0;
-                
-                return [
-                  `Balans: $${value.toFixed(2)}`,
-                  `Dəyişiklik: ${change >= 0 ? '+' : ''}$${change.toFixed(2)}`,
-                  `Faiz: ${change >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`
-                ];
+                return `Ümumi: $${context.parsed.y.toFixed(2)}`;
               }
             }
           }
@@ -152,37 +106,21 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
           x: {
             grid: {
               color: 'hsla(215, 15%, 45%, 0.1)',
-              drawBorder: false
             },
             ticks: {
-              color: 'hsl(215, 15%, 65%)',
-              font: {
-                size: 11
-              },
-              maxTicksLimit: timeframe === '1H' || timeframe === '6H' ? 12 : 8
+              color: 'hsl(215, 15%, 45%)'
             }
           },
           y: {
             grid: {
               color: 'hsla(215, 15%, 45%, 0.1)',
-              drawBorder: false
             },
             ticks: {
-              color: 'hsl(215, 15%, 65%)',
-              font: {
-                size: 11
-              },
+              color: 'hsl(215, 15%, 45%)',
               callback: function(value) {
-                return '$' + Number(value).toFixed(2);
+                return '$' + value;
               }
-            },
-            min: Math.max(0, minValue - padding),
-            max: maxValue + padding
-          }
-        },
-        elements: {
-          point: {
-            hoverBackgroundColor: 'hsl(175, 100%, 42%)'
+            }
           }
         }
       }
@@ -196,12 +134,9 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   }, [performanceData, timeframe]);
 
   const timeframes = [
-    { label: '1S', value: '1H' },
-    { label: '6S', value: '6H' },
-    { label: '1G', value: '1D' },
-    { label: '3G', value: '3D' },
-    { label: '1H', value: '1W' },
-    { label: '1A', value: '1M' }
+    { label: '1D', value: '1D' },
+    { label: '1W', value: '1W' },
+    { label: '1M', value: '1M' }
   ];
 
   const safePerformanceData = Array.isArray(performanceData) ? performanceData : [];

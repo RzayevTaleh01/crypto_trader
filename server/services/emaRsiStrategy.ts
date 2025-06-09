@@ -726,40 +726,62 @@ export class EmaRsiStrategy {
 
             if (user) {
                 const currentMainBalance = parseFloat(user.balance);
+                const avgBuyPrice = parseFloat(position.averagePrice);
+                const sellPrice = price;
 
-                // Calculate profit/loss using FULL sale amount (no commission deduction from balance)
-                const profitLoss = total - originalInvestment;
+                // ADVANCED CALCULATION - Dəqiq məntiq tətbiqi
+                console.log(`\n🔥 ═══════ ADVANCED AVTOMATIK SATIŞ ═══════`);
+                console.log(`💎 ${crypto.symbol} - Satış Detayları:`);
+                console.log(`   📊 Satılan miqdar: ${quantity.toFixed(8)}`);
+                console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
+                console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
+                console.log(`   ⚖️ Ümumi portfolio: ${positionAmount.toFixed(8)} (${(sellRatio * 100).toFixed(1)}% satılır)`);
 
-                console.log(`💰 AVTOMATIK SATIŞ DÜZƏLTMƏ: ${crypto.symbol}`);
-                console.log(`   Satılan miqdar: ${quantity.toFixed(6)} / ${positionAmount.toFixed(6)} (${(sellRatio * 100).toFixed(1)}%)`);
-                console.log(`   Orijinal investisiya: $${originalInvestment.toFixed(3)}`);
-                console.log(`   FULL satış məbləği: $${total.toFixed(3)}`);
-                console.log(`   Kar/Zərər: $${profitLoss.toFixed(3)}`);
-                console.log(`   ÖNCƏKİ main balans: $${currentMainBalance.toFixed(3)}`);
-                console.log(`   📝 NOT: Komissiya internal nəzərə alınır, balansa toxunmur`);
+                // 1. Satılan miqdar × Alış qiyməti (orijinal investisiya)
+                const soldAmountOriginalValue = Math.round((quantity * avgBuyPrice) * 100000000) / 100000000;
 
-                if (profitLoss > 0) {
-                    // Profit case: Return full sale amount to main balance
-                    const newMainBalance = currentMainBalance + total;
+                // 2. Satılan miqdar × Satış qiyməti (satış məbləği)
+                const soldAmountSaleValue = Math.round((quantity * sellPrice) * 100000000) / 100000000;
+
+                // 3. Kar/Zərər hesablaması
+                const profitLoss = Math.round((soldAmountSaleValue - soldAmountOriginalValue) * 100000000) / 100000000;
+
+                console.log(`\n📈 ADVANCED HESABLAMALAR:`);
+                console.log(`   🔢 Satılan miqdar × Alış qiyməti = ${quantity.toFixed(8)} × ${avgBuyPrice.toFixed(8)} = $${soldAmountOriginalValue.toFixed(8)}`);
+                console.log(`   🔢 Satılan miqdar × Satış qiyməti = ${quantity.toFixed(8)} × ${sellPrice.toFixed(8)} = $${soldAmountSaleValue.toFixed(8)}`);
+                console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(8)} - $${soldAmountOriginalValue.toFixed(8)} = $${profitLoss.toFixed(8)}`);
+                console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(8)}`);
+
+                if (profitLoss >= 0) {
+                    // KAR HALINDA: Orijinal investisiyanı main balansa, karı profit balansına
+                    const newMainBalance = Math.round((currentMainBalance + soldAmountOriginalValue) * 100000000) / 100000000;
+
+                    console.log(`\n✅ ═══ KAR HALINDA ADVANCED TƏDBİR ═══`);
+                    console.log(`   💰 Orijinal investisiya main balansa: $${soldAmountOriginalValue.toFixed(8)}`);
+                    console.log(`   🎯 Kar profit balansına: $${profitLoss.toFixed(8)}`);
+                    console.log(`   📊 YENİ main balans: $${currentMainBalance.toFixed(8)} + $${soldAmountOriginalValue.toFixed(8)} = $${newMainBalance.toFixed(8)}`);
+
+                    // Update balances
                     await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
 
-                    // Add profit to profit tracking
-                    await storage.addProfit(userId, profitLoss);
-
-                    console.log(`✅ KAR HALINDA: FULL $${total.toFixed(3)} satış məbləği main balansa`);
-                    console.log(`💰 Kar: $${profitLoss.toFixed(3)} profit balansına əlavə`);
-                    console.log(`💰 YENİ main balans: $${newMainBalance.toFixed(3)}`);
+                    // Add profit to profit balance (only if profit > 0)
+                    if (profitLoss > 0) {
+                        await storage.addProfit(userId, profitLoss);
+                        console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(8)}`);
+                    }
 
                     // Broadcast updates
                     if (this.broadcastFn) {
                         const updatedUser = await storage.getUser(userId);
-                        this.broadcastFn({
-                            type: 'profitBalanceUpdate',
-                            data: { 
-                                userId, 
-                                profitBalance: parseFloat(updatedUser?.profitBalance || '0')
-                            }
-                        });
+                        if (profitLoss > 0) {
+                            this.broadcastFn({
+                                type: 'profitBalanceUpdate',
+                                data: { 
+                                    userId, 
+                                    profitBalance: parseFloat(updatedUser?.profitBalance || '0')
+                                }
+                            });
+                        }
 
                         this.broadcastFn({
                             type: 'balanceUpdate',
@@ -767,13 +789,19 @@ export class EmaRsiStrategy {
                         });
                     }
                 } else {
-                    // Loss case: Return full sale amount (no commission deduction)
-                    const newMainBalance = currentMainBalance + total;
-                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-                    console.log(`📉 ZƏRƏR HALINDA: FULL $${total.toFixed(3)} satış məbləği main balansa`);
-                    console.log(`📊 Zərər məbləği: $${Math.abs(profitLoss).toFixed(3)} (internal hesablamada)`);
-                    console.log(`💰 YENİ main balans: $${newMainBalance.toFixed(3)}`);
+                    // ZƏRƏR HALINDA: Hamısını (satış məbləğini) main balansa əlavə et
+                    const newMainBalance = Math.round((currentMainBalance + soldAmountSaleValue) * 100000000) / 100000000;
 
+                    console.log(`\n📉 ═══ ZƏRƏR HALINDA ADVANCED TƏDBİR ═══`);
+                    console.log(`   💔 Zərər məbləği: $${Math.abs(profitLoss).toFixed(8)}`);
+                    console.log(`   💰 Bütün satış məbləği main balansa: $${soldAmountSaleValue.toFixed(8)}`);
+                    console.log(`   📊 YENİ main balans: $${currentMainBalance.toFixed(8)} + $${soldAmountSaleValue.toFixed(8)} = $${newMainBalance.toFixed(8)}`);
+                    console.log(`   ⚠️ Heç bir şey profit balansına əlavə edilmir (zərər var)`);
+
+                    // Update main balance with sale amount
+                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
+
+                    // Broadcast update
                     if (this.broadcastFn) {
                         this.broadcastFn({
                             type: 'balanceUpdate',
@@ -781,6 +809,8 @@ export class EmaRsiStrategy {
                         });
                     }
                 }
+
+                console.log(`═══════════════════════════════════════════\n`);
             }
 
             // Balance update artıq yuxarıda edilib - təkrarlamaq lazım deyil

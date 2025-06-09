@@ -267,14 +267,14 @@ export class EmaRsiStrategy {
                     (analysis.confidence > 0.85 ? 10 : 0)   // Bonus for high confidence
                 );
 
-                // More flexible criteria for better trading opportunities
+                // Much more flexible criteria to allow trading opportunities
                 const meetsStrictCriteria = (
-                    analysis.confidence > 0.65 &&           // Reduced confidence threshold
-                    momentum > 0.2 &&                       // Lower momentum requirement
-                    trendscore >= 5 &&                      // Reduced trend requirement
-                    analysis.volume_strength > 1.0 &&       // Lower volume requirement
-                    analysis.compositeScore >= 6.5 &&       // Lower composite score
-                    volatility >= 2 && volatility <= 18     // Wider volatility range
+                    analysis.confidence > 0.45 &&           // Much lower confidence threshold
+                    momentum > -0.1 &&                      // Allow slightly negative momentum
+                    trendscore >= 3 &&                      // Much lower trend requirement
+                    analysis.volume_strength > 0.5 &&       // Much lower volume requirement
+                    analysis.compositeScore >= 4.0 &&       // Much lower composite score
+                    volatility >= 1 && volatility <= 25     // Much wider volatility range
                 );
 
                 if (meetsStrictCriteria) {
@@ -319,8 +319,8 @@ export class EmaRsiStrategy {
             const commissionBuffer = 1.003; // Minimal buffer for high-conviction trades
             const finalAmount = investAmount / commissionBuffer;
 
-            // Higher minimum investment for quality focus
-            if (finalAmount >= 0.30 && usableBalance >= 0.60 && opp.confidence > 0.75) {
+            // Lower minimum investment to allow more trades
+            if (finalAmount >= 0.15 && usableBalance >= 0.30 && opp.confidence > 0.45) {
                 console.log(`💎 HIGH-PROFIT BUY: ${opp.crypto.symbol}`);
                 console.log(`   Profit Score: ${opp.score.toFixed(1)}, Confidence: ${(opp.confidence * 100).toFixed(0)}%`);
                 console.log(`   Investment: $${finalAmount.toFixed(3)}, Expected Return: ${(opp.profitPotential * 100).toFixed(1)}%`);
@@ -380,34 +380,34 @@ export class EmaRsiStrategy {
             // Support/Resistance levels with Fibonacci
             const levels = this.calculateKeyLevels(currentPrice, priceChange24h, fibLevels);
 
-            // Enhanced signal conditions for higher profit potential
+            // More permissive signal conditions to allow trading
             const buyConditions = {
-                rsi_oversold: rsi < 30,
-                rsi_deep_oversold: rsi < 25,                // Extra strong signal
-                momentum_positive: momentum > 0.2,
-                momentum_strong: momentum > 0.4,            // Stronger momentum
-                momentum_explosive: momentum > 0.6,         // Explosive momentum
-                macd_bullish: macdSignal > 0.3,
-                macd_strong_bullish: macdSignal > 0.5,      // Very bullish MACD
+                rsi_oversold: rsi < 45,                     // More permissive RSI
+                rsi_deep_oversold: rsi < 30,                
+                momentum_positive: momentum > -0.1,         // Allow slight negative momentum
+                momentum_strong: momentum > 0.2,            
+                momentum_explosive: momentum > 0.4,         
+                macd_bullish: macdSignal > 0.1,             // Lower MACD threshold
+                macd_strong_bullish: macdSignal > 0.3,      
                 fibonacci_support: fibLevels.nearSupport,
-                bollinger_oversold: bollingerPosition < -1.5,
-                bollinger_deep_oversold: bollingerPosition < -2.0, // Deeper oversold
-                volume_surge: volumeStrength > 1.5,
-                volume_explosion: volumeStrength > 2.5,     // Volume explosion
-                whale_accumulation: whaleActivity > 0.5,
-                whale_strong_accumulation: whaleActivity > 0.8, // Strong whale activity
-                trend_strong: trendscore >= 6,
-                trend_dominant: trendscore >= 8,            // Dominant trend
-                volatility_ok: volatility >= 2 && volatility <= 12,
-                volatility_optimal: volatility >= 4 && volatility <= 8, // Optimal range
-                structure_bullish: marketStructure > 0.3,
-                structure_very_bullish: marketStructure > 0.5, // Very bullish structure
-                support_level: currentPrice <= levels.support * 1.02,
-                breakout_potential: priceChange24h > -2 && rsi < 40,
-                strong_breakout: priceChange24h > 1 && momentum > 0.3, // Active breakout
+                bollinger_oversold: bollingerPosition < -1.0, // Less strict Bollinger
+                bollinger_deep_oversold: bollingerPosition < -1.5, 
+                volume_surge: volumeStrength > 0.8,         // Lower volume requirement
+                volume_explosion: volumeStrength > 1.5,     
+                whale_accumulation: whaleActivity > 0.2,    // Lower whale threshold
+                whale_strong_accumulation: whaleActivity > 0.5, 
+                trend_strong: trendscore >= 3,              // Much lower trend requirement
+                trend_dominant: trendscore >= 5,            
+                volatility_ok: volatility >= 1 && volatility <= 20, // Wider range
+                volatility_optimal: volatility >= 2 && volatility <= 15, 
+                structure_bullish: marketStructure > 0.1,   // Lower structure requirement
+                structure_very_bullish: marketStructure > 0.3, 
+                support_level: currentPrice <= levels.support * 1.05, // More flexible support
+                breakout_potential: priceChange24h > -5 && rsi < 50, // More flexible breakout
+                strong_breakout: priceChange24h > 0 && momentum > 0.1, 
                 golden_cross: this.checkGoldenCross(priceChange24h, momentum),
-                high_profit_setup: (rsi < 30 && momentum > 0.4 && trendscore >= 7), // Combined high profit
-                exceptional_opportunity: (rsi < 25 && momentum > 0.5 && volumeStrength > 2.0) // Exceptional setup
+                high_profit_setup: (rsi < 45 && momentum > 0.1 && trendscore >= 3), // Much more flexible
+                exceptional_opportunity: (rsi < 35 && momentum > 0.2 && volumeStrength > 1.0) // More achievable
             };
 
             const sellConditions = {
@@ -434,29 +434,34 @@ export class EmaRsiStrategy {
                 (buyScore * 1.2) - (sellScore * 0.8) + (trendscore * 0.3) + (momentum * 5)
             ));
 
-            // Enhanced signal determination focused on high-profit opportunities
+            // More permissive signal determination to allow trading
             let signal = 'HOLD';
             let confidence = 0;
 
             // Check for exceptional profit opportunities first
-            if (buyConditions.exceptional_opportunity && compositeScore >= 8.5) {
+            if (buyConditions.exceptional_opportunity && compositeScore >= 6.0) {
                 signal = 'STRONG_BUY';
-                confidence = Math.min(0.98, (buyScore + trendscore + momentum * 8) / 18);
+                confidence = Math.min(0.95, (buyScore + trendscore + momentum * 6) / 15);
             }
-            // High profit setup with strict requirements
-            else if (buyConditions.high_profit_setup && buyScore >= 7 && sellScore <= 1) {
+            // High profit setup with flexible requirements
+            else if (buyConditions.high_profit_setup && buyScore >= 4 && sellScore <= 3) {
                 signal = 'STRONG_BUY';
-                confidence = Math.min(0.95, (buyScore + trendscore + momentum * 6) / 16);
+                confidence = Math.min(0.90, (buyScore + trendscore + momentum * 5) / 14);
             }
-            // Standard strong buy with higher thresholds
-            else if (buyScore >= 6 && sellScore <= 2 && compositeScore >= 7.5) {
+            // Standard strong buy with lower thresholds
+            else if (buyScore >= 4 && sellScore <= 3 && compositeScore >= 5.0) {
                 signal = 'STRONG_BUY';
-                confidence = Math.min(0.92, (buyScore + trendscore + momentum * 5) / 15);
+                confidence = Math.min(0.85, (buyScore + trendscore + momentum * 4) / 13);
             }
-            // Regular buy with stricter criteria
-            else if (buyScore >= 5 && compositeScore >= 7 && momentum > 0.3) {
+            // Regular buy with much more flexible criteria
+            else if (buyScore >= 3 && compositeScore >= 4.0 && momentum > -0.2) {
                 signal = 'BUY';
-                confidence = (buyScore + trendscore + momentum * 3) / 13;
+                confidence = Math.max(0.5, (buyScore + trendscore + momentum * 3) / 12);
+            }
+            // Even more permissive buy for basic opportunities
+            else if (buyScore >= 2 && compositeScore >= 3.0 && rsi < 45) {
+                signal = 'BUY';
+                confidence = Math.max(0.45, (buyScore + trendscore) / 10);
             }
             // Sell signals remain the same
             else if (sellScore >= 4 && compositeScore <= 4) {
@@ -494,20 +499,19 @@ export class EmaRsiStrategy {
     }
 
     private calculateDynamicRSI(priceChange: number): number {
-        // Enhanced RSI calculation based on price momentum
+        // More flexible RSI calculation to allow more buy opportunities
         let rsi = 50;
 
-        if (priceChange > 10) rsi = 85;
-        else if (priceChange > 7) rsi = 78;
-        else if (priceChange > 4) rsi = 70;
-        else if (priceChange > 2) rsi = 62;
-        else if (priceChange > 0.5) rsi = 55;
+        if (priceChange > 8) rsi = 85;
+        else if (priceChange > 5) rsi = 75;
+        else if (priceChange > 3) rsi = 65;
+        else if (priceChange > 1) rsi = 58;
         else if (priceChange > 0) rsi = 52;
-        else if (priceChange > -0.5) rsi = 48;
-        else if (priceChange > -2) rsi = 38;
-        else if (priceChange > -4) rsi = 30;
-        else if (priceChange > -7) rsi = 22;
-        else rsi = 15;
+        else if (priceChange > -1) rsi = 45;
+        else if (priceChange > -3) rsi = 35;
+        else if (priceChange > -5) rsi = 25;
+        else if (priceChange > -8) rsi = 18;
+        else rsi = 12;
 
         return rsi;
     }

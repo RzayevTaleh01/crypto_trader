@@ -267,14 +267,14 @@ export class EmaRsiStrategy {
                     (analysis.confidence > 0.85 ? 10 : 0)   // Bonus for high confidence
                 );
 
-                // Strict filtering for only highest potential coins
+                // More flexible criteria for better trading opportunities
                 const meetsStrictCriteria = (
-                    analysis.confidence > 0.75 &&           // Higher confidence threshold
-                    momentum > 0.3 &&                       // Strong positive momentum
-                    trendscore >= 6 &&                      // Strong trend only
-                    analysis.volume_strength > 1.2 &&       // Good volume
-                    analysis.compositeScore >= 7.5 &&       // High composite score
-                    volatility >= 3 && volatility <= 15     // Optimal volatility range
+                    analysis.confidence > 0.65 &&           // Reduced confidence threshold
+                    momentum > 0.2 &&                       // Lower momentum requirement
+                    trendscore >= 5 &&                      // Reduced trend requirement
+                    analysis.volume_strength > 1.0 &&       // Lower volume requirement
+                    analysis.compositeScore >= 6.5 &&       // Lower composite score
+                    volatility >= 2 && volatility <= 18     // Wider volatility range
                 );
 
                 if (meetsStrictCriteria) {
@@ -732,7 +732,8 @@ export class EmaRsiStrategy {
                     console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
                 } else {
                     // Subtract loss from main balance
-                    await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
+                    ```tool_code
+await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
                     console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} subtracted from main balance`);
                 }
             }
@@ -904,7 +905,7 @@ export class EmaRsiStrategy {
         const volumeFactor = Math.min(analysis.volume_strength / 3, 0.2);
         const volatilityFactor = Math.min(Math.abs(priceChange24h) / 20, 0.15);
         const confidenceFactor = analysis.confidence * 0.1;
-        
+
         const totalPotential = momentumFactor + trendFactor + volumeFactor + volatilityFactor + confidenceFactor;
         return Math.min(totalPotential, 0.25); // Cap at 25% expected return
     }
@@ -922,7 +923,7 @@ export class EmaRsiStrategy {
         console.log(`   • Volume Gücü: ${analysis.volumeStrength.toFixed(2)} ${analysis.volumeStrength > 2 ? '🔥 (Çox yüksək)' : analysis.volumeStrength > 1.5 ? '✅ (Yüksək)' : '⚠️ (Orta)'}`);
         console.log(`   • Kompozit Skor: ${analysis.compositeScore.toFixed(1)}/10 ${analysis.compositeScore >= 8 ? '🔥 (Mükəmməl)' : analysis.compositeScore >= 7.5 ? '✅ (Çox yaxşı)' : '⚠️ (Yaxşı)'}`);
         console.log(`   • Bazar Strukturu: ${analysis.marketStructure.toFixed(3)} ${analysis.marketStructure > 0.5 ? '🚀 (Çox bullish)' : analysis.marketStructure > 0.3 ? '✅ (Bullish)' : '⚠️ (Neytral)'}`);
-        
+
         console.log(`\n💡 KAR SƏBƏBLƏRİ:`);
         if (analysis.momentum > 0.6) console.log(`   🚀 Çox güclü momentum (${analysis.momentum.toFixed(3)}) - böyük hərəkat gözlənilir`);
         if (analysis.trendscore >= 8) console.log(`   📈 Dominant yüksəliş trendi (${analysis.trendscore}/10)`);
@@ -930,7 +931,7 @@ export class EmaRsiStrategy {
         if (analysis.volumeStrength > 2) console.log(`   💪 Çox yüksək volume aktivliyi - güclü maraq`);
         if (confidence > 0.9) console.log(`   ⭐ İstisna etibar dərəcəsi (${(confidence * 100).toFixed(1)}%)`);
         if (analysis.compositeScore >= 8.5) console.log(`   🎯 Mükəmməl texniki göstəricilər kombinasiyası`);
-        
+
         console.log(`\n🎯 QƏRAR ƏSASLARI:`);
         console.log(`   ✅ Sərt meyarlara uyğun: Confidence>75%, Momentum>0.3, Trend≥6`);
         console.log(`   ✅ Yüksək həcm aktivliği və güclü bazar strukturu`);

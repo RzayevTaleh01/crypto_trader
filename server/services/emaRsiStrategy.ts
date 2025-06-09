@@ -741,13 +741,14 @@ export class EmaRsiStrategy {
                 console.log(`   Profit/Loss: $${profitLoss.toFixed(3)}`);
 
                 if (profitLoss > 0) {
-                    // Update main balance with investment return only
+                    // ONLY return original investment to main balance
                     await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
                     
                     // Add profit to profit balance separately
                     await storage.addProfit(userId, profitLoss);
                     
-                    console.log(`✅ $${originalInvestment.toFixed(3)} returned to main balance + $${profitLoss.toFixed(3)} profit added to profit balance`);
+                    console.log(`✅ CORRECTED: $${originalInvestment.toFixed(3)} investment returned to main balance + $${profitLoss.toFixed(3)} profit to profit balance`);
+                    console.log(`💰 Main balance after sell: $${newMainBalance.toFixed(3)} (was $${currentMainBalance.toFixed(3)})`);
                     
                     // Broadcast profit balance update
                     if (this.broadcastFn) {

@@ -406,16 +406,13 @@ export class DatabaseStorage implements IStorage {
     // Total current value = balances + portfolio value
     const totalCurrentValue = currentBalance + currentProfitBalance + currentPortfolioValue;
 
-    // Calculate starting balance from buy trades (minimum 20)
+    // Calculate starting balance from buy trades
     const buyTrades = allTrades.filter(t => t.type === 'BUY');
-    const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total || '0'), 0);
+    const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
 
     // Calculate realized profit from sell trades only
     const sellTrades = allTrades.filter(t => t.type === 'SELL');
-    const realizedProfit = sellTrades.reduce((sum, trade) => {
-      const pnl = parseFloat(trade.pnl || '0');
-      return sum + (isNaN(pnl) ? 0 : pnl);
-    }, 0);
+    const realizedProfit = sellTrades.reduce((sum, trade) => sum + parseFloat(trade.pnl || '0'), 0);
 
     // Calculate unrealized profit from current portfolio
     let unrealizedProfit = 0;
@@ -424,23 +421,20 @@ export class DatabaseStorage implements IStorage {
       if (crypto) {
         const currentValue = parseFloat(position.amount) * parseFloat(crypto.currentPrice);
         const invested = parseFloat(position.totalInvested);
-        if (!isNaN(currentValue) && !isNaN(invested)) {
-          unrealizedProfit += (currentValue - invested);
-        }
+        unrealizedProfit += (currentValue - invested);
       }
     }
 
     // Count winning trades
     let winningTrades = 0;
     for (const sell of sellTrades) {
-      const pnl = parseFloat(sell.pnl || '0');
-      if (!isNaN(pnl) && pnl > 0) {
+      if (parseFloat(sell.pnl || '0') > 0) {
         winningTrades++;
       }
     }
 
     // Starting balance should be the total amount invested (min 20)
-    const startingBalance = Math.max(totalInvested || 20, 20);
+    const startingBalance = Math.max(totalInvested, 20);
 
     // Total profit = profit balance (realized) + unrealized portfolio profit
     const totalProfit = currentProfitBalance + unrealizedProfit;
@@ -459,8 +453,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     const todayProfit = todayTrades.reduce((sum, trade) => {
-      const pnl = parseFloat(trade.pnl || '0');
-      return sum + (isNaN(pnl) ? 0 : pnl);
+      return sum + parseFloat(trade.pnl || '0');
     }, 0);
 
     const todayProfitPercentage = startingBalance > 0 ? (todayProfit / startingBalance) * 100 : 0;

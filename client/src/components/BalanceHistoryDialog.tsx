@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,29 +51,29 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
     const fetchData = async () => {
       setLoading(true);
       setError("");
-      
+
       try {
         console.log('🔄 Fetching balance history data...');
-        
+
         // Fetch trades
         const tradesResponse = await fetch('/api/trades/user');
         console.log('📊 Trades response status:', tradesResponse.status);
-        
+
         if (!tradesResponse.ok) {
           throw new Error(`Trades API failed: ${tradesResponse.status}`);
         }
-        
+
         const tradesData = await tradesResponse.json();
         console.log('📊 Raw trades data:', tradesData);
-        
+
         // Fetch user data
         const userResponse = await fetch(`/api/user/${userId}`);
         console.log('👤 User response status:', userResponse.status);
-        
+
         if (!userResponse.ok) {
           throw new Error(`User API failed: ${userResponse.status}`);
         }
-        
+
         const userData = await userResponse.json();
         console.log('👤 Raw user data:', userData);
 
@@ -110,7 +109,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
         setTrades(tradesWithCrypto);
         setUser(userData.user || userData);
-        
+
       } catch (error: any) {
         console.error('❌ Error fetching balance history data:', error);
         setError(error.message || 'Məlumatları yükləyərkən xəta baş verdi');
@@ -132,10 +131,16 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       return;
     }
 
-    console.log('🔄 Generating balance history for', balanceType, 'balance');
+    console.log('🔍 Generating balance history for', balanceType, 'balance');
 
     const history: BalanceHistoryItem[] = [];
-    let runningMainBalance = 20.00; // Başlanğıc balans
+
+    // Calculate starting balance from total investments
+    const buyTrades = trades.filter(t => t.type === 'BUY');
+    const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
+    const startingBalance = Math.max(totalInvested, 20);
+
+    let runningMainBalance = startingBalance;
     let runningProfitBalance = 0.00;
 
     // Başlanğıc balansı əlavə et
@@ -143,9 +148,9 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       history.push({
         timestamp: new Date(Date.now() - trades.length * 24 * 60 * 60 * 1000).toISOString(),
         action: "INITIAL",
-        amount: 20.00,
-        description: "Başlanğıc əsas balans",
-        newBalance: 20.00
+        amount: startingBalance,
+        description: `Başlanğıc əsas balans ($${totalInvested.toFixed(2)} investisiya)`,
+        newBalance: startingBalance
       });
     }
 
@@ -154,7 +159,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-    console.log('📊 Processing', sortedTrades.length, 'sorted trades');
+    console.log('📊 Processing', sortedTrades.length, 'sorted trades, starting balance:', startingBalance);
 
     sortedTrades.forEach((trade, index) => {
       const tradeAmount = parseFloat(trade.total);
@@ -168,14 +173,14 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       });
 
       if (trade.type === 'BUY') {
-        // Alış zamanı əsas balansdan çıxılır
         if (balanceType === "main") {
+          // Alış zamanı əsas balansdan düşür
           runningMainBalance -= tradeAmount;
           history.push({
             timestamp: trade.createdAt,
             action: "BUY",
             amount: -tradeAmount,
-            description: `${trade.cryptocurrency?.symbol || 'Unknown'} alışı üçün ödəniş`,
+            description: `${trade.cryptocurrency?.symbol || 'Unknown'} alışı`,
             newBalance: runningMainBalance,
             relatedTrade: trade
           });
@@ -363,7 +368,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                                       <ArrowRight className="h-4 w-4 text-crypto-blue" />
                                     )}
                                   </div>
-                                  
+
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
                                       <Badge 
@@ -380,11 +385,11 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                                         {formatTime(item.timestamp)}
                                       </span>
                                     </div>
-                                    
+
                                     <p className="text-sm font-medium mt-1 text-foreground">
                                       {item.description}
                                     </p>
-                                    
+
                                     {item.relatedTrade && (
                                       <div className="mt-2 text-xs text-muted-foreground bg-muted/30 rounded px-2 py-1 w-fit">
                                         📊 {item.relatedTrade.amount} {item.relatedTrade.cryptocurrency?.symbol || 'Unknown'} × 
@@ -401,7 +406,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
                                 }`}>
                                   {item.amount >= 0 ? '+' : ''}${Math.abs(item.amount).toFixed(2)}
                                 </div>
-                                
+
                                 <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/30 rounded px-2 py-1">
                                   <ArrowRight className="h-3 w-3" />
                                   <span className="font-medium">${item.newBalance.toFixed(2)}</span>

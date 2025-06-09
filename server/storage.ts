@@ -92,19 +92,55 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserBalance(userId: number, balance: string): Promise<void> {
-    const balanceNumber = parseFloat(balance);
-
-    // Prevent negative balance updates
-    if (balanceNumber < 0) {
-      console.log(`❌ Attempted to set negative balance: $${balanceNumber.toFixed(2)} for user ${userId}`);
-      return;
-    }
-
-    await db
-        .update(users)
-        .set({ balance })
+  async updateUserBalance(userId: number, newBalance: string) {
+    try {
+      await db.update(users)
+        .set({ balance: newBalance })
         .where(eq(users.id, userId));
+
+      console.log(`💰 Balance updated for user ${userId}: $${newBalance}`);
+    } catch (error) {
+      console.error('Error updating user balance:', error);
+      throw error;
+    }
+  }
+
+  async addToMainBalance(userId: number, amount: number) {
+    try {
+      const user = await this.getUser(userId);
+      if (!user) throw new Error('User not found');
+
+      const currentBalance = parseFloat(user.balance || '0');
+      const newBalance = currentBalance + amount;
+
+      await db.update(users)
+        .set({ balance: newBalance.toString() })
+        .where(eq(users.id, userId));
+
+      console.log(`💰 Added $${amount.toFixed(2)} to main balance. New balance: $${newBalance.toFixed(2)}`);
+    } catch (error) {
+      console.error('Error adding to main balance:', error);
+      throw error;
+    }
+  }
+
+  async addProfit(userId: number, profitAmount: number) {
+    try {
+      const user = await this.getUser(userId);
+      if (!user) throw new Error('User not found');
+
+      const currentProfitBalance = parseFloat(user.profitBalance || '0');
+      const newProfitBalance = currentProfitBalance + profitAmount;
+
+      await db.update(users)
+        .set({ profitBalance: newProfitBalance.toString() })
+        .where(eq(users.id, userId));
+
+      console.log(`💎 Added $${profitAmount.toFixed(2)} to profit balance. New profit balance: $${newProfitBalance.toFixed(2)}`);
+    } catch (error) {
+      console.error('Error adding profit:', error);
+      throw error;
+    }
   }
 
   async updateUserProfitBalance(userId: number, newProfitBalance: string): Promise<void> {
@@ -123,28 +159,6 @@ export class DatabaseStorage implements IStorage {
         .update(users)
         .set(updateData)
         .where(eq(users.id, userId));
-  }
-
-  async addProfit(userId: number, profit: number): Promise<void> {
-    const user = await this.getUser(userId);
-    if (user) {
-      const newProfitBalance = parseFloat(user.profitBalance || '0') + profit;
-      await db.update(users).set({ 
-        profitBalance: newProfitBalance.toString(),
-        updatedAt: new Date()
-      }).where(eq(users.id, userId));
-    }
-  }
-
-  async addToMainBalance(userId: number, amount: number): Promise<void> {
-    const user = await this.getUser(userId);
-    if (user) {
-      const newBalance = parseFloat(user.balance || '0') + amount;
-      await db.update(users).set({ 
-        balance: newBalance.toString(),
-        updatedAt: new Date()
-      }).where(eq(users.id, userId));
-    }
   }
 
   async subtractFromMainBalance(userId: number, amount: number): Promise<void> {
@@ -351,120 +365,87 @@ export class DatabaseStorage implements IStorage {
         .orderBy(priceHistory.timestamp);
   }
 
-  // Analytics operations
-  async getUserStats(userId: number): Promise<any> {
-    // Get user data and current portfolio value
+  async getUserStats(userId: number) {
     const user = await this.getUser(userId);
-    const currentBalance = parseFloat(user?.balance || '0');
-    const currentProfitBalance = parseFloat(user?.profitBalance || '0');
+    if (!user) {
+      return {
+        totalProfit: "0.00",
+        realizedProfit: "0.00", 
+        unrealizedProfit: "0.00",
+        totalProfitPercentage: "0.00",
+        currentBalance: "0.00",
+        portfolioValue: "0.00",
+        totalValue: "0.00",
+        activeTrades: 0,
+        winRate: "0",
+        totalTrades: 0,
+        winningTrades: 0,
+        todayProfit: "0.00",
+        todayProfitPercentage: "0.00",
+        uptime: "99.7"
+      };
+    }
 
-    // Calculate current portfolio value manually
+    const currentBalance = parseFloat(user.balance || '0');
+    const currentProfitBalance = parseFloat(user.profitBalance || '0'); 
+
+    const allTrades = await this.getUserTrades(userId, 1000);
     const portfolioPositions = await this.getUserPortfolio(userId);
-    let currentPortfolioValue = 0;
 
+    // Calculate current portfolio value
+    let currentPortfolioValue = 0;
     for (const position of portfolioPositions) {
       const crypto = await this.getCryptocurrency(position.cryptoId);
       if (crypto) {
+        const currentPrice = parseFloat(crypto.currentPrice);
         const amount = parseFloat(position.amount);
-        const price = parseFloat(crypto.currentPrice);
-        currentPortfolioValue += amount * price;
+        currentPortfolioValue += (amount * currentPrice);
       }
     }
-    const totalCurrentValue = currentBalance + currentPortfolioValue;
 
-    // Calculate realized profit using FIFO method for sold positions
-    const userTrades = await this.getUserTrades(userId);
-    const sellTrades = userTrades.filter(trade => trade.type === 'SELL');
-    const buyTrades = userTrades.filter(trade => trade.type === 'BUY');
+    // Total current value = balances + portfolio value
+    const totalCurrentValue = currentBalance + currentProfitBalance + currentPortfolioValue;
 
-    // Group trades by crypto and calculate realized profits
-    const cryptoGroups = new Map<number, {buys: any[], sells: any[]}>();
+    // Calculate starting balance from buy trades
+    const buyTrades = allTrades.filter(t => t.type === 'BUY');
+    const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
 
-    for (const buyTrade of buyTrades) {
-      if (!cryptoGroups.has(buyTrade.cryptoId)) {
-        cryptoGroups.set(buyTrade.cryptoId, { buys: [], sells: [] });
-      }
-      cryptoGroups.get(buyTrade.cryptoId)!.buys.push(buyTrade);
-    }
-
-    for (const sellTrade of sellTrades) {
-      if (!cryptoGroups.has(sellTrade.cryptoId)) {
-        cryptoGroups.set(sellTrade.cryptoId, { buys: [], sells: [] });
-      }
-      cryptoGroups.get(sellTrade.cryptoId)!.sells.push(sellTrade);
-    }
-
-    // Calculate realized profit using FIFO method
-    let realizedProfit = 0;
-    let winningTrades = 0;
-    let totalTrades = 0;
-
-    Array.from(cryptoGroups.entries()).forEach(([cryptoId, trades]) => {
-      if (trades.sells.length === 0) return;
-
-      // Sort by date
-      trades.buys.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
-      trades.sells.sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
-
-      const holdings: Array<{amount: number, price: number}> = [];
-
-      // Add all buys to holdings
-      for (const buy of trades.buys) {
-        holdings.push({
-          amount: parseFloat(buy.amount),
-          price: parseFloat(buy.price)
-        });
-      }
-
-      // Process sells using FIFO
-      for (const sell of trades.sells) {
-        let sellAmount = parseFloat(sell.amount);
-        const sellPrice = parseFloat(sell.price);
-        let tradeProfit = 0;
-
-        while (sellAmount > 0 && holdings.length > 0) {
-          const oldestHolding = holdings[0];
-          const usedAmount = Math.min(sellAmount, oldestHolding.amount);
-
-          // Calculate profit for this portion
-          const profit = usedAmount * (sellPrice - oldestHolding.price);
-          tradeProfit += profit;
-          realizedProfit += profit;
-
-          // Update holdings
-          oldestHolding.amount -= usedAmount;
-          sellAmount -= usedAmount;
-
-          if (oldestHolding.amount <= 0) {
-            holdings.shift();
-          }
-        }
-
-        // Count as winning trade if profitable
-        if (tradeProfit > 0) winningTrades++;
-        totalTrades++;
-      }
-    });
+    // Calculate realized profit from sell trades only
+    const sellTrades = allTrades.filter(t => t.type === 'SELL');
+    const realizedProfit = sellTrades.reduce((sum, trade) => sum + parseFloat(trade.pnl || '0'), 0);
 
     // Calculate unrealized profit from current portfolio
     let unrealizedProfit = 0;
     for (const position of portfolioPositions) {
-      const currentValue = parseFloat(position.amount) * parseFloat((await this.getCryptocurrency(position.cryptoId))?.currentPrice || '0');
-      const invested = parseFloat(position.totalInvested);
-      unrealizedProfit += (currentValue - invested);
+      const crypto = await this.getCryptocurrency(position.cryptoId);
+      if (crypto) {
+        const currentValue = parseFloat(position.amount) * parseFloat(crypto.currentPrice);
+        const invested = parseFloat(position.totalInvested);
+        unrealizedProfit += (currentValue - invested);
+      }
     }
 
-    // Kar sadəcə realized profit (satış karı) olmalıdır - unrealized profit daxil edilməməlidir
-    const totalProfit = realizedProfit; // Sadəcə satış karı
+    // Count winning trades
+    let winningTrades = 0;
+    for (const sell of sellTrades) {
+      if (parseFloat(sell.pnl || '0') > 0) {
+        winningTrades++;
+      }
+    }
 
-    // Use current balance as baseline for percentage calculation
-    const baselineForPercentage = Math.max(currentBalance, 10);
-    const profitPercentage = baselineForPercentage > 0 ? (totalProfit / baselineForPercentage) * 100 : 0;
+    // Starting balance should be the total amount invested (min 20)
+    const startingBalance = Math.max(totalInvested, 20);
+
+    // Total profit = profit balance (realized) + unrealized portfolio profit
+    const totalProfit = currentProfitBalance + unrealizedProfit;
+
+    // Profit percentage based on starting investment
+    const profitPercentage = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
 
     const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
-    const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+    const winRate = sellTrades.length > 0 ? (winningTrades / sellTrades.length) * 100 : 0;
 
-    // Calculate today's profit from today's sell trades
+    // Calculate today's profit
     const today = new Date();
     const todayTrades = sellTrades.filter(trade => {
       const tradeDate = new Date(trade.createdAt);
@@ -475,41 +456,31 @@ export class DatabaseStorage implements IStorage {
       return sum + parseFloat(trade.pnl || '0');
     }, 0);
 
-    const todayProfitPercentage = baselineForPercentage > 0 ? (todayProfit / baselineForPercentage) * 100 : 0;
+    const todayProfitPercentage = startingBalance > 0 ? (todayProfit / startingBalance) * 100 : 0;
 
-    // Dynamic starting balance calculation
-    // Calculate total amount spent on purchases (this represents the initial investment)
-    const totalInvestedAmount = buyTrades.reduce((sum, trade) => {
-      return sum + parseFloat(trade.total);
-    }, 0);
-
-    // Use the larger value between current balance and total invested as starting reference
-    const dynamicStartingBalance = Math.max(totalInvestedAmount, currentBalance, 10.00);
-    const actualCurrentValue = totalCurrentValue;
-    const profitFromDynamicStart = actualCurrentValue - dynamicStartingBalance;
-    const profitPercentageFromStart = dynamicStartingBalance > 0 ? ((actualCurrentValue - dynamicStartingBalance) / dynamicStartingBalance) * 100 : 0;
+    console.log(`💰 Balance Fix: Invested: $${totalInvested.toFixed(2)}, Current Total: $${totalCurrentValue.toFixed(2)}, Realized: $${realizedProfit.toFixed(2)}, Unrealized: $${unrealizedProfit.toFixed(2)}`);
+    console.log(`📊 Profit Balance: $${currentProfitBalance.toFixed(2)}, Total Profit: $${totalProfit.toFixed(2)}, Percentage: ${profitPercentage.toFixed(2)}%`);
 
     return {
-      totalProfit: currentProfitBalance.toFixed(2), // Kar balansından götür
+      totalProfit: totalProfit.toFixed(2),
       realizedProfit: realizedProfit.toFixed(2),
       unrealizedProfit: unrealizedProfit.toFixed(2),
-      totalProfitPercentage: currentProfitBalance > 0 ? ((currentProfitBalance / baselineForPercentage) * 100).toFixed(2) : "0.00",
+      totalProfitPercentage: profitPercentage.toFixed(2),
       currentBalance: currentBalance.toFixed(2),
       currentProfitBalance: currentProfitBalance.toFixed(2),
       portfolioValue: currentPortfolioValue.toFixed(2),
       totalValue: totalCurrentValue.toFixed(2),
       activeTrades: activeTrades,
       winRate: winRate.toFixed(1),
-      totalTrades: totalTrades,
+      totalTrades: sellTrades.length,
       winningTrades: winningTrades,
       todayProfit: todayProfit.toFixed(2),
       todayProfitPercentage: todayProfitPercentage.toFixed(2),
       uptime: "99.7",
-      // Dynamic balance comparison
-      expectedStartingBalance: dynamicStartingBalance.toFixed(2),
-      actualCurrentValue: actualCurrentValue.toFixed(2),
-      profitFromExpectedStart: profitFromDynamicStart.toFixed(2),
-      profitPercentageFromStart: profitPercentageFromStart.toFixed(2)
+      expectedStartingBalance: startingBalance.toFixed(2),
+      actualCurrentValue: totalCurrentValue.toFixed(2),
+      profitFromExpectedStart: (totalCurrentValue - startingBalance).toFixed(2),
+      profitPercentageFromStart: startingBalance > 0 ? (((totalCurrentValue - startingBalance) / startingBalance) * 100).toFixed(2) : "0.00"
     };
   }
 

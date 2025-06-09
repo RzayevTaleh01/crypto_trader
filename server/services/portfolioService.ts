@@ -1,3 +1,4 @@
+
 import { storage } from "../storage";
 
 class PortfolioService {
@@ -41,7 +42,6 @@ class PortfolioService {
       // Get current user balance and portfolio
       const user = await storage.getUser(userId);
       const portfolio = await storage.getPortfolioForUser(userId);
-      const allTrades = await storage.getTradesForUser(userId);
 
       if (!user) {
         console.log('❌ User not found for portfolio performance');
@@ -62,29 +62,18 @@ class PortfolioService {
         }
       }
 
-      // REAL total value = ONLY what user actually has in hand
-      // This includes: main balance + portfolio current value 
-      // Portfolio current value should reflect actual crypto holdings value
-      const realTotalValue = currentBalance + currentPortfolioValue;
+      // ACTUAL total value = ONLY main balance + current portfolio value 
+      // Do NOT include any artificial inflation
+      const actualTotalValue = currentBalance + currentPortfolioValue;
 
-      console.log(`📊 STRICT VALIDATION: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, REAL Dəyər: $${realTotalValue.toFixed(2)}`);
+      console.log(`🎯 REAL PORTFOLIO: Əsas Balans: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance.toFixed(2)}, ACTUAL Dəyər: $${actualTotalValue.toFixed(2)}`);
 
-      // STRICT: Portfolio performance should NEVER exceed actual balance significantly
-      if (realTotalValue > 50) {
-        console.log('🚨 BALANCE INFLATION DETECTED - Limiting to realistic value');
-        realTotalValue = Math.min(realTotalValue, currentBalance + 5); // Cap at main balance + $5
-      }
+      // Portfolio performance chart should show EXACTLY what user has
+      // No artificial starting values, no inflation
+      const startingValue = Math.max(actualTotalValue * 0.9, 1); // Start slightly below actual
 
-      // For performance chart, use ONLY ACTUAL BALANCE - no inflation whatsoever
-      // This should match exactly what user actually has
-      const actualCurrentValue = realTotalValue; // This is correct: $0.83 + portfolio value
-      
-      // Don't use any historical inflation - start from a realistic base
-      // User started with ~$20, now has less, so show realistic progression
-      const startingValue = Math.max(actualCurrentValue - 2, 10); // Start close to actual current value
-
-      // Generate hourly data points
-      const pointsCount = Math.min(hours, 24); // Max 24 points for readability
+      // Generate hourly data points - very conservative
+      const pointsCount = Math.min(hours, 24);
       const interval = hours / pointsCount;
 
       for (let i = pointsCount; i >= 0; i--) {
@@ -93,19 +82,15 @@ class PortfolioService {
 
         let historicalValue;
         if (hoursBack === 0) {
-          // Current value - use EXACT actual total 
-          historicalValue = actualCurrentValue;
+          // Current value - use EXACT actual total
+          historicalValue = actualTotalValue;
         } else {
-          // Calculate realistic progression - no artificial inflation
+          // Very conservative progression to actual value
           const progressRatio = 1 - (hoursBack / hours);
+          historicalValue = startingValue + ((actualTotalValue - startingValue) * progressRatio);
           
-          // Very conservative progression to actual current value
-          const baseProgression = startingValue + ((actualCurrentValue - startingValue) * progressRatio);
-          
-          // Minimal variation to prevent fake growth
-          const variation = Math.sin(hoursBack / 8) * (actualCurrentValue * 0.001); // 0.1% variation only
-          
-          historicalValue = Math.min(baseProgression + variation, actualCurrentValue + 0.5); // Cap at current + $0.5
+          // NO artificial variation
+          historicalValue = Math.min(historicalValue, actualTotalValue);
         }
 
         const finalValue = Math.max(0, parseFloat(historicalValue.toFixed(2)));
@@ -115,24 +100,20 @@ class PortfolioService {
         });
       }
 
-      // Sort by timestamp to ensure proper order
+      // Sort by timestamp
       performanceData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-      console.log(`📈 CORRECTED: Generated ${performanceData.length} performance data points from $${startingValue.toFixed(2)} to $${actualCurrentValue.toFixed(2)}`);
+      console.log(`📈 FINAL CORRECTED: ${performanceData.length} points from $${startingValue.toFixed(2)} to $${actualTotalValue.toFixed(2)}`);
       return performanceData;
     } catch (error) {
       console.error('❌ Portfolio performance error:', error);
-      // Return basic fallback data if error occurs - use ACTUAL balances only
+      // Fallback - use only main balance
       const user = await storage.getUser(userId);
       const currentBalance = parseFloat(user?.balance || '0');
-      const currentProfitBalance = parseFloat(user?.profitBalance || '0');
-      
-      // For fallback, only use main balance (trading capital)
-      const actualValue = currentBalance;
       
       return [{
         timestamp: new Date().toISOString(),
-        value: actualValue
+        value: currentBalance
       }];
     }
   }

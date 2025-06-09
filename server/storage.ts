@@ -419,13 +419,14 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Starting balance should be 20 (fixed starting amount)
-    const startingBalance = 20;
+    // Calculate starting balance dynamically
+    // Starting balance = total invested from all buy trades (represents user's initial investment)
+    const startingBalance = totalInvested > 0 ? totalInvested : currentBalance;
 
     // Total profit = profit balance (realized profits only, not used for trading)
     const totalProfit = currentProfitBalance;
 
-    // Profit percentage based on starting investment (20 dollars)
+    // Profit percentage based on actual starting investment
     const profitPercentage = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
 
     const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;

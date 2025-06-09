@@ -73,7 +73,8 @@ class PortfolioService {
 
       // For historical data, simulate trading performance without profit balance
       const historicalTradingRatio = 1 - (hoursBack * 0.01); // More conservative growth for trading only
-      const historicalTradingValue = Math.max(20, currentTotalValue * historicalTradingRatio);
+      const minValue = Math.max(1, currentTotalValue * 0.1); // Use 10% of current value as minimum
+      const historicalTradingValue = Math.max(minValue, currentTotalValue * historicalTradingRatio);
 
       const finalValue = parseFloat(historicalTradingValue.toFixed(2));
       performanceData.push({

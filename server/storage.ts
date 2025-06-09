@@ -382,8 +382,8 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Total current value = balances + portfolio value
-    const totalCurrentValue = currentBalance + currentProfitBalance + currentPortfolioValue;
+    // Total current value = ONLY main balance + portfolio value (excluding profit balance from trading calculations)
+    const totalCurrentValue = currentBalance + currentPortfolioValue;
 
     // Calculate starting balance from buy trades
     const buyTrades = allTrades.filter(t => t.type === 'BUY');
@@ -412,13 +412,13 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Starting balance should be the total amount invested (min 20)
-    const startingBalance = Math.max(totalInvested, 20);
+    // Starting balance should be 20 (fixed starting amount)
+    const startingBalance = 20;
 
-    // Total profit = profit balance (realized) + unrealized portfolio profit
-    const totalProfit = currentProfitBalance + unrealizedProfit;
+    // Total profit = profit balance (realized profits only, not used for trading)
+    const totalProfit = currentProfitBalance;
 
-    // Profit percentage based on starting investment
+    // Profit percentage based on starting investment (20 dollars)
     const profitPercentage = startingBalance > 0 ? (totalProfit / startingBalance) * 100 : 0;
 
     const activeTrades = portfolioPositions.filter(item => parseFloat(item.amount) > 0).length;
@@ -437,8 +437,8 @@ export class DatabaseStorage implements IStorage {
 
     const todayProfitPercentage = startingBalance > 0 ? (todayProfit / startingBalance) * 100 : 0;
 
-    console.log(`💰 Balance Fix: Invested: $${totalInvested.toFixed(2)}, Current Total: $${totalCurrentValue.toFixed(2)}, Realized: $${realizedProfit.toFixed(2)}, Unrealized: $${unrealizedProfit.toFixed(2)}`);
-    console.log(`📊 Profit Balance: $${currentProfitBalance.toFixed(2)}, Total Profit: $${totalProfit.toFixed(2)}, Percentage: ${profitPercentage.toFixed(2)}%`);
+    console.log(`💰 Updated Balance Logic: Main Trading: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Profit Storage: $${currentProfitBalance.toFixed(2)}`);
+    console.log(`📊 Profit Balance (Storage Only): $${currentProfitBalance.toFixed(2)}, Trading Value: $${totalCurrentValue.toFixed(2)}, ROI: ${profitPercentage.toFixed(2)}%`);
 
     return {
       totalProfit: totalProfit.toFixed(2),

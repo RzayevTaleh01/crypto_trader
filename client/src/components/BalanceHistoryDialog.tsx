@@ -125,11 +125,9 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
     const history: BalanceHistoryItem[] = [];
 
-    // Calculate starting balance from total investments
-    const buyTrades = trades.filter(t => t.type === 'BUY');
-    const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total), 0);
-    const startingBalance = Math.max(totalInvested, 20);
-
+    // Starting balance is always 20 dollars (fixed)
+    const startingBalance = 20;
+    
     let runningMainBalance = startingBalance;
     let runningProfitBalance = 0.00;
 
@@ -139,7 +137,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
         timestamp: new Date(Date.now() - trades.length * 24 * 60 * 60 * 1000).toISOString(),
         action: "INITIAL",
         amount: startingBalance,
-        description: `Başlanğıc əsas balans ($${totalInvested.toFixed(2)} investisiya)`,
+        description: `Başlanğıc əsas balans (20$ sabit investisiya)`,
         newBalance: startingBalance
       });
     }

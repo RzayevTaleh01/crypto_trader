@@ -44,33 +44,45 @@ class PortfolioService {
     const currentBalance = parseFloat(user.balance || '0');
     const profitBalance = parseFloat(user.profitBalance || '0');
 
-    // Total value = main balance + profit balance (new logic)
-    const currentTotalValue = currentBalance + profitBalance;
+    // Get current portfolio value
+    const portfolio = await storage.getUserPortfolio(userId);
+    let currentPortfolioValue = 0;
+    
+    for (const position of portfolio) {
+      const crypto = await storage.getCryptocurrency(position.cryptoId);
+      if (crypto) {
+        const currentPrice = parseFloat(crypto.currentPrice);
+        const amount = parseFloat(position.amount);
+        currentPortfolioValue += (amount * currentPrice);
+      }
+    }
 
-    console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Kar Balansı: $${profitBalance}, Ümumi: $${currentTotalValue.toFixed(2)}`);
+    // Total trading value = main balance + portfolio value (EXCLUDING profit balance)
+    const currentTotalValue = currentBalance + currentPortfolioValue;
 
-    // Create simple performance data based on balance history
+    console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı (Ayrı): $${profitBalance}, Trading Dəyəri: $${currentTotalValue.toFixed(2)}`);
+
+    // Create performance data based on trading value only
     const performanceData = [];
     const intervals = Math.min(hours, 24);
 
-    // Generate realistic historical data points
+    // Generate realistic historical data points for trading performance
     for (let i = 0; i < intervals; i++) {
       const hoursBack = (intervals - 1 - i);
       const timestamp = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
-      // For historical data, gradually decrease profit balance to show growth
-      const historicalProfitRatio = 1 - (hoursBack * 0.02); // Gradual growth over time
-      const historicalProfitBalance = Math.max(0, profitBalance * historicalProfitRatio);
-      const historicalTotalValue = currentBalance + historicalProfitBalance;
+      // For historical data, simulate trading performance without profit balance
+      const historicalTradingRatio = 1 - (hoursBack * 0.01); // More conservative growth for trading only
+      const historicalTradingValue = Math.max(20, currentTotalValue * historicalTradingRatio);
 
-      const finalValue = parseFloat(historicalTotalValue.toFixed(2));
+      const finalValue = parseFloat(historicalTradingValue.toFixed(2));
       performanceData.push({
         timestamp: timestamp.toISOString(),
         value: finalValue.toString()
       });
 
       if (i === intervals - 1) {
-        console.log(`🔍 Latest performance data point: $${finalValue.toFixed(2)}`);
+        console.log(`🔍 Latest trading performance data point: $${finalValue.toFixed(2)}`);
       }
     }
 
@@ -104,19 +116,19 @@ class PortfolioService {
       return sum + parseFloat(item.totalInvested);
     }, 0);
 
-    // Total value = balances + current portfolio value
-    const totalValue = currentBalance + profitBalance + portfolioValue;
+    // Total TRADING value = main balance + current portfolio value (EXCLUDING profit balance)
+    const totalTradingValue = currentBalance + portfolioValue;
 
-    // For total invested, we use a baseline of 20 (starting amount) + current portfolio investments
-    const totalInvested = 20 + portfolioInvested;
+    // Starting investment is always 20 dollars
+    const totalInvested = 20;
 
-    // P&L is the profit balance (realized) + unrealized portfolio profits
+    // P&L calculation: profit balance (stored separately) + unrealized portfolio profits
     const unrealizedPnL = portfolioValue - portfolioInvested;
     const totalPnL = profitBalance + unrealizedPnL;
     const totalPnLPercentage = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
 
     return {
-      totalValue: totalValue.toString(),
+      totalValue: totalTradingValue.toString(), // Only trading value, not including profit balance
       totalInvested: totalInvested.toString(),
       totalPnL: totalPnL.toString(),
       totalPnLPercentage: totalPnLPercentage.toString(),

@@ -269,6 +269,22 @@ export class DatabaseStorage implements IStorage {
         .where(eq(portfolio.userId, userId));
   }
 
+  async getPortfolioForUser(userId: number): Promise<Portfolio[]> {
+    return await db
+        .select()
+        .from(portfolio)
+        .where(eq(portfolio.userId, userId));
+  }
+
+  async getTradesForUser(userId: number, limit = 1000): Promise<Trade[]> {
+    return await db
+        .select()
+        .from(trades)
+        .where(eq(trades.userId, userId))
+        .orderBy(desc(trades.createdAt))
+        .limit(limit);
+  }
+
   async getPortfolioItem(userId: number, cryptoId: number): Promise<Portfolio | undefined> {
     const [item] = await db
         .select()

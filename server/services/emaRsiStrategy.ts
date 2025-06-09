@@ -724,6 +724,8 @@ export class EmaRsiStrategy {
             const sellRatio = quantity / positionAmount;
             const originalInvestment = parseFloat(position.totalInvested) * sellRatio;
 
+            // Get user data first
+            const user = await storage.getUser(userId);
             if (user) {
                 const currentMainBalance = parseFloat(user.balance);
                 const avgBuyPrice = parseFloat(position.averagePrice);

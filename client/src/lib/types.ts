@@ -82,3 +82,18 @@ export interface UserStats {
   todayProfit: string;
   uptime: string;
 }
+
+export interface UserBalance {
+  mainBalance: string;
+  profitBalance: string;
+}
+
+export interface TradingSignal {
+  type: 'BUY' | 'SELL';
+  reason: string;
+  confidence: number;
+  indicators: string[];
+  expectedTarget?: number;
+  stopLoss?: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+}

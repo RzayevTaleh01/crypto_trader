@@ -731,24 +731,22 @@ export class EmaRsiStrategy {
                 // Calculate profit/loss
                 const profitLoss = total - originalInvestment;
 
-                // Always return the proportional original investment to main balance
-                const newMainBalance = currentMainBalance + originalInvestment;
-                
-                console.log(`💰 Sell Details: ${crypto.symbol}`);
-                console.log(`   Sold quantity: ${quantity.toFixed(6)} of ${positionAmount.toFixed(6)} (${(sellRatio * 100).toFixed(1)}%)`);
-                console.log(`   Original investment returned: $${originalInvestment.toFixed(3)}`);
-                console.log(`   Sale total: $${total.toFixed(3)}`);
-                console.log(`   Profit/Loss: $${profitLoss.toFixed(3)}`);
+                console.log(`💰 AVTOMATIK SATIŞ: ${crypto.symbol}`);
+                console.log(`   Satılan miqdar: ${quantity.toFixed(6)} / ${positionAmount.toFixed(6)} (${(sellRatio * 100).toFixed(1)}%)`);
+                console.log(`   Orijinal investisiya: $${originalInvestment.toFixed(3)}`);
+                console.log(`   Satış məbləği: $${total.toFixed(3)}`);
+                console.log(`   Kar/Zərər: $${profitLoss.toFixed(3)}`);
+                console.log(`   ÖNCƏKİ main balans: $${currentMainBalance.toFixed(3)}`);
 
                 if (profitLoss > 0) {
-                    // ONLY return original investment to main balance
-                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
+                    // Profit zamanı: YALNIZ orijinal investisiyanı main balansa qaytar
+                    await storage.updateUserBalances(userId, (currentMainBalance + originalInvestment).toString(), undefined);
                     
-                    // Add profit to profit balance separately
+                    // Karı profit balansına əlavə et
                     await storage.addProfit(userId, profitLoss);
                     
-                    console.log(`✅ CORRECTED: $${originalInvestment.toFixed(3)} investment returned to main balance + $${profitLoss.toFixed(3)} profit to profit balance`);
-                    console.log(`💰 Main balance after sell: $${newMainBalance.toFixed(3)} (was $${currentMainBalance.toFixed(3)})`);
+                    console.log(`✅ KAR DÜZƏLTMƏ: $${originalInvestment.toFixed(3)} investisiya main balansa + $${profitLoss.toFixed(3)} kar profit balansa`);
+                    console.log(`💰 YENİ main balans: $${(currentMainBalance + originalInvestment).toFixed(3)}`);
                     
                     // Broadcast profit balance update
                     if (this.broadcastFn) {
@@ -760,21 +758,28 @@ export class EmaRsiStrategy {
                                 profitBalance: parseFloat(updatedUser?.profitBalance || '0')
                             }
                         });
+                        
+                        this.broadcastFn({
+                            type: 'balanceUpdate',
+                            data: { userId, balance: currentMainBalance + originalInvestment }
+                        });
                     }
                 } else {
-                    // Loss: reduce main balance by the loss amount
-                    const finalMainBalance = newMainBalance + profitLoss; // profitLoss is negative
+                    // Zərər zamanı: investisiyadan zərər miqdarını çıx
+                    const finalMainBalance = currentMainBalance + originalInvestment + profitLoss; // profitLoss mənfi
                     await storage.updateUserBalances(userId, finalMainBalance.toString(), undefined);
-                    console.log(`📉 Loss: $${originalInvestment.toFixed(3)} returned minus $${Math.abs(profitLoss).toFixed(3)} loss = $${finalMainBalance.toFixed(3)} final balance`);
+                    console.log(`📉 ZƏRƏR: $${originalInvestment.toFixed(3)} investisiya - $${Math.abs(profitLoss).toFixed(3)} zərər = $${finalMainBalance.toFixed(3)} final balans`);
+                    
+                    if (this.broadcastFn) {
+                        this.broadcastFn({
+                            type: 'balanceUpdate',
+                            data: { userId, balance: finalMainBalance }
+                        });
+                    }
                 }
             }
 
-            if (this.broadcastFn) {
-                this.broadcastFn({
-                    type: 'balanceUpdate',
-                    data: { userId, balance: user?.balance }
-                });
-            }
+            // Balance update artıq yuxarıda edilib - təkrarlamaq lazım deyil
 
             const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
             let pnl = '0';

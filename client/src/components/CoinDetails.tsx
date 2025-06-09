@@ -241,7 +241,7 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
         "support_host": "https://www.tradingview.com"
       });
 
-      const container = document.getElementById('tradingview-chart');
+      const container = document.getElementById(`tradingview-chart-${symbol}`);
       if (container) {
         container.innerHTML = '';
         container.appendChild(script);
@@ -252,11 +252,11 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
           container.innerHTML = '';
         }
       };
-    }, []);
+    }, [symbol]);
 
     return (
       <div className="h-96 w-full">
-        <div id="tradingview-chart" className="h-full w-full bg-gray-900 rounded-lg overflow-hidden"></div>
+        <div id={`tradingview-chart-${symbol}`} className="h-full w-full bg-gray-900 rounded-lg overflow-hidden"></div>
       </div>
     );
   };
@@ -347,7 +347,7 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="chart" className="w-full">
+      <Tabs defaultValue="chart" className="w-full" key={`tabs-${symbol}`}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="chart">Qrafik</TabsTrigger>
           <TabsTrigger value="signals">Trading Siqnalları</TabsTrigger>
@@ -388,7 +388,7 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
               ) : (
                 <div className="space-y-4">
                   {tradingSignals.map((signal, index) => (
-                    <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div key={`signal-${symbol}-${index}`} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Badge 
@@ -420,7 +420,7 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
                           <p className="text-sm font-medium mb-2">Aktiv İndikatorlar:</p>
                           <div className="flex flex-wrap gap-2">
                             {signal.indicators.map((indicator, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
+                              <Badge key={`indicator-${symbol}-${index}-${idx}`} variant="secondary" className="text-xs">
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 {indicator}
                               </Badge>
@@ -574,7 +574,7 @@ export default function CoinDetails({ symbol, onBack }: CoinDetailsProps) {
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {trades.map((trade) => (
                     <div
-                      key={trade.id}
+                      key={`trade-${symbol}-${trade.id}`}
                       className="flex items-center justify-between p-3 bg-background rounded-lg border hover:shadow-sm transition-shadow"
                     >
                       <div className="flex-1">

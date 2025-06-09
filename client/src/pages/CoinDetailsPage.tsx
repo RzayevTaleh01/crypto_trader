@@ -1,33 +1,32 @@
-import { useRoute, useLocation } from "wouter";
+import { useParams } from "wouter";
 import CoinDetails from "@/components/CoinDetails";
 
 export default function CoinDetailsPage() {
-  const [, params] = useRoute("/coin/:symbol");
-  const [, setLocation] = useLocation();
-  
-  const symbol = params?.symbol;
-  
+  const { symbol } = useParams<{ symbol: string }>();
+
   if (!symbol) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Invalid Coin Symbol</h1>
-          <p className="text-muted-foreground mt-2">Please provide a valid cryptocurrency symbol.</p>
+          <h1 className="text-2xl font-bold mb-4">Symbol tapılmadı</h1>
+          <button 
+            onClick={() => window.history.back()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+          >
+            Geri Qayıt
+          </button>
         </div>
       </div>
     );
   }
 
-  const handleBack = () => {
-    setLocation("/");
-  };
-
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto">
         <CoinDetails 
+          key={`coin-details-${symbol}`}
           symbol={symbol.toUpperCase()} 
-          onBack={handleBack}
+          onBack={() => window.history.back()} 
         />
       </div>
     </div>

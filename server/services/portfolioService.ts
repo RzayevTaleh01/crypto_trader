@@ -119,8 +119,8 @@ class PortfolioService {
     // Total TRADING value = main balance + current portfolio value (EXCLUDING profit balance)
     const totalTradingValue = currentBalance + portfolioValue;
 
-    // Starting investment is always 20 dollars
-    const totalInvested = 20;
+    // Total invested is dynamic based on user's added balance
+    const totalInvested = parseFloat(currentBalance) + portfolioInvested;
 
     // P&L calculation: profit balance (stored separately) + unrealized portfolio profits
     const unrealizedPnL = portfolioValue - portfolioInvested;

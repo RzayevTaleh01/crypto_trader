@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   balance: string;
+  profitBalance: string;
   createdAt: string;
 }
 

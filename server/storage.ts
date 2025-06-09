@@ -108,6 +108,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async addProfitToBalance(userId: number, profitAmount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (user && profitAmount > 0) {
+      const currentProfitBalance = parseFloat(user.profitBalance || '0');
+      const newProfitBalance = (currentProfitBalance + profitAmount).toFixed(2);
+
+      await db.update(users)
+        .set({ profitBalance: newProfitBalance, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      console.log(`💚 Kar balansına $${profitAmount.toFixed(2)} əlavə edildi. Yeni kar balansı: $${newProfitBalance}`);
+    }
+  }
+
   async addProfit(userId: number, profitAmount: number): Promise<void> {
     const user = await this.getUser(userId);
     if (user) {
@@ -157,29 +171,22 @@ export class DatabaseStorage implements IStorage {
         .delete(trades)
         .where(eq(trades.userId, userId));
 
-    // Delete all portfolio items
+    // Delete all portfolio positions  
     await db
         .delete(portfolio)
         .where(eq(portfolio.userId, userId));
 
-    // Clear price history (optional - keeps crypto price data)
-    // await db.delete(priceHistory);
-    await db.transaction(async (tx) => {
-      // Delete all user trades
-      await tx.delete(trades).where(eq(trades.userId, userId));
+    // Reset both balances to 0
+    await db
+        .update(users)
+        .set({ 
+          balance: "0.00",
+          profitBalance: "0.00",
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
 
-      // Delete all user portfolio items
-      await tx.delete(portfolio).where(eq(portfolio.userId, userId));
-
-      // Delete all user price history
-      // await tx.delete(priceHistory).where(eq(priceHistory.userId, userId));
-
-      // Reset both balances - main balance to $20, profit balance to $0
-      await tx
-          .update(users)
-          .set({ balance: "20.00", profitBalance: "0.00", updatedAt: new Date() })
-          .where(eq(users.id, userId));
-    });
+    console.log(`🔄 Reset user ${userId} data - all balances set to $0, all trades and portfolio cleared`);
   }
 
   // Cryptocurrency operations

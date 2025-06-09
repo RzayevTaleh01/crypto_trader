@@ -51,10 +51,20 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
   const user = userData?.user;
 
-  const { data: trades = [] } = useQuery({
+  const { data: tradesResponse } = useQuery({
     queryKey: [`/api/trades/user/${userId}`],
     queryFn: async () => {
       const response = await fetch(`/api/trades/user/${userId}`);
+      return response.json();
+    }
+  });
+
+  const trades = tradesResponse || [];
+
+  const { data: cryptocurrencies = [] } = useQuery({
+    queryKey: [`/api/cryptocurrencies`],
+    queryFn: async () => {
+      const response = await fetch(`/api/cryptocurrencies`);
       return response.json();
     }
   });
@@ -77,6 +87,10 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
     sortedTrades.forEach((trade) => {
       const tradeAmount = parseFloat(trade.total);
       const profit = parseFloat(trade.pnl || '0');
+      
+      // Find cryptocurrency info
+      const crypto = cryptocurrencies.find((c: any) => c.id === trade.cryptoId);
+      const cryptoSymbol = crypto?.symbol || trade.cryptocurrency?.symbol || 'Unknown';
 
       if (trade.type === 'BUY') {
         if (balanceType === "main") {
@@ -85,7 +99,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "BUY",
             amount: -tradeAmount,
-            description: `${trade.cryptocurrency?.symbol || 'Unknown'} alışı`,
+            description: `${cryptoSymbol} alışı`,
             newBalance: runningMainBalance,
             relatedTrade: trade
           });
@@ -100,7 +114,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "SELL",
             amount: originalInvestment,
-            description: `${trade.cryptocurrency?.symbol || 'Unknown'} satışından əsas investisiyanın qayıdışı`,
+            description: `${cryptoSymbol} satışından əsas investisiyanın qayıdışı`,
             newBalance: runningMainBalance,
             relatedTrade: trade
           });
@@ -111,7 +125,7 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
             timestamp: trade.createdAt,
             action: "PROFIT",
             amount: profit,
-            description: `${trade.cryptocurrency?.symbol || 'Unknown'} satışından kar`,
+            description: `${cryptoSymbol} satışından kar`,
             newBalance: runningProfitBalance,
             relatedTrade: trade
           });

@@ -20,7 +20,7 @@ export default function Dashboard() {
   const userId = 1; // Mock user ID for demo
 
   // Get all data from WebSocket - no API calls
-  const { user, botSettings, isConnected } = useWebSocketData();
+  const { user, botSettings, isConnected, wsData } = useWebSocketData();
 
   const handleCoinClick = (symbol: string) => {
     setLocation(`/coin/${symbol}`);
@@ -83,12 +83,12 @@ export default function Dashboard() {
                   <Wallet className="h-4 w-4 text-crypto-blue" />
                   <span className="text-xs sm:text-sm font-medium hidden sm:inline">Ticarət:</span>
                   <span className="text-crypto-blue font-bold text-sm sm:text-base">
-                  ${user.data?.user?.balance || '0.00'}
+                  ${wsData.user?.balance ? parseFloat(wsData.user.balance).toFixed(2) : '0.00'}
                 </span>
                   <span className="text-xs text-muted-foreground hidden sm:inline">|</span>
                   <span className="text-xs sm:text-sm font-medium hidden sm:inline">Kar:</span>
                   <span className="text-crypto-green font-bold text-sm sm:text-base">
-                  ${user.data?.user?.profitBalance || '0.00'}
+                  ${wsData.user?.profitBalance ? parseFloat(wsData.user.profitBalance).toFixed(2) : '0.00'}
                 </span>
                 </div>
 

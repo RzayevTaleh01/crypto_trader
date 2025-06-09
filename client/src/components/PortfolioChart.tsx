@@ -21,7 +21,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     '1M': 720
   };
 
-  const { data: performanceData } = useQuery({
+  const { data: performanceData, error: performanceError } = useQuery({
     queryKey: ['/api/portfolio/performance', userId, timeframe],
     queryFn: () => fetch(`/api/portfolio/performance/${userId}?hours=${hoursMap[timeframe as keyof typeof hoursMap]}`).then(res => res.json()),
     enabled: !!userId,
@@ -51,6 +51,18 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
     if (!ctx) return;
 
     const safePerformanceData = Array.isArray(performanceData) ? performanceData : [];
+
+    // Debug logging
+    console.log('📊 Chart Performance Data:', { 
+      performanceData, 
+      safePerformanceData, 
+      error: performanceError,
+      length: safePerformanceData.length 
+    });
+
+    if (performanceError) {
+      console.error('❌ Performance data error:', performanceError);
+    }
 
     const labels = safePerformanceData.map((point: any) => {
       const date = new Date(point.timestamp);

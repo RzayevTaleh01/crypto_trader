@@ -1,4 +1,3 @@
-
 import { storage } from "../storage";
 
 class PortfolioService {
@@ -34,60 +33,75 @@ class PortfolioService {
     return portfolioWithDetails;
   }
 
-  async getPortfolioPerformance(userId: number, hours: number) {
-    const user = await storage.getUser(userId);
+  async getPortfolioPerformance(userId: number, hours: number = 24): Promise<any[]> {
+    try {
+      const performanceData = [];
+      const now = new Date();
 
-    if (!user) {
+      // Get current user balance and portfolio
+      const user = await storage.getUser(userId);
+      const portfolio = await storage.getPortfolioForUser(userId);
+      const allTrades = await storage.getTradesForUser(userId);
+
+      if (!user) {
+        console.log('❌ User not found for portfolio performance');
+        return [];
+      }
+
+      const currentBalance = parseFloat(user.balance || '0');
+      const currentProfitBalance = parseFloat(user.profitBalance || '0');
+
+      // Calculate current portfolio value
+      let currentPortfolioValue = 0;
+      for (const position of portfolio) {
+        const crypto = await storage.getCryptocurrency(position.cryptoId);
+        if (crypto) {
+          const currentPrice = parseFloat(crypto.currentPrice);
+          const amount = parseFloat(position.amount);
+          currentPortfolioValue += (amount * currentPrice);
+        }
+      }
+
+      // Total value includes main balance + portfolio + profit balance for display
+      const currentTotalValue = currentBalance + currentPortfolioValue + currentProfitBalance;
+
+      console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, Ümumi: $${currentTotalValue.toFixed(2)}`);
+
+      // Get trading history for more realistic simulation
+      const sellTrades = allTrades.filter(t => t.type === 'SELL');
+      const totalRealizedProfit = sellTrades.reduce((sum, trade) => sum + parseFloat(trade.pnl || '0'), 0);
+
+      // Generate historical data points with more realistic progression
+      for (let i = hours; i >= 0; i--) {
+        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
+        const hoursBack = i;
+
+        // Calculate progression based on actual profit accumulation
+        let historicalValue;
+        if (hoursBack === 0) {
+          // Current value
+          historicalValue = currentTotalValue;
+        } else {
+          // Simulate gradual profit accumulation over time
+          const progressRatio = 1 - (hoursBack / hours);
+          const profitProgression = totalRealizedProfit * progressRatio;
+          const baseValue = Math.max(20, currentBalance); // Starting point
+          historicalValue = baseValue + (currentPortfolioValue * progressRatio) + profitProgression;
+        }
+
+        const finalValue = Math.max(0, parseFloat(historicalValue.toFixed(2)));
+        performanceData.push({
+          timestamp: timestamp.toISOString(),
+          value: finalValue
+        });
+      }
+
+      console.log(`📈 Generated ${performanceData.length} performance data points`);
+      return performanceData;
+    } catch (error) {
+      console.error('❌ Portfolio performance error:', error);
       return [];
     }
-
-    const currentBalance = parseFloat(user.balance || '0');
-    const profitBalance = parseFloat(user.profitBalance || '0');
-
-    // Get current portfolio value
-    const portfolio = await storage.getUserPortfolio(userId);
-    let currentPortfolioValue = 0;
-    
-    for (const position of portfolio) {
-      const crypto = await storage.getCryptocurrency(position.cryptoId);
-      if (crypto) {
-        const currentPrice = parseFloat(crypto.currentPrice);
-        const amount = parseFloat(position.amount);
-        currentPortfolioValue += (amount * currentPrice);
-      }
-    }
-
-    // Total trading value = main balance + portfolio value (EXCLUDING profit balance)
-    const currentTotalValue = currentBalance + currentPortfolioValue;
-
-    console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı (Ayrı): $${profitBalance}, Trading Dəyəri: $${currentTotalValue.toFixed(2)}`);
-
-    // Create performance data based on trading value only
-    const performanceData = [];
-    const intervals = Math.min(hours, 24);
-
-    // Generate realistic historical data points for trading performance
-    for (let i = 0; i < intervals; i++) {
-      const hoursBack = (intervals - 1 - i);
-      const timestamp = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
-
-      // For historical data, simulate trading performance without profit balance
-      const historicalTradingRatio = 1 - (hoursBack * 0.01); // More conservative growth for trading only
-      const minValue = Math.max(1, currentTotalValue * 0.1); // Use 10% of current value as minimum
-      const historicalTradingValue = Math.max(minValue, currentTotalValue * historicalTradingRatio);
-
-      const finalValue = parseFloat(historicalTradingValue.toFixed(2));
-      performanceData.push({
-        timestamp: timestamp.toISOString(),
-        value: finalValue.toString()
-      });
-
-      if (i === intervals - 1) {
-        console.log(`🔍 Latest trading performance data point: $${finalValue.toFixed(2)}`);
-      }
-    }
-
-    return performanceData;
   }
 
   async getPortfolioSummary(userId: number) {

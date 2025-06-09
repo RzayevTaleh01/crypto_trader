@@ -75,6 +75,7 @@ export function useWebSocketData() {
       ]
     },
     
-    isConnected
+    isConnected,
+    wsData
   };
 }

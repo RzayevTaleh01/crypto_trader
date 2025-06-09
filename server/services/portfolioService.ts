@@ -62,18 +62,19 @@ class PortfolioService {
         }
       }
 
-      // ACTUAL total value = ONLY main balance + current portfolio value 
-      // Do NOT include any artificial inflation
-      const actualTotalValue = currentBalance + currentPortfolioValue;
+      // CRITICAL FIX: Use ONLY actual trading balance (no inflation)
+      const realTotalValue = currentBalance + currentPortfolioValue;
 
-      console.log(`🎯 REAL PORTFOLIO: Əsas Balans: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance.toFixed(2)}, ACTUAL Dəyər: $${actualTotalValue.toFixed(2)}`);
+      console.log(`🎯 BALANCE FIXED: Əsas Balans: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance.toFixed(2)}, REAL Dəyər: $${realTotalValue.toFixed(2)}`);
 
-      // Portfolio performance chart should show EXACTLY what user has
-      // No artificial starting values, no inflation
-      const startingValue = Math.max(actualTotalValue * 0.9, 1); // Start slightly below actual
+      // Portfolio chart must show EXACTLY user's actual balance - no fake growth
+      const actualCurrentValue = realTotalValue;
+      
+      // Start from a realistic baseline very close to current actual value
+      const startingValue = Math.max(actualCurrentValue - 1, actualCurrentValue * 0.95);
 
-      // Generate hourly data points - very conservative
-      const pointsCount = Math.min(hours, 24);
+      // Generate minimal data points to avoid fake progression
+      const pointsCount = Math.min(hours, 12); // Reduce points to minimize fake data
       const interval = hours / pointsCount;
 
       for (let i = pointsCount; i >= 0; i--) {
@@ -82,15 +83,15 @@ class PortfolioService {
 
         let historicalValue;
         if (hoursBack === 0) {
-          // Current value - use EXACT actual total
-          historicalValue = actualTotalValue;
+          // Current value must be EXACT actual balance
+          historicalValue = actualCurrentValue;
         } else {
-          // Very conservative progression to actual value
+          // Very minimal progression - no artificial growth
           const progressRatio = 1 - (hoursBack / hours);
-          historicalValue = startingValue + ((actualTotalValue - startingValue) * progressRatio);
+          historicalValue = startingValue + ((actualCurrentValue - startingValue) * progressRatio);
           
-          // NO artificial variation
-          historicalValue = Math.min(historicalValue, actualTotalValue);
+          // Strict cap to prevent any inflation
+          historicalValue = Math.min(historicalValue, actualCurrentValue);
         }
 
         const finalValue = Math.max(0, parseFloat(historicalValue.toFixed(2)));

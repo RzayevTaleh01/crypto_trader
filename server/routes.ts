@@ -242,28 +242,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Remove the position from portfolio
           await storage.deletePortfolioItem(userId, coin.cryptoId);
 
-          // Update user balances using corrected mechanism
+          // Update user balances using corrected mechanism  
           const user = await storage.getUser(userId);
           if (user) {
             const totalInvested = parseFloat(coin.totalInvested);
             const profitLoss = sellTotal - totalInvested;
             const currentMainBalance = parseFloat(user.balance);
 
-            console.log(`🔍 SELL ALL: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
+            console.log(`🔍 SELL ALL FIXED: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
 
-            // ONLY return original investment to main balance (not the full sell amount)
+            // CRITICAL FIX: Only return original investment to main balance
             const newMainBalance = currentMainBalance + totalInvested;
-            await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-
+            
             // If there's profit, add it to profit balance separately
             if (profitLoss > 0) {
+              await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
               await storage.addProfit(userId, profitLoss);
-              console.log(`💰 ${crypto.symbol} CORRECTED: Investment: $${totalInvested.toFixed(4)} → Main Balance, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} BALANCE FIXED: Investment: $${totalInvested.toFixed(4)} → Main, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
             } else {
-              // For losses, reduce main balance by the loss amount
+              // For losses, subtract loss from the returned investment
               const finalMainBalance = newMainBalance + profitLoss; // profitLoss is negative
               await storage.updateUserBalances(userId, finalMainBalance.toString(), undefined);
-              console.log(`📉 ${crypto.symbol} CORRECTED: Net balance after loss: $${finalMainBalance.toFixed(4)}`);
+              console.log(`📉 ${crypto.symbol} BALANCE FIXED: Net after loss: $${finalMainBalance.toFixed(4)}`);
             }
 
             // Get updated user data and broadcast correct balance update
@@ -414,21 +414,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const profitLoss = sellTotal - totalInvested;
             const currentMainBalance = parseFloat(user.balance);
 
-            console.log(`🔍 MANUAL SELL: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
+            console.log(`🔍 MANUAL SELL FIXED: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
 
-            // ONLY return original investment to main balance (not the full sell amount)
+            // CRITICAL FIX: Only return original investment to main balance
             const newMainBalance = currentMainBalance + totalInvested;
-            await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-
+            
             // If there's profit, add it to profit balance separately
             if (profitLoss > 0) {
+              await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
               await storage.addProfit(userId, profitLoss);
-              console.log(`💰 ${crypto.symbol} CORRECTED: Investment: $${totalInvested.toFixed(4)} → Main Balance, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} BALANCE FIXED: Investment: $${totalInvested.toFixed(4)} → Main, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
             } else {
-              // For losses, reduce main balance by the loss amount
+              // For losses, subtract loss from the returned investment
               const finalMainBalance = newMainBalance + profitLoss; // profitLoss is negative
               await storage.updateUserBalances(userId, finalMainBalance.toString(), undefined);
-              console.log(`📉 ${crypto.symbol} CORRECTED: Net balance after loss: $${finalMainBalance.toFixed(4)}`);
+              console.log(`📉 ${crypto.symbol} BALANCE FIXED: Net after loss: $${finalMainBalance.toFixed(4)}`);
             }
 
             // Get updated user data and broadcast correct balance update

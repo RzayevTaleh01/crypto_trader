@@ -64,42 +64,12 @@ class PortfolioService {
 
     // Create performance data based on trading value only
     const performanceData = [];
-    let intervals;
-    
-    // Determine intervals based on timeframe
-    if (hours <= 1) {
-      intervals = 12; // 5-minute intervals for 1 hour
-    } else if (hours <= 6) {
-      intervals = 24; // 15-minute intervals for 6 hours
-    } else if (hours <= 24) {
-      intervals = 48; // 30-minute intervals for 1 day
-    } else if (hours <= 72) {
-      intervals = 36; // 2-hour intervals for 3 days
-    } else if (hours <= 168) {
-      intervals = 42; // 4-hour intervals for 1 week
-    } else {
-      intervals = 60; // 12-hour intervals for 1 month
-    }
+    const intervals = Math.min(hours, 24);
 
     // Generate realistic historical data points for trading performance
     for (let i = 0; i < intervals; i++) {
-      let timeBack;
-      
-      if (hours <= 1) {
-        timeBack = ((intervals - 1 - i) * 5) * 60 * 1000; // 5 minutes
-      } else if (hours <= 6) {
-        timeBack = ((intervals - 1 - i) * 15) * 60 * 1000; // 15 minutes  
-      } else if (hours <= 24) {
-        timeBack = ((intervals - 1 - i) * 30) * 60 * 1000; // 30 minutes
-      } else if (hours <= 72) {
-        timeBack = ((intervals - 1 - i) * 2) * 60 * 60 * 1000; // 2 hours
-      } else if (hours <= 168) {
-        timeBack = ((intervals - 1 - i) * 4) * 60 * 60 * 1000; // 4 hours
-      } else {
-        timeBack = ((intervals - 1 - i) * 12) * 60 * 60 * 1000; // 12 hours
-      }
-      
-      const timestamp = new Date(Date.now() - timeBack);
+      const hoursBack = (intervals - 1 - i);
+      const timestamp = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
 
       // For historical data, simulate trading performance without profit balance
       const historicalTradingRatio = 1 - (hoursBack * 0.01); // More conservative growth for trading only

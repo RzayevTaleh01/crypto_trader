@@ -772,24 +772,7 @@ export class EmaRsiStrategy {
                         console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(8)}`);
                     }
 
-                    // Broadcast updates
-                    if (this.broadcastFn) {
-                        const updatedUser = await storage.getUser(userId);
-                        if (profitLoss > 0) {
-                            this.broadcastFn({
-                                type: 'profitBalanceUpdate',
-                                data: { 
-                                    userId, 
-                                    profitBalance: parseFloat(updatedUser?.profitBalance || '0')
-                                }
-                            });
-                        }
-
-                        this.broadcastFn({
-                            type: 'balanceUpdate',
-                            data: { userId, balance: newMainBalance }
-                        });
-                    }
+                    // Remove individual broadcasts - will be handled at the end
                 } else {
                     // ZƏRƏR HALINDA: Hamısını (satış məbləğini) main balansa əlavə et
                     const newMainBalance = Math.round((currentMainBalance + soldAmountSaleValue) * 100000000) / 100000000;
@@ -803,13 +786,7 @@ export class EmaRsiStrategy {
                     // Update main balance with sale amount
                     await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
 
-                    // Broadcast update
-                    if (this.broadcastFn) {
-                        this.broadcastFn({
-                            type: 'balanceUpdate',
-                            data: { userId, balance: newMainBalance }
-                        });
-                    }
+                    // Remove individual broadcast - will be handled at the end
                 }
 
                 console.log(`═══════════════════════════════════════════\n`);
@@ -842,27 +819,8 @@ export class EmaRsiStrategy {
 
             await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
 
-            // TEK DƏFƏ BROADCAST - DUPLİKAT QARŞISINI AL
-            if (this.broadcastFn) {
-                const updatedUser = await storage.getUser(userId);
-
-                // Single balance update broadcast
-                this.broadcastFn({
-                    type: 'balanceUpdate',
-                    data: { 
-                        userId, 
-                        balance: parseFloat(updatedUser?.balance || '0'),
-                        profitBalance: parseFloat(updatedUser?.profitBalance || '0')
-                    }
-                });
-
-                const { portfolioService } = await import('../services/portfolioService');
-                const updatedPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
-                this.broadcastFn({
-                    type: 'portfolioUpdate',
-                    data: updatedPortfolio
-                });
-            }
+            // CRITICAL FIX: Remove all individual broadcasts to prevent duplication
+            // Only single consolidated broadcast at the very end
 
             console.log(`✅ ADVANCED SELL: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
 
@@ -939,6 +897,20 @@ export class EmaRsiStrategy {
                 this.broadcastFn({
                     type: 'soldCoinsUpdate',
                     data: soldCoins
+                });
+
+                // FINAL CONSOLIDATED BROADCAST - Prevents all duplicates
+                const finalUser = await storage.getUser(userId);
+                const finalPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
+                
+                this.broadcastFn({
+                    type: 'finalUpdate',
+                    data: {
+                        userId,
+                        balance: parseFloat(finalUser?.balance || '0'),
+                        profitBalance: parseFloat(finalUser?.profitBalance || '0'),
+                        portfolio: finalPortfolio
+                    }
                 });
             }
         } catch (error) {

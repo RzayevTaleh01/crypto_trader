@@ -839,6 +839,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Transfer profit balance to main balance
+  app.post("/api/user/:id/balance/transfer-profit", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { amount } = req.body;
+
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Valid transfer amount required" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const currentProfitBalance = parseFloat(user.profitBalance || '0');
+      if (amount > currentProfitBalance) {
+        return res.status(400).json({ message: "Insufficient profit balance" });
+      }
+
+      // Transfer from profit balance to main balance
+      const newProfitBalance = currentProfitBalance - amount;
+      const currentMainBalance = parseFloat(user.balance || '0');
+      const newMainBalance = currentMainBalance + amount;
+
+      await storage.updateUserBalances(userId, newMainBalance.toString(), newProfitBalance.toString());
+
+      // Broadcast balance update
+      broadcast({
+        type: 'balanceUpdate',
+        data: { 
+          userId, 
+          balance: newMainBalance, 
+          profitBalance: newProfitBalance
+        }
+      });
+
+      res.json({ 
+        message: "Transfer successful", 
+        transferredAmount: amount,
+        newMainBalance: newMainBalance.toString(),
+        newProfitBalance: newProfitBalance.toString()
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to transfer profit balance", error: error.message });
+    }
+  });
+
   // Balance management route
   app.patch("/api/user/:id/balance", async (req, res) => {
     try {

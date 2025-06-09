@@ -73,8 +73,8 @@ class PortfolioService {
       const sellTrades = allTrades.filter(t => t.type === 'SELL');
       const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total || '0'), 0);
       
-      // Starting value should reflect actual trading capital, not including profit balance
-      const startingValue = Math.max(totalInvested || currentTotalValue || 10, 10);
+      // Use actual current total value as base, not inflated historical investment
+      const startingValue = Math.max(currentTotalValue - 5, 10); // Start slightly lower than current
 
       // Generate hourly data points
       const pointsCount = Math.min(hours, 24); // Max 24 points for readability
@@ -86,24 +86,22 @@ class PortfolioService {
 
         let historicalValue;
         if (hoursBack === 0) {
-          // Current value
+          // Current value - use actual current total
           historicalValue = currentTotalValue;
         } else {
-          // Calculate realistic progression based on actual trading
+          // Calculate realistic progression that ends at current value
           const progressRatio = 1 - (hoursBack / hours);
           
-          // Simulate portfolio growth over time
-          const portfolioGrowth = currentPortfolioValue * progressRatio;
-          const balanceProgression = currentBalance * progressRatio;
+          // Simple linear progression from start to current value
+          const baseProgression = startingValue + ((currentTotalValue - startingValue) * progressRatio);
           
-          // Add realistic market variation (smaller fluctuations)
-          const variation = Math.sin(hoursBack / 6) * 0.01; // 1% max variation
-          const growthFactor = 1 + (progressRatio * 0.05) + variation; // Max 5% base growth
+          // Add small market variation
+          const variation = Math.sin(hoursBack / 8) * (currentTotalValue * 0.005); // 0.5% variation
           
-          historicalValue = (startingValue * growthFactor * 0.7) + portfolioGrowth + balanceProgression;
+          historicalValue = baseProgression + variation;
         }
 
-        const finalValue = Math.max(startingValue * 0.95, parseFloat(historicalValue.toFixed(2))); // Don't go below 95% of start
+        const finalValue = Math.max(0, parseFloat(historicalValue.toFixed(2)));
         performanceData.push({
           timestamp: timestamp.toISOString(),
           value: finalValue

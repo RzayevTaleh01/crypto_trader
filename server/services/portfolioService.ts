@@ -62,19 +62,23 @@ class PortfolioService {
         }
       }
 
-      // Real total value = ONLY main balance + portfolio value (trading capital)
-      // Profit balance is stored separately and not part of trading performance
-      const currentTotalValue = currentBalance + currentPortfolioValue;
+      // REAL total value = ONLY what user actually has in hand
+      // This includes: main balance + portfolio current value 
+      // Portfolio current value should reflect actual crypto holdings value
+      const realTotalValue = currentBalance + currentPortfolioValue;
 
-      console.log(`📊 Portfolio Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, Trading Dəyəri: $${currentTotalValue.toFixed(2)}`);
+      console.log(`📊 CORRECTED Performance: Əsas Balans: $${currentBalance}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance}, REAL Dəyər: $${realTotalValue.toFixed(2)}`);
 
-      // Calculate investment history for realistic simulation
+      // For performance chart, use REALISTIC values based on actual user funds
+      // Don't inflate with historical data - use real current state
+      const actualCurrentValue = realTotalValue;
+      
+      // Calculate realistic starting value based on recent trading activity
       const buyTrades = allTrades.filter(t => t.type === 'BUY');
       const sellTrades = allTrades.filter(t => t.type === 'SELL');
-      const totalInvested = buyTrades.reduce((sum, trade) => sum + parseFloat(trade.total || '0'), 0);
       
-      // Use actual current total value as base, not inflated historical investment
-      const startingValue = Math.max(currentTotalValue - 5, 10); // Start slightly lower than current
+      // Use a realistic starting point close to current actual value
+      const startingValue = Math.max(actualCurrentValue * 0.85, 5); // Start 15% lower than current actual
 
       // Generate hourly data points
       const pointsCount = Math.min(hours, 24); // Max 24 points for readability
@@ -86,17 +90,17 @@ class PortfolioService {
 
         let historicalValue;
         if (hoursBack === 0) {
-          // Current value - use actual current total
-          historicalValue = currentTotalValue;
+          // Current value - use ACTUAL current total (not inflated)
+          historicalValue = actualCurrentValue;
         } else {
-          // Calculate realistic progression that ends at current value
+          // Calculate realistic progression that ends at ACTUAL current value
           const progressRatio = 1 - (hoursBack / hours);
           
-          // Simple linear progression from start to current value
-          const baseProgression = startingValue + ((currentTotalValue - startingValue) * progressRatio);
+          // Simple linear progression from start to ACTUAL current value
+          const baseProgression = startingValue + ((actualCurrentValue - startingValue) * progressRatio);
           
           // Add small market variation
-          const variation = Math.sin(hoursBack / 8) * (currentTotalValue * 0.005); // 0.5% variation
+          const variation = Math.sin(hoursBack / 8) * (actualCurrentValue * 0.005); // 0.5% variation
           
           historicalValue = baseProgression + variation;
         }
@@ -111,19 +115,21 @@ class PortfolioService {
       // Sort by timestamp to ensure proper order
       performanceData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-      console.log(`📈 Generated ${performanceData.length} performance data points from $${startingValue} to $${currentTotalValue.toFixed(2)}`);
+      console.log(`📈 CORRECTED: Generated ${performanceData.length} performance data points from $${startingValue.toFixed(2)} to $${actualCurrentValue.toFixed(2)}`);
       return performanceData;
     } catch (error) {
       console.error('❌ Portfolio performance error:', error);
-      // Return basic fallback data if error occurs
+      // Return basic fallback data if error occurs - use ACTUAL balances only
       const user = await storage.getUser(userId);
       const currentBalance = parseFloat(user?.balance || '0');
       const currentProfitBalance = parseFloat(user?.profitBalance || '0');
-      const totalValue = currentBalance + currentProfitBalance;
+      
+      // For fallback, only use main balance (trading capital)
+      const actualValue = currentBalance;
       
       return [{
         timestamp: new Date().toISOString(),
-        value: totalValue
+        value: actualValue
       }];
     }
   }

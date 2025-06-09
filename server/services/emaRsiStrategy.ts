@@ -719,25 +719,38 @@ export class EmaRsiStrategy {
             const price = parseFloat(crypto.currentPrice);
             const total = quantity * price;
 
-            // Update user balances using new balance mechanism
+            // Calculate proper investment ratio for partial sells
+            const positionAmount = parseFloat(position.amount);
+            const sellRatio = quantity / positionAmount;
+            const originalInvestment = parseFloat(position.totalInvested) * sellRatio;
+
             const user = await storage.getUser(userId);
             if (user) {
                 const currentMainBalance = parseFloat(user.balance);
-                const totalInvested = parseFloat(position.totalInvested);
-                const profitLoss = total - totalInvested;
+                
+                // Calculate profit/loss
+                const profitLoss = total - originalInvestment;
 
-                // Return original investment to main balance
-                const newMainBalance = currentMainBalance + totalInvested;
-                await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
+                // Always return the proportional original investment to main balance
+                const newMainBalance = currentMainBalance + originalInvestment;
+                
+                console.log(`💰 Sell Details: ${crypto.symbol}`);
+                console.log(`   Sold quantity: ${quantity.toFixed(6)} of ${positionAmount.toFixed(6)} (${(sellRatio * 100).toFixed(1)}%)`);
+                console.log(`   Original investment returned: $${originalInvestment.toFixed(3)}`);
+                console.log(`   Sale total: $${total.toFixed(3)}`);
+                console.log(`   Profit/Loss: $${profitLoss.toFixed(3)}`);
 
                 if (profitLoss > 0) {
-                    // Add profit to profit balance
+                    // Update main balance with investment return
+                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
+                    // Add profit to profit balance only
                     await storage.addProfit(userId, profitLoss);
-                    console.log(`💰 Profit $${profitLoss.toFixed(2)} added to profit balance`);
+                    console.log(`✅ $${originalInvestment.toFixed(3)} returned to main balance + $${profitLoss.toFixed(3)} profit to profit balance`);
                 } else {
-                    // Subtract loss from main balance
-                    await storage.subtractFromMainBalance(userId, Math.abs(profitLoss));
-                    console.log(`📉 Loss $${Math.abs(profitLoss).toFixed(2)} subtracted from main balance`);
+                    // Loss: reduce main balance by the loss amount
+                    const finalMainBalance = newMainBalance + profitLoss; // profitLoss is negative
+                    await storage.updateUserBalances(userId, finalMainBalance.toString(), undefined);
+                    console.log(`📉 Loss: $${originalInvestment.toFixed(3)} returned minus $${Math.abs(profitLoss).toFixed(3)} loss = $${finalMainBalance.toFixed(3)} final balance`);
                 }
             }
 
@@ -889,15 +902,22 @@ export class EmaRsiStrategy {
         if (!existing) return;
 
         const currentAmount = parseFloat(existing.amount);
+        const currentTotalInvested = parseFloat(existing.totalInvested);
         const newAmount = currentAmount - quantity;
 
         if (newAmount <= 0.000001) {
+            // Selling entire position
             await storage.deletePortfolioItem(userId, cryptoId);
+            console.log(`🗑️ Removed entire position for crypto ${cryptoId}`);
         } else {
-            const avgPrice = parseFloat(existing.averagePrice);
-            const newTotalInvested = newAmount * avgPrice;
+            // Partial sell - reduce investment proportionally
+            const sellRatio = quantity / currentAmount;
+            const newTotalInvested = currentTotalInvested * (1 - sellRatio);
+            const avgPrice = parseFloat(existing.averagePrice); // Keep same average price
 
             await storage.updatePortfolioItem(userId, cryptoId, newAmount.toString(), avgPrice.toString(), newTotalInvested.toString());
+            
+            console.log(`📊 Updated portfolio: ${newAmount.toFixed(6)} remaining, $${newTotalInvested.toFixed(3)} invested (${(sellRatio * 100).toFixed(1)}% sold)`);
         }
     }
 

@@ -242,24 +242,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Remove the position from portfolio
           await storage.deletePortfolioItem(userId, coin.cryptoId);
 
-          // Update user balances using new balance mechanism
+          // Update user balances using corrected mechanism
           const user = await storage.getUser(userId);
           if (user) {
-            const currentMainBalance = parseFloat(user.balance);
             const totalInvested = parseFloat(coin.totalInvested);
             const profitLoss = sellTotal - totalInvested;
 
+            console.log(`🔍 SELL ALL: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
+
+            // Always add back the original investment to main balance
+            await storage.addToMainBalance(userId, totalInvested);
+            
+            // If there's profit, add it to profit balance
             if (profitLoss > 0) {
-              // Add original investment to main balance
-              await storage.addToMainBalance(userId, totalInvested);
-              // Add only profit to profit balance
               await storage.addProfit(userId, profitLoss);
-              console.log(`💰 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(4)} → Main Balance, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
             } else {
-              // For losses, add back only what remains after loss
-              const remainingAmount = sellTotal; // This is totalInvested + profitLoss (which is negative)
-              await storage.addToMainBalance(userId, remainingAmount);
-              console.log(`📉 ${crypto.symbol} SELL ALL: Remaining: $${remainingAmount.toFixed(2)} → Main Balance, Loss: $${Math.abs(profitLoss).toFixed(2)}`);
+              console.log(`📉 ${crypto.symbol} SELL ALL: Investment: $${totalInvested.toFixed(4)} → Main Balance, Loss: $${Math.abs(profitLoss).toFixed(4)}`);
             }
 
             // Get updated user data and broadcast correct balance update
@@ -403,24 +402,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Update portfolio - remove the position
           await storage.deletePortfolioItem(userId, coin.cryptoId);
 
-          // Update user balances using new balance mechanism
+          // Update user balances using corrected mechanism
           const user = await storage.getUser(userId);
           if (user) {
-            const currentMainBalance = parseFloat(user.balance);
             const totalInvested = parseFloat(coin.totalInvested);
             const profitLoss = sellTotal - totalInvested;
 
+            console.log(`🔍 MANUAL SELL: ${crypto.symbol} - Invested: $${totalInvested.toFixed(4)}, Sold for: $${sellTotal.toFixed(4)}, P&L: $${profitLoss.toFixed(4)}`);
+
+            // Always add back the original investment to main balance
+            await storage.addToMainBalance(userId, totalInvested);
+            
+            // If there's profit, add it to profit balance
             if (profitLoss > 0) {
-              // Add original investment to main balance
-              await storage.addToMainBalance(userId, totalInvested);
-              // Add profit to profit balance
               await storage.addProfit(userId, profitLoss);
-              console.log(`💰 ${crypto.symbol} MANUAL SELL: Investment: $${totalInvested.toFixed(2)} → Main Balance, Profit: $${profitLoss.toFixed(2)} → Profit Balance`);
+              console.log(`💰 ${crypto.symbol} MANUAL SELL: Investment: $${totalInvested.toFixed(4)} → Main Balance, Profit: $${profitLoss.toFixed(4)} → Profit Balance`);
             } else {
-              // For losses, add back only what remains after loss
-              const remainingAmount = sellTotal; // This is totalInvested + profitLoss (which is negative)
-              await storage.addToMainBalance(userId, remainingAmount);
-              console.log(`📉 ${crypto.symbol} MANUAL SELL: Remaining: $${remainingAmount.toFixed(2)} → Main Balance, Loss: $${Math.abs(profitLoss).toFixed(2)}`);
+              console.log(`📉 ${crypto.symbol} MANUAL SELL: Investment: $${totalInvested.toFixed(4)} → Main Balance, Loss: $${Math.abs(profitLoss).toFixed(4)}`);
             }
 
             // Get updated user data and broadcast correct balance update

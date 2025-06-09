@@ -149,7 +149,16 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   // Parse values correctly from API response
   const chartCurrentValue = safePerformanceData.length > 0 ?
       parseFloat(String(safePerformanceData[safePerformanceData.length - 1]?.value || '0')) : totalBalance;
-  
+
+  // Get trades data for analysis
+  const { data: trades = [] } = useQuery({
+    queryKey: [`/api/trades/user/${userId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/trades/user/${userId}`);
+      return response.json();
+    }
+  });
+
   // Calculate starting value from actual investment data
   const buyTrades = trades?.filter((t: any) => t.type === 'BUY') || [];
   const totalInvested = buyTrades.reduce((sum: number, trade: any) => sum + parseFloat(trade.total || '0'), 0);
@@ -161,7 +170,7 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
   console.log(`💰 Balance Debug: Main: $${currentMainBalance.toFixed(8)}, Profit: $${profitBalance.toFixed(8)}, Total: $${totalBalance.toFixed(8)}`);
   console.log(`🎯 Trading Balance (Main): $${currentMainBalance.toFixed(8)}, Profit Balance: $${profitBalance.toFixed(8)}`);
   console.log(`🔍 PortfolioChart Values: Current: $${chartCurrentValue.toFixed(2)}, Start: $${startValue.toFixed(2)}, Change: $${valueChange.toFixed(2)} (${percentageChange.toFixed(2)}%)`);
-  console.log(`📊 Performance Data:`, safePerformanceData.slice(-3));
+  console.log(`📊 Performance Data:`, safePerformanceData);
 
   return (
       <Card className="bg-card border-border">

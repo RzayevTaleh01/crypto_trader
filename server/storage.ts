@@ -92,54 +92,33 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUserBalance(userId: number, newBalance: string) {
-    try {
-      await db.update(users)
-        .set({ balance: newBalance })
-        .where(eq(users.id, userId));
-
-      console.log(`💰 Balance updated for user ${userId}: $${newBalance}`);
-    } catch (error) {
-      console.error('Error updating user balance:', error);
-      throw error;
-    }
+  async updateUserBalance(userId: number, newBalance: string): Promise<void> {
+    await db.update(users)
+      .set({ balance: newBalance })
+      .where(eq(users.id, userId));
   }
 
-  async addToMainBalance(userId: number, amount: number) {
-    try {
-      const user = await this.getUser(userId);
-      if (!user) throw new Error('User not found');
-
+  async addToMainBalance(userId: number, amount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (user) {
       const currentBalance = parseFloat(user.balance || '0');
-      const newBalance = currentBalance + amount;
-
-      await db.update(users)
-        .set({ balance: newBalance.toString() })
-        .where(eq(users.id, userId));
-
-      console.log(`💰 Added $${amount.toFixed(2)} to main balance. New balance: $${newBalance.toFixed(2)}`);
-    } catch (error) {
-      console.error('Error adding to main balance:', error);
-      throw error;
+      const newBalance = (currentBalance + amount).toFixed(8);
+      await this.updateUserBalance(userId, newBalance);
+      console.log(`💰 Added $${amount.toFixed(4)} to main balance. New balance: $${newBalance}`);
     }
   }
 
-  async addProfit(userId: number, profitAmount: number) {
-    try {
-      const user = await this.getUser(userId);
-      if (!user) throw new Error('User not found');
-
+  async addProfit(userId: number, profitAmount: number): Promise<void> {
+    const user = await this.getUser(userId);
+    if (user) {
       const currentProfitBalance = parseFloat(user.profitBalance || '0');
-      const newProfitBalance = currentProfitBalance + profitAmount;
+      const newProfitBalance = (currentProfitBalance + profitAmount).toFixed(8);
 
       await db.update(users)
-        .set({ profitBalance: newProfitBalance.toString() })
+        .set({ profitBalance: newProfitBalance })
         .where(eq(users.id, userId));
 
-      console.log(`💎 Added $${profitAmount.toFixed(2)} to profit balance. New profit balance: $${newProfitBalance.toFixed(2)}`);
-    } catch (error) {
-      console.error('Error adding profit:', error);
-      throw error;
+      console.log(`💚 Added $${profitAmount.toFixed(4)} to profit balance. New profit balance: $${newProfitBalance}`);
     }
   }
 

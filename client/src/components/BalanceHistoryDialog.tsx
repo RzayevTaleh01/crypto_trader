@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, TrendingDown, DollarSign, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface BalanceHistoryProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ interface TradeHistoryItem {
 
 interface BalanceHistoryItem {
   timestamp: string;
-  action: string;
+  action: "BUY" | "SELL" | "PROFIT" | "SELL_RETURN";
   amount: number;
   description: string;
   newBalance: number;
@@ -39,8 +40,24 @@ interface BalanceHistoryItem {
 
 export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, userId }: BalanceHistoryProps) {
   const [balanceHistory, setBalanceHistory] = useState<BalanceHistoryItem[]>([]);
-  const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
-  const [user, setUser] = useState<any>(null);
+
+  const { data: userData } = useQuery({
+    queryKey: [`/api/user/${userId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/user/${userId}`);
+      return response.json();
+    }
+  });
+
+  const user = userData?.user;
+
+  const { data: trades = [] } = useQuery({
+    queryKey: [`/api/trades/user/${userId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/trades/user/${userId}`);
+      return response.json();
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -55,28 +72,6 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
       try {
         console.log('🔄 Fetching balance history data...');
 
-        // Fetch trades
-        const tradesResponse = await fetch('/api/trades/user');
-        console.log('📊 Trades response status:', tradesResponse.status);
-
-        if (!tradesResponse.ok) {
-          throw new Error(`Trades API failed: ${tradesResponse.status}`);
-        }
-
-        const tradesData = await tradesResponse.json();
-        console.log('📊 Raw trades data:', tradesData);
-
-        // Fetch user data
-        const userResponse = await fetch(`/api/user/${userId}`);
-        console.log('👤 User response status:', userResponse.status);
-
-        if (!userResponse.ok) {
-          throw new Error(`User API failed: ${userResponse.status}`);
-        }
-
-        const userData = await userResponse.json();
-        console.log('👤 Raw user data:', userData);
-
         // Fetch cryptocurrencies to map trade data
         const cryptosResponse = await fetch('/api/cryptocurrencies');
         const cryptosData = await cryptosResponse.json();
@@ -90,12 +85,12 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
         // Process trades data - ensure it's an array
         let processedTrades: TradeHistoryItem[] = [];
-        if (Array.isArray(tradesData)) {
-          processedTrades = tradesData;
-        } else if (tradesData.trades && Array.isArray(tradesData.trades)) {
-          processedTrades = tradesData.trades;
+        if (Array.isArray(trades)) {
+          processedTrades = trades;
+        } else if (trades && Array.isArray(trades.trades)) {
+          processedTrades = trades.trades;
         } else {
-          console.warn('⚠️ Invalid trades data structure:', tradesData);
+          console.warn('⚠️ Invalid trades data structure:', trades);
           processedTrades = [];
         }
 
@@ -107,25 +102,20 @@ export default function BalanceHistoryDialog({ isOpen, onClose, balanceType, use
 
         console.log('✅ Processed trades with crypto info:', tradesWithCrypto.length);
 
-        setTrades(tradesWithCrypto);
-        setUser(userData.user || userData);
-
       } catch (error: any) {
         console.error('❌ Error fetching balance history data:', error);
         setError(error.message || 'Məlumatları yükləyərkən xəta baş verdi');
-        setTrades([]);
-        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [isOpen, userId]);
+  }, [isOpen, userId, trades]);
 
   // Generate balance history from trades
   useEffect(() => {
-    if (!trades.length || !user) {
+    if (!trades || !trades.length || !user) {
       console.log('⚠️ Cannot generate balance history - missing trades or user data');
       setBalanceHistory([]);
       return;

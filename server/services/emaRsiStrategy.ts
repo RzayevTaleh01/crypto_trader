@@ -722,58 +722,53 @@ export class EmaRsiStrategy {
             // Calculate proper investment ratio for partial sells
             const positionAmount = parseFloat(position.amount);
             const sellRatio = quantity / positionAmount;
-            const originalInvestment = parseFloat(position.totalInvested) * sellRatio;
 
             // Get user data first
             const user = await storage.getUser(userId);
-            if (user) {
-                const currentMainBalance = parseFloat(user.balance);
-                const avgBuyPrice = parseFloat(position.averagePrice);
-                const sellPrice = price;
-
-                // ADVANCED CALCULATION - Dəqiq məntiq tətbiqi
-                console.log(`\n🔥 ═══════ ADVANCED AVTOMATIK SATIŞ ═══════`);
-                console.log(`💎 ${crypto.symbol} - Satış Detayları:`);
-                console.log(`   📊 Satılan miqdar: ${quantity.toFixed(8)}`);
-                console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
-                console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
-
-                // SADƏ VƏ DÜZGİN HESABLAMA
-                const soldAmountOriginalValue = quantity * avgBuyPrice;
-                const soldAmountSaleValue = quantity * sellPrice;
-                const profitLoss = soldAmountSaleValue - soldAmountOriginalValue;
-
-                console.log(`\n📈 ADVANCED HESABLAMALAR:`);
-                console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(6)} - $${soldAmountOriginalValue.toFixed(6)} = $${profitLoss.toFixed(6)}`);
-                console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(6)}`);
-
-                // TEK BALANS YENİLƏMƏSİ - dublikat aradan qaldırılması
-                const newMainBalance = currentMainBalance + soldAmountOriginalValue;
-                await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-
-                // Kar varsa, profit balansına əlavə et
-                if (profitLoss > 0) {
-                    await storage.addProfit(userId, profitLoss);
-                    console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(6)}`);
-                } else {
-                    console.log(`   ⚠️ Zərər: $${Math.abs(profitLoss).toFixed(6)} - profit balansına əlavə edilmir`);
-                }
-
-                console.log(`   📊 YENİ main balans: $${newMainBalance.toFixed(6)}`);
-                console.log(`═══════════════════════════════════════════\n`);
+            if (!user) {
+                console.log(`❌ User ${userId} not found`);
+                return;
             }
 
-            // Balance update artıq yuxarıda edilib - təkrarlamaq lazım deyil
+            const currentMainBalance = parseFloat(user.balance);
+            const avgBuyPrice = parseFloat(position.averagePrice);
+            const sellPrice = price;
 
-            const portfolioItem = await storage.getPortfolioItem(userId, crypto.id);
-            let pnl = '0';
-            if (portfolioItem) {
-                const avgBuyPrice = parseFloat(portfolioItem.averagePrice);
-                const sellPrice = price;
-                const profit = (sellPrice - avgBuyPrice) * quantity;
-                pnl = profit.toString();
+            // DÜZGİN HESABLAMA - Dublikat yeniləmələri aradan qaldırırıq
+            console.log(`\n🔥 ═══════ TEK DƏFƏ SATIŞ - ${crypto.symbol} ═══════`);
+            console.log(`💎 Satış Detayları:`);
+            console.log(`   📊 Satılan miqdar: ${quantity.toFixed(8)}`);
+            console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
+            console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
+
+            // SADƏ VƏ DÜZGİN HESABLAMA - Dublikat yoxdur
+            const soldAmountOriginalValue = quantity * avgBuyPrice;
+            const soldAmountSaleValue = quantity * sellPrice;
+            const profitLoss = soldAmountSaleValue - soldAmountOriginalValue;
+
+            console.log(`\n📈 REAL HESABLAMALAR:`);
+            console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(6)} - $${soldAmountOriginalValue.toFixed(6)} = $${profitLoss.toFixed(6)}`);
+            console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(6)}`);
+
+            // TEK BALANS YENİLƏMƏSİ - CRITICAL FIX
+            const newMainBalance = currentMainBalance + soldAmountSaleValue;
+            await storage.updateUserBalance(userId, newMainBalance.toString());
+
+            // Kar varsa, profit balansına əlavə et
+            if (profitLoss > 0) {
+                await storage.addProfit(userId, profitLoss);
+                console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(6)}`);
+            } else {
+                console.log(`   ⚠️ Zərər: $${Math.abs(profitLoss).toFixed(6)} - profit balansına əlavə edilmir`);
             }
 
+            console.log(`   📊 YENİ main balans: $${newMainBalance.toFixed(6)}`);
+            console.log(`═══════════════════════════════════════════\n`);
+
+            // Portfolio yeniləməsi
+            await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
+
+            // Trade yaradılması
             const tradeData: InsertTrade = {
                 userId,
                 cryptoId: crypto.id,
@@ -781,49 +776,30 @@ export class EmaRsiStrategy {
                 amount: quantity.toString(),
                 price: price.toString(),
                 total: total.toString(),
-                pnl: pnl,
+                pnl: profitLoss.toString(),
                 reason: reason,
                 isBot: true
             };
 
             const trade = await storage.createTrade(tradeData);
 
-            await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
+            console.log(`✅ TEK SATIŞ: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
 
-            console.log(`✅ ADVANCED SELL: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
-
+            // Telegram bildirişi
             await telegramService.sendTradeNotification(trade, crypto);
 
-            // CRITICAL FIX: Only ONE consolidated broadcast to prevent duplicates
+            // TEK BROADCAST - Dublikat aradan qaldırıldı
             if (this.broadcastFn) {
-                const finalUser = await storage.getUser(userId);
-                
-                // Single broadcast with all necessary updates
                 this.broadcastFn({
-                    type: 'sellComplete',
+                    type: 'newTrade',
                     data: {
-                        userId,
-                        balance: parseFloat(finalUser?.balance || '0'),
-                        profitBalance: parseFloat(finalUser?.profitBalance || '0'),
-                        trade: {
-                            ...trade,
-                            cryptocurrency: crypto
-                        },
-                        tradeActivity: {
-                            timestamp: new Date().toISOString(),
-                            action: 'SELL',
-                            symbol: crypto.symbol,
-                            amount: quantity.toString(),
-                            price: price.toString(),
-                            total: total.toString(),
-                            type: 'automated',
-                            strategy: 'Advanced Multi-Indicator'
-                        }
+                        ...trade,
+                        cryptocurrency: crypto
                     }
                 });
             }
         } catch (error) {
-            console.log(`❌ Failed to execute advanced sell order for ${crypto.symbol}:`, error);
+            console.log(`❌ Failed to execute sell order for ${crypto.symbol}:`, error);
         }
     }
 

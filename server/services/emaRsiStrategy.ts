@@ -19,12 +19,12 @@ export class EmaRsiStrategy {
         }
 
         this.isRunning = true;
-        console.log('🚀 Starting Enhanced Multi-Indicator Trading Strategy');
+        console.log('🚀 Starting Enhanced Multi-Indicator Trading Strategy (15s intervals)');
 
         // Execute immediately
         await this.executeAdvancedStrategy(userId);
 
-        // Set up continuous execution every 45 seconds for better timing
+        // Set up continuous execution every 15 seconds for faster market response
         this.tradingInterval = setInterval(async () => {
             try {
                 const botSettings = await storage.getBotSettings(userId);
@@ -36,7 +36,7 @@ export class EmaRsiStrategy {
             } catch (error) {
                 console.error('Trading interval error:', error);
             }
-        }, 45000); // 45 seconds for optimal market timing
+        }, 15000); // 15 seconds for faster crypto market response
     }
 
     stopContinuousTrading(): void {

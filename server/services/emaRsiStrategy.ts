@@ -737,58 +737,29 @@ export class EmaRsiStrategy {
                 console.log(`   📊 Satılan miqdar: ${quantity.toFixed(8)}`);
                 console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
                 console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
-                console.log(`   ⚖️ Ümumi portfolio: ${positionAmount.toFixed(8)} (${(sellRatio * 100).toFixed(1)}% satılır)`);
 
-                // 1. Satılan miqdar × Alış qiyməti (orijinal investisiya)
-                const soldAmountOriginalValue = Math.round((quantity * avgBuyPrice) * 100000000) / 100000000;
-
-                // 2. Satılan miqdar × Satış qiyməti (satış məbləği)
-                const soldAmountSaleValue = Math.round((quantity * sellPrice) * 100000000) / 100000000;
-
-                // 3. Kar/Zərər hesablaması
-                const profitLoss = Math.round((soldAmountSaleValue - soldAmountOriginalValue) * 100000000) / 100000000;
+                // SADƏ VƏ DÜZGİN HESABLAMA
+                const soldAmountOriginalValue = quantity * avgBuyPrice;
+                const soldAmountSaleValue = quantity * sellPrice;
+                const profitLoss = soldAmountSaleValue - soldAmountOriginalValue;
 
                 console.log(`\n📈 ADVANCED HESABLAMALAR:`);
-                console.log(`   🔢 Satılan miqdar × Alış qiyməti = ${quantity.toFixed(8)} × ${avgBuyPrice.toFixed(8)} = $${soldAmountOriginalValue.toFixed(8)}`);
-                console.log(`   🔢 Satılan miqdar × Satış qiyməti = ${quantity.toFixed(8)} × ${sellPrice.toFixed(8)} = $${soldAmountSaleValue.toFixed(8)}`);
-                console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(8)} - $${soldAmountOriginalValue.toFixed(8)} = $${profitLoss.toFixed(8)}`);
-                console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(8)}`);
+                console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(6)} - $${soldAmountOriginalValue.toFixed(6)} = $${profitLoss.toFixed(6)}`);
+                console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(6)}`);
 
-                if (profitLoss >= 0) {
-                    // KAR HALINDA: Orijinal investisiyanı main balansa, karı profit balansına
-                    const newMainBalance = Math.round((currentMainBalance + soldAmountOriginalValue) * 100000000) / 100000000;
+                // TEK BALANS YENİLƏMƏSİ - dublikat aradan qaldırılması
+                const newMainBalance = currentMainBalance + soldAmountOriginalValue;
+                await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
 
-                    console.log(`\n✅ ═══ KAR HALINDA ADVANCED TƏDBİR ═══`);
-                    console.log(`   💰 Orijinal investisiya main balansa: $${soldAmountOriginalValue.toFixed(8)}`);
-                    console.log(`   🎯 Kar profit balansına: $${profitLoss.toFixed(8)}`);
-                    console.log(`   📊 YENİ main balans: $${currentMainBalance.toFixed(8)} + $${soldAmountOriginalValue.toFixed(8)} = $${newMainBalance.toFixed(8)}`);
-
-                    // Update balances
-                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-
-                    // Add profit to profit balance (only if profit > 0)
-                    if (profitLoss > 0) {
-                        await storage.addProfit(userId, profitLoss);
-                        console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(8)}`);
-                    }
-
-                    // Remove individual broadcasts - will be handled at the end
+                // Kar varsa, profit balansına əlavə et
+                if (profitLoss > 0) {
+                    await storage.addProfit(userId, profitLoss);
+                    console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(6)}`);
                 } else {
-                    // ZƏRƏR HALINDA: Hamısını (satış məbləğini) main balansa əlavə et
-                    const newMainBalance = Math.round((currentMainBalance + soldAmountSaleValue) * 100000000) / 100000000;
-
-                    console.log(`\n📉 ═══ ZƏRƏR HALINDA ADVANCED TƏDBİR ═══`);
-                    console.log(`   💔 Zərər məbləği: $${Math.abs(profitLoss).toFixed(8)}`);
-                    console.log(`   💰 Bütün satış məbləği main balansa: $${soldAmountSaleValue.toFixed(8)}`);
-                    console.log(`   📊 YENİ main balans: $${currentMainBalance.toFixed(8)} + $${soldAmountSaleValue.toFixed(8)} = $${newMainBalance.toFixed(8)}`);
-                    console.log(`   ⚠️ Heç bir şey profit balansına əlavə edilmir (zərər var)`);
-
-                    // Update main balance with sale amount
-                    await storage.updateUserBalances(userId, newMainBalance.toString(), undefined);
-
-                    // Remove individual broadcast - will be handled at the end
+                    console.log(`   ⚠️ Zərər: $${Math.abs(profitLoss).toFixed(6)} - profit balansına əlavə edilmir`);
                 }
 
+                console.log(`   📊 YENİ main balans: $${newMainBalance.toFixed(6)}`);
                 console.log(`═══════════════════════════════════════════\n`);
             }
 
@@ -819,97 +790,35 @@ export class EmaRsiStrategy {
 
             await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
 
-            // CRITICAL FIX: Remove all individual broadcasts to prevent duplication
-            // Only single consolidated broadcast at the very end
-
             console.log(`✅ ADVANCED SELL: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
 
             await telegramService.sendTradeNotification(trade, crypto);
 
+            // CRITICAL FIX: Only ONE consolidated broadcast to prevent duplicates
             if (this.broadcastFn) {
-                const tradeActivity = {
-                    timestamp: new Date().toISOString(),
-                    action: 'SELL',
-                    symbol: crypto.symbol,
-                    amount: quantity.toString(),
-                    price: price.toString(),
-                    total: total.toString(),
-                    type: 'automated',
-                    strategy: 'Advanced Multi-Indicator'
-                };
-
-                this.broadcastFn({
-                    type: 'tradeUpdate',
-                    data: tradeActivity
-                });
-
-                this.broadcastFn({
-                    type: 'newTrade',
-                    data: {
-                        ...trade,
-                        cryptocurrency: crypto
-                    }
-                });
-
-                const trades = await storage.getUserTrades(userId, 100);
-                const sellTrades = trades.filter(t => t.type === 'SELL');
-                const soldCoins = await Promise.all(sellTrades.map(async (t) => {
-                    const cryptoData = await storage.getCryptocurrency(t.cryptoId);
-
-                    const buyTrades = trades.filter(bt =>
-                        bt.cryptoId === t.cryptoId &&
-                        bt.type === 'BUY' &&
-                        bt.createdAt < t.createdAt
-                    );
-
-                    let totalBuyValue = 0;
-                    let totalBuyQuantity = 0;
-
-                    for (const buyTrade of buyTrades) {
-                        const buyAmount = parseFloat(buyTrade.amount);
-                        const buyPrice = parseFloat(buyTrade.price);
-                        totalBuyValue += buyAmount * buyPrice;
-                        totalBuyQuantity += buyAmount;
-                    }
-
-                    const avgBuyPrice = totalBuyQuantity > 0 ? totalBuyValue / totalBuyQuantity : 0;
-                    const sellPrice = parseFloat(t.price);
-                    const quantity = parseFloat(t.amount);
-                    const sellValue = parseFloat(t.total);
-                    const buyValue = avgBuyPrice * quantity;
-                    const profit = sellValue - buyValue;
-                    const profitPercentage = buyValue > 0 ? ((profit / buyValue) * 100) : 0;
-
-                    return {
-                        id: t.id,
-                        symbol: cryptoData?.symbol || 'Unknown',
-                        name: cryptoData?.name || 'Unknown',
-                        soldQuantity: t.amount,
-                        sellPrice: t.price,
-                        buyPrice: avgBuyPrice.toString(),
-                        sellValue: t.total,
-                        profit: profit.toString(),
-                        profitPercentage: profitPercentage.toString(),
-                        soldAt: t.createdAt.toISOString()
-                    };
-                }));
-
-                this.broadcastFn({
-                    type: 'soldCoinsUpdate',
-                    data: soldCoins
-                });
-
-                // FINAL CONSOLIDATED BROADCAST - Prevents all duplicates
                 const finalUser = await storage.getUser(userId);
-                const finalPortfolio = await portfolioService.getUserPortfolioWithDetails(userId);
                 
+                // Single broadcast with all necessary updates
                 this.broadcastFn({
-                    type: 'finalUpdate',
+                    type: 'sellComplete',
                     data: {
                         userId,
                         balance: parseFloat(finalUser?.balance || '0'),
                         profitBalance: parseFloat(finalUser?.profitBalance || '0'),
-                        portfolio: finalPortfolio
+                        trade: {
+                            ...trade,
+                            cryptocurrency: crypto
+                        },
+                        tradeActivity: {
+                            timestamp: new Date().toISOString(),
+                            action: 'SELL',
+                            symbol: crypto.symbol,
+                            amount: quantity.toString(),
+                            price: price.toString(),
+                            total: total.toString(),
+                            type: 'automated',
+                            strategy: 'Advanced Multi-Indicator'
+                        }
                     }
                 });
             }

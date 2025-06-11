@@ -714,100 +714,105 @@ export class EmaRsiStrategy {
         }
     }
 
+    private sellInProgress = new Set<string>(); // GLOBAL LOCK SECİMİ
+
     private async executeSellOrder(userId: number, crypto: any, quantity: number, reason: string, position: any) {
+        const lockKey = `${userId}-${crypto.id}-${crypto.symbol}`;
+        
+        // CRITICAL LOCK - Dublikat satışları tamamilə bloklar
+        if (this.sellInProgress.has(lockKey)) {
+            console.log(`🔒 LOCK ACTIVE: ${crypto.symbol} satışı artıq gedir - DUBLIKAT BLOCKED!`);
+            return;
+        }
+
         try {
-            // CRITICAL: Real-time position yoxlaması - dublikat satışları qarşısını alır
+            // LOCK AKTİVLƏŞDİR
+            this.sellInProgress.add(lockKey);
+            console.log(`🔒 LOCK SET: ${crypto.symbol} üçün satış başladı`);
+
+            // REAL-TIME position yoxlaması - son dəqiqə verisi
             const currentPosition = await storage.getPortfolioItem(userId, crypto.id);
             if (!currentPosition) {
-                console.log(`❌ Position not found for ${crypto.symbol} - already sold`);
+                console.log(`❌ ${crypto.symbol} position mövcud deyil - artıq satılıb`);
                 return;
             }
 
             const currentAmount = parseFloat(currentPosition.amount);
             if (currentAmount < quantity) {
-                console.log(`❌ Insufficient position: Need ${quantity}, have ${currentAmount} for ${crypto.symbol}`);
+                console.log(`❌ ${crypto.symbol} kifayət qədər position yoxdur: Lazım ${quantity.toFixed(8)}, Mövcud ${currentAmount.toFixed(8)}`);
                 return;
             }
 
             const price = parseFloat(crypto.currentPrice);
-            const total = quantity * price;
+            const avgBuyPrice = parseFloat(currentPosition.averagePrice);
 
-            // Calculate proper investment ratio for partial sells
-            const positionAmount = parseFloat(currentPosition.amount);
-            const sellRatio = quantity / positionAmount;
-
-            // Get user data first
+            // User məlumatları - son versiya
             const user = await storage.getUser(userId);
             if (!user) {
-                console.log(`❌ User ${userId} not found`);
+                console.log(`❌ User ${userId} tapılmadı`);
                 return;
             }
 
             const currentMainBalance = parseFloat(user.balance);
-            const avgBuyPrice = parseFloat(currentPosition.averagePrice);
-            const sellPrice = price;
 
-            // LOCK MECHANISM - Dublikat satışları qarşısını alır
-            console.log(`\n🔒 ═══════ DUBLIKAT QORUNMASI - ${crypto.symbol} ═══════`);
-            console.log(`💎 Real-time Position Yoxlaması:`);
-            console.log(`   📊 Cari amount: ${currentAmount.toFixed(8)}`);
-            console.log(`   📊 Satılacaq miqdar: ${quantity.toFixed(8)}`);
-            console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
-            console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
+            console.log(`\n🔥 ═══════ TEK SATIŞ - ${crypto.symbol} ═══════`);
+            console.log(`🔒 LOCK ACTIVE - Dublikat qoruması`);
+            console.log(`💎 Position Details:`);
+            console.log(`   📊 Mövcud amount: ${currentAmount.toFixed(8)}`);
+            console.log(`   📊 Satılacaq: ${quantity.toFixed(8)}`);
+            console.log(`   💰 Orta alış: $${avgBuyPrice.toFixed(8)}`);
+            console.log(`   💱 Satış qiyməti: $${price.toFixed(8)}`);
 
-            // SADƏ VƏ DÜZGİN HESABLAMA - Dublikat yoxdur
-            const soldAmountOriginalValue = quantity * avgBuyPrice;
-            const soldAmountSaleValue = quantity * sellPrice;
-            const profitLoss = soldAmountSaleValue - soldAmountOriginalValue;
+            // DÜZGİN SADƏ HESABLAMA
+            const investmentRecovered = quantity * avgBuyPrice; // Alış dəyəri
+            const saleProceeds = quantity * price; // Satış dəyəri  
+            const netProfit = saleProceeds - investmentRecovered; // Xalis kar
 
-            console.log(`\n📈 REAL HESABLAMALAR:`);
-            console.log(`   💹 Kar/Zərər = $${soldAmountSaleValue.toFixed(6)} - $${soldAmountOriginalValue.toFixed(6)} = $${profitLoss.toFixed(6)}`);
-            console.log(`   📊 ÖNCƏKİ main balans: $${currentMainBalance.toFixed(6)}`);
+            console.log(`\n💰 BALANS HESABLAMASI:`);
+            console.log(`   🏦 Əvvəlki main balans: $${currentMainBalance.toFixed(6)}`);
+            console.log(`   💵 Satışdan daxil olan: $${saleProceeds.toFixed(6)}`);
+            console.log(`   📈 Xalis kar: $${netProfit.toFixed(6)}`);
 
-            // TEK BALANS YENİLƏMƏSİ - CRITICAL FIX
-            const newMainBalance = currentMainBalance + soldAmountSaleValue;
+            // SƏRFƏCƏ SATIŞ MƏBLƏĞİNİ ƏLAVƏ ET - ÇIRINA YOX
+            const newMainBalance = currentMainBalance + saleProceeds;
             await storage.updateUserBalance(userId, newMainBalance.toString());
 
-            // Kar varsa, profit balansına əlavə et
-            if (profitLoss > 0) {
-                await storage.addProfit(userId, profitLoss);
-                console.log(`   💎 Profit balansına əlavə: $${profitLoss.toFixed(6)}`);
-            } else {
-                console.log(`   ⚠️ Zərər: $${Math.abs(profitLoss).toFixed(6)} - profit balansına əlavə edilmir`);
+            // Kar varsa ayrıca profit balansına yaz
+            if (netProfit > 0) {
+                await storage.addProfit(userId, netProfit);
+                console.log(`   ✅ Profit balansına: $${netProfit.toFixed(6)}`);
             }
 
-            console.log(`   📊 YENİ main balans: $${newMainBalance.toFixed(6)}`);
-            console.log(`═══════════════════════════════════════════\n`);
+            console.log(`   🏦 Yeni main balans: $${newMainBalance.toFixed(6)}`);
+            console.log(`═════════════════════════════════════════════\n`);
 
-            // Portfolio yeniləməsi - REAL-TIME position ilə
+            // Portfolio yenilə - SƏRFƏCƏ VƏ AĞILLI
             await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
-            
-            // FINAL VERIFICATION - Position yenidən yoxlanır
-            const verifyPosition = await storage.getPortfolioItem(userId, crypto.id);
-            const remainingAmount = verifyPosition ? parseFloat(verifyPosition.amount) : 0;
-            console.log(`✅ SELL VERIFIED: ${crypto.symbol} - Remaining: ${remainingAmount.toFixed(8)}`);
 
-            // Trade yaradılması
+            // Yoxlama - position düzgün yenilənibmi?
+            const finalPosition = await storage.getPortfolioItem(userId, crypto.id);
+            const remainingAmount = finalPosition ? parseFloat(finalPosition.amount) : 0;
+            console.log(`✅ SELL SUCCESS: ${crypto.symbol} - Qalan: ${remainingAmount.toFixed(8)}`);
+
+            // Trade record
             const tradeData: InsertTrade = {
                 userId,
                 cryptoId: crypto.id,
                 type: 'SELL',
                 amount: quantity.toString(),
                 price: price.toString(),
-                total: total.toString(),
-                pnl: profitLoss.toString(),
+                total: saleProceeds.toString(),
+                pnl: netProfit.toString(),
                 reason: reason,
                 isBot: true
             };
 
             const trade = await storage.createTrade(tradeData);
+            console.log(`✅ SINGLE SELL COMPLETE: ${crypto.symbol} - $${saleProceeds.toFixed(6)}`);
 
-            console.log(`✅ TEK SATIŞ: ${crypto.symbol} - ${quantity.toFixed(6)} at $${price.toFixed(6)}`);
-
-            // Telegram bildirişi
+            // Notifications
             await telegramService.sendTradeNotification(trade, crypto);
 
-            // TEK BROADCAST - Dublikat aradan qaldırıldı
             if (this.broadcastFn) {
                 this.broadcastFn({
                     type: 'newTrade',
@@ -817,8 +822,13 @@ export class EmaRsiStrategy {
                     }
                 });
             }
+
         } catch (error) {
-            console.log(`❌ Failed to execute sell order for ${crypto.symbol}:`, error);
+            console.log(`❌ SELL ERROR for ${crypto.symbol}:`, error);
+        } finally {
+            // LOCK AÇBIDIRMA - MÜTLƏQƏMƏQƏ
+            this.sellInProgress.delete(lockKey);
+            console.log(`🔓 LOCK RELEASED: ${crypto.symbol} satışı tamamlandı`);
         }
     }
 

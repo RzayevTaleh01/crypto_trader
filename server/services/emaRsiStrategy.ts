@@ -763,21 +763,26 @@ export class EmaRsiStrategy {
             console.log(`   💰 Orta alış: $${avgBuyPrice.toFixed(8)}`);
             console.log(`   💱 Satış qiyməti: $${price.toFixed(8)}`);
 
-            // DÜZGİN SADƏ HESABLAMA
-            const investmentRecovered = quantity * avgBuyPrice; // Alış dəyəri
-            const saleProceeds = quantity * price; // Satış dəyəri  
-            const netProfit = saleProceeds - investmentRecovered; // Xalis kar
+            // DÜZGÜN BALANS HESABLAMASI - ARTIQ PUL PROBLEMI HƏLLİ
+            const totalInvested = parseFloat(currentPosition.totalInvested); // Ümumi investisiya
+            const sellRatio = quantity / currentAmount; // Satış nisbəti
+            const investmentRecovered = totalInvested * sellRatio; // Bu satışla bərpa olunan investisiya
+            const saleProceeds = quantity * price; // Satışdan əldə olunan
+            const netProfit = saleProceeds - investmentRecovered; // Real kar
 
-            console.log(`\n💰 BALANS HESABLAMASI:`);
+            console.log(`\n💰 REAL BALANS HESABLAMASI:`);
+            console.log(`   📊 Ümumi investisiya: $${totalInvested.toFixed(6)}`);
+            console.log(`   📊 Satış nisbəti: ${(sellRatio * 100).toFixed(2)}%`);
             console.log(`   🏦 Əvvəlki main balans: $${currentMainBalance.toFixed(6)}`);
-            console.log(`   💵 Satışdan daxil olan: $${saleProceeds.toFixed(6)}`);
-            console.log(`   📈 Xalis kar: $${netProfit.toFixed(6)}`);
+            console.log(`   💼 Bərpa olunan investisiya: $${investmentRecovered.toFixed(6)}`);
+            console.log(`   💵 Satışdan əldə olunan: $${saleProceeds.toFixed(6)}`);
+            console.log(`   📈 Real kar: $${netProfit.toFixed(6)}`);
 
-            // SƏRFƏCƏ SATIŞ MƏBLƏĞİNİ ƏLAVƏ ET - ÇIRINA YOX
-            const newMainBalance = currentMainBalance + saleProceeds;
+            // SADƏCƏ BİZİM INVESTİSİYAMIZI QAYTARAQ + KARI
+            const newMainBalance = currentMainBalance + investmentRecovered + netProfit;
             await storage.updateUserBalance(userId, newMainBalance.toString());
 
-            // Kar varsa ayrıca profit balansına yaz
+            // Kar ayrıca profit balansına
             if (netProfit > 0) {
                 await storage.addProfit(userId, netProfit);
                 console.log(`   ✅ Profit balansına: $${netProfit.toFixed(6)}`);
@@ -794,14 +799,14 @@ export class EmaRsiStrategy {
             const remainingAmount = finalPosition ? parseFloat(finalPosition.amount) : 0;
             console.log(`✅ SELL SUCCESS: ${crypto.symbol} - Qalan: ${remainingAmount.toFixed(8)}`);
 
-            // Trade record
+            // Trade record - REAL məlumatlar
             const tradeData: InsertTrade = {
                 userId,
                 cryptoId: crypto.id,
                 type: 'SELL',
                 amount: quantity.toString(),
                 price: price.toString(),
-                total: saleProceeds.toString(),
+                total: investmentRecovered.toString(), // Bərpa olunan investisiya
                 pnl: netProfit.toString(),
                 reason: reason,
                 isBot: true

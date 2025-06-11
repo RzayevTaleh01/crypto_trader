@@ -62,27 +62,31 @@ class PortfolioService {
 
       console.log(`🎯 CHART BALANCE: Main: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar: $${currentProfitBalance.toFixed(2)}, REAL Total: $${realTotalValue.toFixed(2)}`);
 
-      // TARİXİ DATA YARADIM - Real balans əsasında
+      // TARİXİ DATA YARADIM - YALNIZ REAL TRADING DATASI
       const now = new Date();
       const performanceData = [];
       
-      // Son 24 saat üçün data points (hər saat)
-      for (let i = hours - 1; i >= 0; i--) {
-        const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
-        
-        // Real məlumat - cari balansı göstər (təsadüfi dəyişikliklər olmadan)
-        let balanceAtTime = realTotalValue;
-        
-        // Əgər keçmiş vaxtdırsa, cüzi dəyişikliklər əlavə et (real trading activity simulasiyası)
-        if (i > 0) {
-          const randomVariation = (Math.random() - 0.5) * 0.02; // ±1% variation
-          balanceAtTime = realTotalValue * (1 + randomVariation);
-        }
-        
+      // Əgər heç bir trade yoxdursa, sadəcə başlanğıc balansı göstər
+      const userTrades = await storage.getTradesForUser(userId);
+      const hasTrading = userTrades && userTrades.length > 0;
+      
+      if (!hasTrading) {
+        // Heç bir trade yoxdursa - sadəcə düz xətt göstər
         performanceData.push({
-          timestamp: timestamp.toISOString(),
-          value: parseFloat(balanceAtTime.toFixed(2))
+          timestamp: now.toISOString(),
+          value: parseFloat(realTotalValue.toFixed(2))
         });
+      } else {
+        // Trading activity varsa - tarixi chart göstər
+        for (let i = hours - 1; i >= 0; i--) {
+          const timestamp = new Date(now.getTime() - (i * 60 * 60 * 1000));
+          
+          // Real balansı göstər (təsadüfi dəyişikliklər olmadan)
+          performanceData.push({
+            timestamp: timestamp.toISOString(),
+            value: parseFloat(realTotalValue.toFixed(2))
+          });
+        }
       }
 
       return performanceData;

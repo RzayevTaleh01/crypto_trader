@@ -188,39 +188,47 @@ export default function PortfolioChart({ userId }: PortfolioChartProps) {
       <Card className="bg-card border-border">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-bold">Ümumi Balans Performansı</h3>
-              <div className="mt-2">
-                <div className="text-2xl font-bold text-foreground">
-                  ${totalBalance.toFixed(2)}
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Əsas Balans: </span>
-                    <span className="font-medium text-crypto-blue">${currentMainBalance.toFixed(2)}</span>
-                    <div className="text-xs text-muted-foreground">Ticarət üçün</div>
+            
+              <div>
+                <h3 className="text-xl font-bold">Ticarət Balansı Performansı</h3>
+                <div className="mt-2">
+                  <div className="text-2xl font-bold text-foreground">
+                    ${chartCurrentValue.toFixed(2)}
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Kar Balansı: </span>
-                    <span className="font-medium text-green-600">
-                      ${profitBalance > 0 ? profitBalance.toFixed(2) : '0.00'}
-                    </span>
-                    <div className="text-xs text-muted-foreground">Satış karı</div>
-                  </div>
-                </div>
-                <div className="text-center mt-2 p-2 bg-muted/30 rounded-lg">
-                  <div className="text-xs text-muted-foreground">Ümumi Balans</div>
-                  <div className="text-lg font-bold text-foreground">
-                    ${totalBalance.toFixed(2)}
-                  </div>
-                  {profitBalance > 0 && (
-                    <div className="text-xs text-green-600">
-                      +${profitBalance.toFixed(2)} kar ({((profitBalance / 20) * 100).toFixed(2)}% ROI)
+                  <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Əsas Balans: </span>
+                      <span className="font-medium text-crypto-blue">${currentMainBalance.toFixed(2)}</span>
+                      <div className="text-xs text-muted-foreground">Ticarət üçün</div>
                     </div>
-                  )}
+                    <div>
+                      <span className="text-muted-foreground">Kar Balansı: </span>
+                      <span className="font-medium text-green-600">
+                        ${profitBalance > 0 ? profitBalance.toFixed(2) : '0.00'}
+                      </span>
+                      <div className="text-xs text-muted-foreground">Satış karı</div>
+                    </div>
+                  </div>
+                  <div className="text-center mt-2 p-2 bg-muted/30 rounded-lg">
+                    <div className="text-xs text-muted-foreground">Ticarət Dəyəri</div>
+                    <div className="text-lg font-bold text-foreground">
+                      ${chartCurrentValue.toFixed(2)}
+                    </div>
+                    <div className="text-xs mt-1">
+                      <span className="text-muted-foreground">Başlanğıc: $20.00</span>
+                      <span className={`ml-2 ${valueChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {valueChange >= 0 ? '+' : ''}${valueChange.toFixed(2)} ({percentageChange.toFixed(2)}%)
+                      </span>
+                    </div>
+                    {profitBalance > 0 && (
+                      <div className="text-xs text-green-600">
+                        💰 Real kar: +${profitBalance.toFixed(2)} ({((profitBalance / 20) * 100).toFixed(2)}% ROI)
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            
             <div className="flex items-center space-x-2">
               {timeframes.map((tf) => (
                   <Button

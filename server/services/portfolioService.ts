@@ -35,10 +35,6 @@ class PortfolioService {
 
   async getPortfolioPerformance(userId: number, hours: number = 24): Promise<any[]> {
     try {
-      const performanceData = [];
-      const now = new Date();
-
-      // Get current user balance and portfolio
       const user = await storage.getUser(userId);
       const portfolio = await storage.getPortfolioForUser(userId);
 
@@ -61,53 +57,20 @@ class PortfolioService {
         }
       }
 
-      // CRITICAL FIX: Use ONLY actual trading balance (no inflation)
+      // REAL TOTAL: ONLY main balance + portfolio value (NO profit balance inflation)
       const realTotalValue = currentBalance + currentPortfolioValue;
 
-      console.log(`🎯 BALANCE FIXED: Əsas Balans: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar Balansı: $${currentProfitBalance.toFixed(2)}, REAL Dəyər: $${realTotalValue.toFixed(2)}`);
+      console.log(`🎯 REAL BALANCE: Main: $${currentBalance.toFixed(2)}, Portfolio: $${currentPortfolioValue.toFixed(2)}, Kar: $${currentProfitBalance.toFixed(2)}, REAL Total: $${realTotalValue.toFixed(2)}`);
 
-      // Portfolio chart must show EXACTLY user's actual balance - no fake growth
-      const actualCurrentValue = realTotalValue;
+      // Return EXACT current balance without any historical progression
+      // This eliminates artificial chart growth
+      return [{
+        timestamp: new Date().toISOString(),
+        value: parseFloat(realTotalValue.toFixed(2))
+      }];
 
-      // Start from a realistic baseline very close to current actual value
-      const startingValue = Math.max(actualCurrentValue - 1, actualCurrentValue * 0.95);
-
-      // Generate minimal data points to avoid fake progression
-      const pointsCount = Math.min(hours, 12); // Reduce points to minimize fake data
-      const interval = hours / pointsCount;
-
-      for (let i = pointsCount; i >= 0; i--) {
-        const timestamp = new Date(now.getTime() - (i * interval * 60 * 60 * 1000));
-        const hoursBack = i * interval;
-
-        let historicalValue;
-        if (hoursBack === 0) {
-          // Current value must be EXACT actual balance
-          historicalValue = actualCurrentValue;
-        } else {
-          // Very minimal progression - no artificial growth
-          const progressRatio = 1 - (hoursBack / hours);
-          historicalValue = startingValue + ((actualCurrentValue - startingValue) * progressRatio);
-
-          // Strict cap to prevent any inflation
-          historicalValue = Math.min(historicalValue, actualCurrentValue);
-        }
-
-        const finalValue = Math.max(0, parseFloat(historicalValue.toFixed(2)));
-        performanceData.push({
-          timestamp: timestamp.toISOString(),
-          value: finalValue
-        });
-      }
-
-      // Sort by timestamp
-      performanceData.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-      console.log(`📈 FINAL CORRECTED: ${performanceData.length} points from $${startingValue.toFixed(2)} to $${realTotalValue.toFixed(2)}`);
-      return performanceData;
     } catch (error) {
       console.error('❌ Portfolio performance error:', error);
-      // Fallback - use only main balance
       const user = await storage.getUser(userId);
       const currentBalance = parseFloat(user?.balance || '0');
 

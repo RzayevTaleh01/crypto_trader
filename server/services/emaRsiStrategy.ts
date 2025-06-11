@@ -716,11 +716,24 @@ export class EmaRsiStrategy {
 
     private async executeSellOrder(userId: number, crypto: any, quantity: number, reason: string, position: any) {
         try {
+            // CRITICAL: Real-time position yoxlaması - dublikat satışları qarşısını alır
+            const currentPosition = await storage.getPortfolioItem(userId, crypto.id);
+            if (!currentPosition) {
+                console.log(`❌ Position not found for ${crypto.symbol} - already sold`);
+                return;
+            }
+
+            const currentAmount = parseFloat(currentPosition.amount);
+            if (currentAmount < quantity) {
+                console.log(`❌ Insufficient position: Need ${quantity}, have ${currentAmount} for ${crypto.symbol}`);
+                return;
+            }
+
             const price = parseFloat(crypto.currentPrice);
             const total = quantity * price;
 
             // Calculate proper investment ratio for partial sells
-            const positionAmount = parseFloat(position.amount);
+            const positionAmount = parseFloat(currentPosition.amount);
             const sellRatio = quantity / positionAmount;
 
             // Get user data first
@@ -731,13 +744,14 @@ export class EmaRsiStrategy {
             }
 
             const currentMainBalance = parseFloat(user.balance);
-            const avgBuyPrice = parseFloat(position.averagePrice);
+            const avgBuyPrice = parseFloat(currentPosition.averagePrice);
             const sellPrice = price;
 
-            // DÜZGİN HESABLAMA - Dublikat yeniləmələri aradan qaldırırıq
-            console.log(`\n🔥 ═══════ TEK DƏFƏ SATIŞ - ${crypto.symbol} ═══════`);
-            console.log(`💎 Satış Detayları:`);
-            console.log(`   📊 Satılan miqdar: ${quantity.toFixed(8)}`);
+            // LOCK MECHANISM - Dublikat satışları qarşısını alır
+            console.log(`\n🔒 ═══════ DUBLIKAT QORUNMASI - ${crypto.symbol} ═══════`);
+            console.log(`💎 Real-time Position Yoxlaması:`);
+            console.log(`   📊 Cari amount: ${currentAmount.toFixed(8)}`);
+            console.log(`   📊 Satılacaq miqdar: ${quantity.toFixed(8)}`);
             console.log(`   💰 Orta alış qiyməti: $${avgBuyPrice.toFixed(8)}`);
             console.log(`   💱 Satış qiyməti: $${sellPrice.toFixed(8)}`);
 
@@ -765,8 +779,13 @@ export class EmaRsiStrategy {
             console.log(`   📊 YENİ main balans: $${newMainBalance.toFixed(6)}`);
             console.log(`═══════════════════════════════════════════\n`);
 
-            // Portfolio yeniləməsi
+            // Portfolio yeniləməsi - REAL-TIME position ilə
             await this.updatePortfolioAfterSell(userId, crypto.id, quantity);
+            
+            // FINAL VERIFICATION - Position yenidən yoxlanır
+            const verifyPosition = await storage.getPortfolioItem(userId, crypto.id);
+            const remainingAmount = verifyPosition ? parseFloat(verifyPosition.amount) : 0;
+            console.log(`✅ SELL VERIFIED: ${crypto.symbol} - Remaining: ${remainingAmount.toFixed(8)}`);
 
             // Trade yaradılması
             const tradeData: InsertTrade = {
